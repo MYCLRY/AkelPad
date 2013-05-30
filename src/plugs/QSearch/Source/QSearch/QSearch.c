@@ -425,7 +425,7 @@ void __declspec(dllexport) DllAkelPadID(PLUGINVERSION *pv)
 {
     pv->dwAkelDllVersion  = AKELDLL;
     pv->dwExeMinVersion3x = MAKE_IDENTIFIER(-1, -1, -1, -1);
-    pv->dwExeMinVersion4x = MAKE_IDENTIFIER(4, 8, 0, 0);
+    pv->dwExeMinVersion4x = MAKE_IDENTIFIER(4, 8, 3, 0);
     pv->pPluginName = "QSearch";
 }
 
@@ -1595,7 +1595,7 @@ void ReadFindHistoryA(void)
         HKEY hKey;
         char szKeyA[200];
 
-        if ( qsearchIsSearchFlagsSaved() )
+        if ( qsearchIsSearchFlagsBeingSaved() )
         {
             if ( RegOpenKeyExA(HKEY_CURRENT_USER, QSEARCH_REG_HOMEA, 0, KEY_READ, &hKey) == ERROR_SUCCESS )
             {
@@ -1636,7 +1636,7 @@ void ReadFindHistoryA(void)
             }
         }
 
-        if ( qsearchIsFindHistoryEnabled() && qsearchIsFindHistorySaved() )
+        if ( qsearchIsFindHistoryEnabled() && qsearchIsFindHistoryBeingSaved() )
         {
             wsprintfA(szKeyA, "%s\\%s", QSEARCH_REG_HOMEA, QSEARCH_REG_FINDHISTORYA);
             if ( RegOpenKeyExA(HKEY_CURRENT_USER, szKeyA, 0, KEY_READ, &hKey) == ERROR_SUCCESS )
@@ -1703,7 +1703,7 @@ void ReadFindHistoryW(void)
         HKEY    hKey;
         wchar_t szKeyW[200];
 
-        if ( qsearchIsSearchFlagsSaved() )
+        if ( qsearchIsSearchFlagsBeingSaved() )
         {
             if ( RegOpenKeyExW(HKEY_CURRENT_USER, QSEARCH_REG_HOMEW, 0, KEY_READ, &hKey) == ERROR_SUCCESS )
             {
@@ -1744,7 +1744,7 @@ void ReadFindHistoryW(void)
             }
         }
 
-        if ( qsearchIsFindHistoryEnabled() && qsearchIsFindHistorySaved() )
+        if ( qsearchIsFindHistoryEnabled() && qsearchIsFindHistoryBeingSaved() )
         {
             wsprintfW(szKeyW, L"%s\\%s", QSEARCH_REG_HOMEW, QSEARCH_REG_FINDHISTORYW);
             if ( RegOpenKeyExW(HKEY_CURRENT_USER, szKeyW, 0, KEY_READ, &hKey) == ERROR_SUCCESS )
@@ -1808,7 +1808,7 @@ void SaveFindHistoryA(void)
 {
     if ( g_QSearchDlg.hDlg )
     {
-        if ( qsearchIsSearchFlagsSaved() )
+        if ( qsearchIsSearchFlagsBeingSaved() )
         {
             DWORD dwSearchFlags;
             HWND  hDlgItm;
@@ -1842,7 +1842,7 @@ void SaveFindHistoryA(void)
             }
         }
 
-        if ( qsearchIsFindHistoryEnabled() && qsearchIsFindHistorySaved() )
+        if ( qsearchIsFindHistoryEnabled() && qsearchIsFindHistoryBeingSaved() )
         {
             int  nCount;
             HWND hFindComboWnd = NULL;
@@ -1889,7 +1889,7 @@ void SaveFindHistoryW(void)
 {
     if ( g_QSearchDlg.hDlg )
     {
-        if ( qsearchIsSearchFlagsSaved() )
+        if ( qsearchIsSearchFlagsBeingSaved() )
         {
             DWORD dwSearchFlags;
             HWND  hDlgItm;
@@ -1923,7 +1923,7 @@ void SaveFindHistoryW(void)
             }
         }
 
-        if ( qsearchIsFindHistoryEnabled() && qsearchIsFindHistorySaved() )
+        if ( qsearchIsFindHistoryEnabled() && qsearchIsFindHistoryBeingSaved() )
         {
             int  nCount;
             HWND hFindComboWnd = NULL;

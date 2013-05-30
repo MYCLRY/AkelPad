@@ -81,8 +81,8 @@
 
 INT_PTR CALLBACK qsearchDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
 BOOL qsearchIsFindHistoryEnabled(void);
-BOOL qsearchIsFindHistorySaved(void);
-BOOL qsearchIsSearchFlagsSaved(void);
+BOOL qsearchIsFindHistoryBeingSaved(void);
+BOOL qsearchIsSearchFlagsBeingSaved(void);
 
 //---------------------------------------------------------------------------
 #endif

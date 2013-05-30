@@ -203,6 +203,7 @@
 #define AECO_NONEWLINEMOUSESELECT     0x00010000  //Triple click and left margin click selects only line contents without new line.
 #define AECO_LBUTTONUPCONTINUECAPTURE 0x00020000  //After WM_LBUTTONUP message capture operations doesn't stopped.
 #define AECO_RBUTTONDOWNMOVECARET     0x00040000  //WM_RBUTTONDOWN message moves caret to a click position.
+#define AECO_MARGINSELUNWRAPLINE      0x00080000  //Left margin line selection with mouse selects all wrapped line.
 #define AECO_LOCKSELECTION            0x00100000  //Prevent selection changing. Use it with AECO_READONLY flag.
 #define AECO_NOMARGINSEL              0x00200000  //Disables left margin line selection with mouse.
 #define AECO_NOMARKERMOVE             0x00400000  //Disables changing position of column marker with mouse and shift button.
@@ -1849,7 +1850,7 @@ AEN_VSCROLL
 ___________
 
 Notification message sends in the form of a WM_NOTIFY message.
-Sends to the parent window procedure before an edit control window scrolled horizontally.
+Sends to the parent window procedure before an edit control window scrolled vertically.
 
 (int)wParam         == specifies the control identifier.
 (AENSCROLL *)lParam == pointer to a AENSCROLL structure.
@@ -2730,6 +2731,7 @@ Return Value
  FALSE virtual-key not processed.
 
 Remarks
+ To emulate VK_RETURN key use WM_CHAR message.
  To emulate VK_TAB key use it with AEMOD_CONTROL modifier.
 
 Example:
@@ -6641,6 +6643,20 @@ Example:
     return FALSE;
   }
 
+  BOOL AEC_IsFirstCharInFile(const AECHARINDEX *ciChar)
+  {
+    if (ciChar->nCharInLine == 0 && !ciChar->lpLine->prev)
+      return TRUE;
+    return FALSE;
+  }
+
+  BOOL AEC_IsLastCharInFile(const AECHARINDEX *ciChar)
+  {
+    if (ciChar->nCharInLine == ciChar->lpLine->nLineLen && !ciChar->lpLine->next)
+      return TRUE;
+    return FALSE;
+  }
+
   AEFOLD* AEC_NextFold(AEFOLD *lpFold, BOOL bRecursive)
   {
     if (lpFold)
@@ -6708,6 +6724,8 @@ Example:
   BOOL AEC_IsCharInSelection(const AECHARINDEX *ciChar);
   BOOL AEC_IsFirstCharInLine(const AECHARINDEX *ciChar);
   BOOL AEC_IsLastCharInLine(const AECHARINDEX *ciChar);
+  BOOL AEC_IsFirstCharInFile(const AECHARINDEX *ciChar);
+  BOOL AEC_IsLastCharInFile(const AECHARINDEX *ciChar);
   AEFOLD* AEC_NextFold(AEFOLD *lpFold, BOOL bRecursive);
   AEFOLD* AEC_PrevFold(AEFOLD *lpFold, BOOL bRecursive);
 #endif //AEC_FUNCTIONS

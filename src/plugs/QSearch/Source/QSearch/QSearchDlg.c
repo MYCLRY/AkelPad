@@ -102,19 +102,19 @@ void qsearchDoShowHide(HWND hDlg, BOOL bShow);
 void qsearchDoTryHighlightAll(HWND hDlg);
 void qsearchDoTryUnhighlightAll(void);
 HWND qsearchGetFindEdit(HWND hDlg);
-BOOL qsearchFindHistoryAdd(HWND hEdit, const wchar_t* szText, BOOL bUpdateIfExists);
+BOOL qsearchFindHistoryAdd(HWND hEdit, const wchar_t* szTextAW, BOOL bUpdateIfExists);
 
 BOOL qsearchIsFindHistoryEnabled(void)
 {
     return (g_Options.dwFindHistoryItems > 1);
 }
 
-BOOL qsearchIsFindHistorySaved(void)
+BOOL qsearchIsFindHistoryBeingSaved(void)
 {
     return ((g_Options.dwHistorySave & 0x01) != 0);
 }
 
-BOOL qsearchIsSearchFlagsSaved(void)
+BOOL qsearchIsSearchFlagsBeingSaved(void)
 {
     return ((g_Options.dwHistorySave & 0x02) != 0);
 }
@@ -266,24 +266,24 @@ static BOOL isQSearchHotKeyPressed(void)
     return FALSE;
 }
 
-static void getEditFindText(HWND hEdit)
+static void getEditFindText(HWND hEdit, wchar_t szTextAW[MAX_TEXT_SIZE])
 {
-    g_QSearchDlg.szFindTextW[0] = 0;
+    szTextAW[0] = 0;
     if ( g_Plugin.bOldWindows )
-        GetWindowTextA( hEdit, (LPSTR) g_QSearchDlg.szFindTextW, MAX_TEXT_SIZE - 1 );
+        GetWindowTextA( hEdit, (LPSTR) szTextAW, MAX_TEXT_SIZE - 1 );
     else
-        GetWindowTextW( hEdit, (LPWSTR) g_QSearchDlg.szFindTextW, MAX_TEXT_SIZE - 1 );
+        GetWindowTextW( hEdit, (LPWSTR) szTextAW, MAX_TEXT_SIZE - 1 );
 }
 
-static void setEditFindText(HWND hEdit, const wchar_t* pszTextW)
+static void setEditFindText(HWND hEdit, const wchar_t* pszTextAW)
 {
     if ( g_Plugin.bOldWindows )
     {
-        SetWindowTextA( hEdit, (LPCSTR) pszTextW );
+        SetWindowTextA( hEdit, (LPCSTR) pszTextAW );
     }
     else
     {
-        SetWindowTextW( hEdit, (LPCWSTR) pszTextW );
+        SetWindowTextW( hEdit, (LPCWSTR) pszTextAW );
     }
 }
 
@@ -348,7 +348,7 @@ static void cutEditText(HWND hEdit, BOOL bCutAfterCaret)
     }
 }
 
-static BOOL getAkelPadSelectedText(void)
+static BOOL getAkelPadSelectedText(wchar_t szTextAW[MAX_TEXT_SIZE])
 {
     EDITINFO  ei;
 
@@ -371,7 +371,7 @@ static BOOL getAkelPadSelectedText(void)
 
                 trA.chrg.cpMin = cr.cpMin;
                 trA.chrg.cpMax = cr.cpMax;
-                trA.lpstrText = (LPSTR) g_QSearchDlg.szFindTextW;
+                trA.lpstrText = (LPSTR) szTextAW;
                 SendMessageA( ei.hWndEdit, EM_GETTEXTRANGE_X, 0, (LPARAM) &trA );
                 if ( g_Options.dwFlags[OPTF_SRCH_USE_SPECIALCHARS] ||
                      g_Options.dwFlags[OPTF_SRCH_USE_REGEXP] )
@@ -445,7 +445,7 @@ static BOOL getAkelPadSelectedText(void)
 
                 trW.chrg.cpMin = cr.cpMin;
                 trW.chrg.cpMax = cr.cpMax;
-                trW.lpstrText = (LPWSTR) g_QSearchDlg.szFindTextW;
+                trW.lpstrText = (LPWSTR) szTextAW;
                 SendMessageW( ei.hWndEdit, EM_GETTEXTRANGE_X, 0, (LPARAM) &trW );
                 if ( g_Options.dwFlags[OPTF_SRCH_USE_SPECIALCHARS] ||
                      g_Options.dwFlags[OPTF_SRCH_USE_REGEXP] )
@@ -707,7 +707,7 @@ static LRESULT CALLBACK btnWndProc(HWND hBtn,
 
 BOOL qsPickUpSelection(HWND hEdit)
 {
-    if ( getAkelPadSelectedText() )
+    if ( getAkelPadSelectedText(g_QSearchDlg.szFindTextW) )
     {
         setEditFindText(hEdit, g_QSearchDlg.szFindTextW);
 
@@ -775,7 +775,7 @@ LRESULT CALLBACK editWndProc(HWND hEdit,
                     {
                         int iItem = (int) SendMessage(hCombo, CB_GETCURSEL, 0, 0);
 
-                        getEditFindText(hEdit);
+                        getEditFindText(hEdit, g_QSearchDlg.szFindTextW);
                         if ( qsearchFindHistoryAdd(hEdit, g_QSearchDlg.szFindTextW, FALSE) )
                         {
                             if ( wParam == VK_DOWN ) // Arrow Down
@@ -800,7 +800,7 @@ LRESULT CALLBACK editWndProc(HWND hEdit,
             {
                 if ( GetKeyState(VK_QS_PICKUPTEXT) & 0x80 )
                 {
-                    if ( getAkelPadSelectedText() )
+                    if ( getAkelPadSelectedText(g_QSearchDlg.szFindTextW) )
                     {
                         setEditFindText(hEdit, g_QSearchDlg.szFindTextW);
                         SendMessage( g_QSearchDlg.hDlg, QSM_SETNOTFOUND, FALSE, 0 );
@@ -1274,14 +1274,14 @@ static void qsUpdateHighlight(HWND hDlg, HWND hEdit)
 {
     wchar_t szFindTextW[MAX_TEXT_SIZE];
 
-    getEditFindText(hEdit);
+    getEditFindText(hEdit, g_QSearchDlg.szFindTextW);
 
     if ( g_Plugin.bOldWindows )
         lstrcpyA( (LPSTR) szFindTextW, (LPCSTR) g_QSearchDlg.szFindTextW );
     else
         lstrcpyW( szFindTextW, g_QSearchDlg.szFindTextW );
 
-    if ( getAkelPadSelectedText() )
+    if ( getAkelPadSelectedText(g_QSearchDlg.szFindTextW) )
     {
         BOOL    bEqual;
         HWND    hChMatchCase;
@@ -1398,11 +1398,11 @@ INT_PTR CALLBACK qsearchDlgProc(HWND hDlg,
                 qs_bEditTextChanged = FALSE;
                 /*if ( g_Options.dwFlags[OPTF_SRCH_PICKUP_SELECTION] )
                 {
-                    getEditFindText( hFindEdit );
+                    getEditFindText( hFindEdit, g_QSearchDlg.szFindTextW );
                     qsearchFindHistoryAdd( hFindEdit, g_QSearchDlg.szFindTextW, FALSE );
                     qsPickUpSelection( hFindEdit );
                 }*/
-                getEditFindText( hFindEdit );
+                getEditFindText( hFindEdit, g_QSearchDlg.szFindTextW );
                 qsearchDoSearchText( hFindEdit, uSearch );
                 if ( uSearch & QSEARCH_FIRST )
                 {
@@ -1472,7 +1472,7 @@ INT_PTR CALLBACK qsearchDlgProc(HWND hDlg,
                         DWORD dwOnTheFlyMode;
                         DWORD dwStopEOF;
 
-                        getEditFindText(hFindEdit);
+                        getEditFindText(hFindEdit, g_QSearchDlg.szFindTextW);
 
                         dwOnTheFlyMode = g_Options.dwFlags[OPTF_SRCH_ONTHEFLY_MODE];
                         g_Options.dwFlags[OPTF_SRCH_ONTHEFLY_MODE] = 1;
@@ -1518,7 +1518,7 @@ INT_PTR CALLBACK qsearchDlgProc(HWND hDlg,
                         qsearchDoSetNotFound(hFindEdit, FALSE, FALSE, FALSE);
                         break;
                     case CBN_DROPDOWN:
-                        getEditFindText(hFindEdit);
+                        getEditFindText(hFindEdit, g_QSearchDlg.szFindTextW);
                         qsearchFindHistoryAdd(hFindEdit, g_QSearchDlg.szFindTextW, FALSE);
                         break;
                 }
@@ -1767,7 +1767,7 @@ INT_PTR CALLBACK qsearchDlgProc(HWND hDlg,
 
                 if ( g_Options.dwFlags[OPTF_SRCH_PICKUP_SELECTION] )
                 {
-                    if ( getAkelPadSelectedText() )
+                    if ( getAkelPadSelectedText(g_QSearchDlg.szFindTextW) )
                     {
                         if ( g_Options.dwFlags[OPTF_SRCH_ONTHEFLY_MODE] )
                         {
@@ -1846,11 +1846,11 @@ INT_PTR CALLBACK qsearchDlgProc(HWND hDlg,
             if ( g_Options.dwFlags[OPTF_SRCH_PICKUP_SELECTION] && 
                  (g_QSearchDlg.uSearchOrigin == QS_SO_EDITOR) )
             {
-                getEditFindText( hFindEdit );
+                getEditFindText( hFindEdit, g_QSearchDlg.szFindTextW );
                 qsearchFindHistoryAdd( hFindEdit, g_QSearchDlg.szFindTextW, FALSE );
                 qsPickUpSelection( hFindEdit );
             }
-            getEditFindText( hFindEdit );
+            getEditFindText( hFindEdit, g_QSearchDlg.szFindTextW );
             if ( qs_bForceFindFirst )
             {
                 qs_bForceFindFirst = FALSE;
@@ -1879,7 +1879,7 @@ INT_PTR CALLBACK qsearchDlgProc(HWND hDlg,
             if ( wParam & QSEARCH_NOFINDBEGIN )
                 dwSearch |= QSEARCH_NOFINDBEGIN;
 
-            getEditFindText( hFindEdit );
+            getEditFindText( hFindEdit, g_QSearchDlg.szFindTextW );
             qsearchDoSearchText( hFindEdit, dwSearch );
             qsearchDoTryHighlightAll( hDlg );
             return 1;
@@ -2079,7 +2079,7 @@ INT_PTR CALLBACK qsearchDlgProc(HWND hDlg,
 
             if ( g_Options.dwFlags[OPTF_SRCH_PICKUP_SELECTION] )
             {
-                getAkelPadSelectedText();
+                getAkelPadSelectedText(g_QSearchDlg.szFindTextW);
             }
             setEditFindText(hFindEdit, g_QSearchDlg.szFindTextW);
             //SetFocus(hFindEdit);
@@ -2278,7 +2278,7 @@ void qsearchDoQuit(HWND hEdit, HWND hToolTip, HBRUSH hBrush1, HBRUSH hBrush2, HB
             g_QSearchDlg.bMatchCase = FALSE;
     }
 
-    getEditFindText(hEdit);
+    getEditFindText(hEdit, g_QSearchDlg.szFindTextW);
 
     if ( prev_editWndProc )
     {
@@ -2418,14 +2418,14 @@ void qsearchDoShowHide(HWND hDlg, BOOL bShow)
 
         if ( g_Options.dwFlags[OPTF_SRCH_PICKUP_SELECTION] )
         {
-            bGotSelectedText = getAkelPadSelectedText();
+            bGotSelectedText = getAkelPadSelectedText(g_QSearchDlg.szFindTextW);
             if ( bGotSelectedText )
             {
                 bChangeSelection = TRUE;
             }
             else
             {
-                getEditFindText(hEdit);
+                getEditFindText(hEdit, g_QSearchDlg.szFindTextW);
             }
             setEditFindText(hEdit, g_QSearchDlg.szFindTextW);
             if ( (!bChangeSelection) || g_Options.dwFlags[OPTF_EDIT_FOCUS_SELECTALL] )
@@ -2482,7 +2482,7 @@ void qsearchDoSelFind(HWND hEdit, BOOL bFindPrev)
     if ( g_Options.dwFlags[OPTF_SRCH_SELFIND_PICKUP] )
     {
         // getting selected text with current search flags
-        if ( getAkelPadSelectedText() )
+        if ( getAkelPadSelectedText(g_QSearchDlg.szFindTextW) )
         {
             setEditFindText(hEdit, g_QSearchDlg.szFindTextW);
         }
@@ -2497,7 +2497,7 @@ void qsearchDoSelFind(HWND hEdit, BOOL bFindPrev)
     g_Options.dwFlags[OPTF_SRCH_USE_SPECIALCHARS] = 0;
 
     // getting selected text with modified search flags
-    if ( getAkelPadSelectedText() )
+    if ( getAkelPadSelectedText(g_QSearchDlg.szFindTextW) )
     {
         DWORD   dwSearchParams;
         BOOL    bMatchCase;
@@ -2542,6 +2542,110 @@ void qsearchDoSelFind(HWND hEdit, BOOL bFindPrev)
     // restoring search flags
     g_Options.dwFlags[OPTF_SRCH_FROM_BEGINNING] = prevSrchFromBeginning;
     g_Options.dwFlags[OPTF_SRCH_USE_SPECIALCHARS] = prevSrchUseSpecialChars;
+}
+
+static void adjustIncompleteRegExA(char* szTextA)
+{
+    int n1, n2;
+
+    if ( !szTextA )
+        return; // NULL, nothing to do
+
+    n1 = lstrlenA(szTextA);
+    if ( n1 == 0 )
+        return; // just "", nothing to do
+
+    n2 = n1;
+    // skipping trailing '?'
+    while ( szTextA[n1 - 1] == '?' )
+    {
+        --n1;
+        if ( n2 - n1 > 1 )
+            return; // syntax error: "??"
+
+        if ( n1 == 0 )
+            return; // just "?", nothing to do
+    }
+
+    n2 = n1;
+    // skipping trailing '+' or '*'
+    while ( (szTextA[n1 - 1] == '+') || (szTextA[n1 - 1] == '*') )
+    {
+        --n1;
+        if ( n2 - n1 > 1 )
+            return; // syntax error: "++", "**", "+*" or "*+"
+
+        if ( n1 == 0 )
+            return; // just "+(?)" or "*(?)", nothing to do
+    }
+
+    if ( n1 == n2 )
+        return; // no '+' or '*' found, nothing to do
+
+    n2 = n1;
+    // skipping '\' before the trailing '+' or '*'
+    while ( (n2 > 0) && (szTextA[n2 - 1] == '\\') )
+    {
+        --n2;
+    }
+
+    if ( ((n1 - n2) % 2) != 0 )
+        return; // '+' or '*' is escaped by '\', nothing to do
+
+    // exclude trailing '+' or '*'
+    szTextA[n1] = 0;
+}
+
+static void adjustIncompleteRegExW(wchar_t* szTextW)
+{
+    int n1, n2;
+
+    if ( !szTextW )
+        return; // NULL, nothing to do
+
+    n1 = lstrlenW(szTextW);
+    if ( n1 == 0 )
+        return; // just "", nothing to do
+
+    n2 = n1;
+    // skipping trailing '?'
+    while ( szTextW[n1 - 1] == L'?' )
+    {
+        --n1;
+        if ( n2 - n1 > 1 )
+            return; // syntax error: "??"
+
+        if ( n1 == 0 )
+            return; // just "?", nothing to do
+    }
+
+    n2 = n1;
+    // skipping trailing '+' or '*'
+    while ( (szTextW[n1 - 1] == L'+') || (szTextW[n1 - 1] == L'*') )
+    {
+        --n1;
+        if ( n2 - n1 > 1 )
+            return; // syntax error: "++", "**", "+*" or "*+"
+
+        if ( n1 == 0 )
+            return; // just "+(?)" or "*(?)", nothing to do
+    }
+
+    if ( n1 == n2 )
+        return; // no '+' or '*' found, nothing to do
+
+    n2 = n1;
+    // skipping '\' before the trailing '+' or '*'
+    while ( (n2 > 0) && (szTextW[n2 - 1] == L'\\') )
+    {
+        --n2;
+    }
+
+    if ( ((n1 - n2) % 2) != 0 )
+        return; // '+' or '*' is escaped by '\', nothing to do
+
+    // exclude trailing '+' or '*'
+    szTextW[n1] = 0;
 }
 
 // searches for g_QSearchDlg.szFindTextW
@@ -2663,11 +2767,17 @@ void qsearchDoSearchText(HWND hEdit, DWORD dwParams)
         int       srchEOF;
         BOOL      bSearchEx = FALSE;
         INT_X     iFindResult = -1;
+        char      szFindTextA[MAX_TEXT_SIZE];
 
         //g_QSearchDlg.szFindTextW[0] = 0;
         //GetWindowTextA( hEdit, (LPSTR) g_QSearchDlg.szFindTextW, MAX_TEXT_SIZE - 1 );
+        lstrcpyA( szFindTextA, (LPCSTR) getTextToSearch(g_QSearchDlg.szFindTextW, &bSearchEx) );
+        if ( g_Options.dwFlags[OPTF_SRCH_USE_REGEXP] )
+        {
+            adjustIncompleteRegExA(szFindTextA);
+        }
         tfA.dwFlags = dwSearchFlags;
-        tfA.pFindIt = (LPSTR) getTextToSearch(g_QSearchDlg.szFindTextW, &bSearchEx);
+        tfA.pFindIt = szFindTextA;
         tfA.nFindItLen = -1;
         srchEOF = (dwSearchFlags & FR_UP) ? QSEARCH_EOF_UP : QSEARCH_EOF_DOWN;
         if ( ((qs_nEditEOF & srchEOF) == 0) || !IsWindowVisible(g_QSearchDlg.hDlg) )
@@ -2807,11 +2917,17 @@ void qsearchDoSearchText(HWND hEdit, DWORD dwParams)
         int       srchEOF;
         BOOL      bSearchEx = FALSE;
         INT_X     iFindResult = -1;
+        wchar_t   szFindTextW[MAX_TEXT_SIZE];
 
         //g_QSearchDlg.szFindTextW[0] = 0;
         //GetWindowTextW( hEdit, (LPWSTR) g_QSearchDlg.szFindTextW, MAX_TEXT_SIZE - 1 );
+        lstrcpyW( szFindTextW, (LPCWSTR) getTextToSearch(g_QSearchDlg.szFindTextW, &bSearchEx) );
+        if ( g_Options.dwFlags[OPTF_SRCH_USE_REGEXP] )
+        {
+            adjustIncompleteRegExW(szFindTextW);
+        }
         tfW.dwFlags = dwSearchFlags;
-        tfW.pFindIt = (LPWSTR) getTextToSearch(g_QSearchDlg.szFindTextW, &bSearchEx);
+        tfW.pFindIt = szFindTextW;
         tfW.nFindItLen = -1;
         srchEOF = (dwSearchFlags & FR_UP) ? QSEARCH_EOF_UP : QSEARCH_EOF_DOWN;
         if ( ((qs_nEditEOF & srchEOF) == 0) || !IsWindowVisible(g_QSearchDlg.hDlg) )
@@ -3130,9 +3246,9 @@ HWND qsearchGetFindEdit(HWND hDlg)
     return hEdit;
 }
 
-BOOL qsearchFindHistoryAdd(HWND hEdit, const wchar_t* cszText, BOOL bUpdateIfExists)
+BOOL qsearchFindHistoryAdd(HWND hEdit, const wchar_t* cszTextAW, BOOL bUpdateIfExists)
 {
-    if ( qsearchIsFindHistoryEnabled() && cszText && ((const char *)cszText)[0] )
+    if ( qsearchIsFindHistoryEnabled() && cszTextAW && ((const char *)cszTextAW)[0] )
     {
         int   iItem;
         DWORD dwEditSel;
@@ -3142,7 +3258,7 @@ BOOL qsearchFindHistoryAdd(HWND hEdit, const wchar_t* cszText, BOOL bUpdateIfExi
         if ( g_Plugin.bOldWindows )
         {
             dwEditSel = (DWORD) SendMessageA(hCombo, CB_GETEDITSEL, 0, 0);
-            iItem = (int) SendMessageA(hCombo, CB_FINDSTRINGEXACT, (WPARAM) (-1), (LPARAM) cszText);
+            iItem = (int) SendMessageA(hCombo, CB_FINDSTRINGEXACT, (WPARAM) (-1), (LPARAM) cszTextAW);
             if ( iItem != 0 )
             {
                 if ( bUpdateIfExists || (iItem == CB_ERR) )
@@ -3150,7 +3266,7 @@ BOOL qsearchFindHistoryAdd(HWND hEdit, const wchar_t* cszText, BOOL bUpdateIfExi
                     while ( iItem != CB_ERR )
                     {
                         SendMessageA(hCombo, CB_DELETESTRING, iItem, 0);
-                        iItem = (int) SendMessageA(hCombo, CB_FINDSTRINGEXACT, (WPARAM) (-1), (LPARAM) cszText);
+                        iItem = (int) SendMessageA(hCombo, CB_FINDSTRINGEXACT, (WPARAM) (-1), (LPARAM) cszTextAW);
                     }
 
                     iItem = (int) SendMessageA(hCombo, CB_GETCOUNT, 0, 0);
@@ -3159,7 +3275,7 @@ BOOL qsearchFindHistoryAdd(HWND hEdit, const wchar_t* cszText, BOOL bUpdateIfExi
                         SendMessageA(hCombo, CB_DELETESTRING, g_Options.dwFindHistoryItems - 1, 0);
                     }
 
-                    if ( SendMessageA(hCombo, CB_INSERTSTRING, 0, (LPARAM) cszText) >= 0 )
+                    if ( SendMessageA(hCombo, CB_INSERTSTRING, 0, (LPARAM) cszTextAW) >= 0 )
                     {
                         SendMessageA(hEdit, WM_SETREDRAW, FALSE, 0);
                         SendMessageA(hCombo, CB_SETCURSEL, 0, 0);
@@ -3179,10 +3295,10 @@ BOOL qsearchFindHistoryAdd(HWND hEdit, const wchar_t* cszText, BOOL bUpdateIfExi
                 }*/
             }
         }
-        else if ( cszText[0] )
+        else if ( cszTextAW[0] )
         {
             dwEditSel = (DWORD) SendMessageW(hCombo, CB_GETEDITSEL, 0, 0);
-            iItem = (int) SendMessageW(hCombo, CB_FINDSTRINGEXACT, (WPARAM) (-1), (LPARAM) cszText);
+            iItem = (int) SendMessageW(hCombo, CB_FINDSTRINGEXACT, (WPARAM) (-1), (LPARAM) cszTextAW);
             if ( iItem != 0 )
             {
                 if ( bUpdateIfExists || (iItem == CB_ERR) )
@@ -3190,7 +3306,7 @@ BOOL qsearchFindHistoryAdd(HWND hEdit, const wchar_t* cszText, BOOL bUpdateIfExi
                     while ( iItem != CB_ERR )
                     {
                         SendMessageW(hCombo, CB_DELETESTRING, iItem, 0);
-                        iItem = (int) SendMessageW(hCombo, CB_FINDSTRINGEXACT, (WPARAM) (-1), (LPARAM) cszText);
+                        iItem = (int) SendMessageW(hCombo, CB_FINDSTRINGEXACT, (WPARAM) (-1), (LPARAM) cszTextAW);
                     }
 
                     iItem = (int) SendMessageW(hCombo, CB_GETCOUNT, 0, 0);
@@ -3199,7 +3315,7 @@ BOOL qsearchFindHistoryAdd(HWND hEdit, const wchar_t* cszText, BOOL bUpdateIfExi
                         SendMessageW(hCombo, CB_DELETESTRING, g_Options.dwFindHistoryItems - 1, 0);
                     }
 
-                    if ( SendMessageW(hCombo, CB_INSERTSTRING, 0, (LPARAM) cszText) >= 0 )
+                    if ( SendMessageW(hCombo, CB_INSERTSTRING, 0, (LPARAM) cszTextAW) >= 0 )
                     {
                         SendMessageW(hEdit, WM_SETREDRAW, FALSE, 0);
                         SendMessageW(hCombo, CB_SETCURSEL, 0, 0);

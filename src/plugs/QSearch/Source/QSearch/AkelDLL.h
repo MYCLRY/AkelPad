@@ -8,7 +8,7 @@
   #define MAKE_IDENTIFIER(a, b, c, d)  ((DWORD)MAKELONG(MAKEWORD(a, b), MAKEWORD(c, d)))
 #endif
 
-#define AKELDLL MAKE_IDENTIFIER(1, 8, 0, 7)
+#define AKELDLL MAKE_IDENTIFIER(1, 8, 1, 0)
 
 
 //// Defines
@@ -220,6 +220,7 @@
 #define MI_DATELOGFORMAT             129  //Return: copied chars. (wchar_t *)lParam - buffer that receives "DateLogFormat" string.
 #define MI_DATEINSERTFORMAT          130  //Return: copied chars. (wchar_t *)lParam - buffer that receives "DateInsertFormat" string.
 #define MI_AKELUPDATEROPTIONS        131  //Return: copied chars. (wchar_t *)lParam - buffer that receives "AkelUpdaterOptions" string.
+#define MI_URLCOMMAND                132  //Return: copied chars. (wchar_t *)lParam - buffer that receives "UrlCommand" string.
 //Menu
 #define MI_ONTOP                     141  //Return: always on top (on\off).
 #define MI_STATUSBAR                 142  //Return: show statusbar (on\off).
@@ -235,7 +236,9 @@
 #define MI_CODEPAGELIST              176  //Return: copied bytes. (int *)lParam - buffer that receives array of codepages, last element in array is zero.
 #define MI_DEFAULTCODEPAGE           177  //Return: default codepage.
 #define MI_DEFAULTBOM                178  //Return: default BOM.
-#define MI_DEFAULTNEWLINE            179  //Return: default new line, see NEWLINE_* defines.
+#define MI_NEWFILECODEPAGE           179  //Return: new file codepage.
+#define MI_NEWFILEBOM                180  //Return: new file BOM.
+#define MI_NEWFILENEWLINE            181  //Return: new file new line, see NEWLINE_* defines.
 #define MI_LANGCODEPAGERECOGNITION   183  //Return: codepage recognition language defined as LANGID.
 #define MI_CODEPAGERECOGNITIONBUFFER 184  //Return: size of codepage recognition buffer.
 #define MI_SAVEPOSITIONS             192  //Return: save recent file positions (on\off).
@@ -379,6 +382,7 @@
 #define MO_RCLICKMOVECARET       0x00000008  //WM_RBUTTONDOWN message moves caret to a click position.
 #define MO_NONEWLINEMOUSESELECT  0x00000010  //Triple click and left margin click selects only line contents without new line.
 #define MO_NOWHEELFONTCHANGE     0x00000020  //Don't change font size with middle button scroll and Ctrl key.
+#define MO_MARGINSELUNWRAPLINE   0x00000040  //Left margin line selection with mouse selects all wrapped line.
 
 //Keyboard layout options
 #define KLO_REMEMBERLAYOUT     0x00000001  //Remember keyboard layout for each tab (MDI).
@@ -663,26 +667,6 @@
 //WM_INITMENU lParam
 #define IMENU_EDIT     0x00000001
 #define IMENU_CHECKS   0x00000004
-
-//GetWindowLongPtr/SetWindowLongPtr
-#ifndef GWLP_WNDPROC
-  #define DWLP_MSGRESULT 0
-#endif
-#ifndef GWLP_WNDPROC
-  #define GWLP_WNDPROC (-4)
-#endif
-#ifndef GWLP_HINSTANCE
-  #define GWLP_HINSTANCE (-6)
-#endif
-#ifndef GWLP_HWNDPARENT
-  #define GWLP_HWNDPARENT (-8)
-#endif
-#ifndef GWLP_ID
-  #define GWLP_ID (-12)
-#endif
-#ifndef GWLP_USERDATA
-  #define GWLP_USERDATA (-21)
-#endif
 
 
 //// Structures
@@ -1818,7 +1802,7 @@ typedef struct {
                                               //Return Value: zero.
                                               //
 #define IDM_WINDOW_CHANGESIZE           4331  //Change style of the main window SW_RESTORE\SW_MAXIMIZE.
-                                              //Return Value: zero.
+                                              //Return Value: SW_RESTORE - new style is SW_RESTORE, SW_MAXIMIZE - new style is SW_MAXIMIZE.
                                               //
 #define IDM_WINDOW_DLGNEXT              4332  //Activate next dialog window.
                                               //Return Value: activated dialog handle.
@@ -4023,7 +4007,7 @@ Call dll.
                             or pointer to a PLUGINCALLPOST, allocated with GlobalAlloc, if PostMessage used.
 
 Return Value
- See EDL_* defines.
+ See UD_* defines.
 
 Example SendMessage (Unicode):
  PLUGINCALLSENDW pcs;

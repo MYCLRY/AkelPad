@@ -335,6 +335,11 @@ SelFindNext или SelFindPrev. В результате выделение переходит к
 --------
 История:
 --------
+v.5.4 (May 2013)
+ * AkelPad 4.8.3+
+ * теперь при поиске игнорируются "+", "*", "+?" и "*?" в конце регулярного
+   выражения, чтобы избежать выделения до конца файла
+
 v.5.3 (Декабрь 2012)
  * AkelPad 4.8.0+
  * теперь кнопки [>] и [<] подхватывают выделенный текст "интеллектуально"
@@ -526,5 +531,5 @@ Instructor за текстовый редактор AkelPad  ;-)
 The original icon by Yusuke Kamiyamane, http://p.yusukekamiyamane.com/
 The icon has been modified by DV.
 ---------------------------------------------------------------------------
-(C) Sep 2007 - Dec 2012, Vitaliy Dovgan aka DV
+(C) Sep 2007 - May 2013, Vitaliy Dovgan aka DV
           dvv81 <at> ukr <dot> net
