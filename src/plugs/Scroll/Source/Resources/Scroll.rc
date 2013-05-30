@@ -1,0 +1,154 @@
+//Microsoft Developer Studio generated resource script.
+//
+#include "resource.h"
+
+#define APSTUDIO_READONLY_SYMBOLS
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 2 resource.
+//
+#if (RC_VERSIONBIT == 64)
+  #define RC_VERSIONDESCRIPTION "AkelPad (x64) text editor plugin"
+#else
+  #define RC_VERSIONDESCRIPTION "AkelPad (x86) text editor plugin"
+#endif
+#include "winresrc.h"
+#ifdef RC_VERSIONBIT
+  #include "Version.rc"
+#endif
+
+/////////////////////////////////////////////////////////////////////////////
+#undef APSTUDIO_READONLY_SYMBOLS
+
+/////////////////////////////////////////////////////////////////////////////
+// English (U.S.) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
+#ifdef _WIN32
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+#pragma code_page(1252)
+#endif //_WIN32
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Icon
+//
+
+// Icon with lowest ID value placed first to ensure application icon
+// remains consistent on all systems.
+IDI_ICON_00             ICON    DISCARDABLE     "hscroll.ico"
+IDI_ICON_01             ICON    DISCARDABLE     "vscroll.ico"
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog
+//
+
+IDD_SETUP DIALOGEX 70, 70, 316, 313
+STYLE DS_MODALFRAME | DS_3DLOOK | DS_CENTER | WS_POPUP | WS_VISIBLE | 
+    WS_CAPTION | WS_SYSMENU
+FONT 8, "MS Shell Dlg"
+BEGIN
+    CTEXT           "AutoScroll",IDC_AUTOSCROLL_TITLE,29,6,105,12,
+                    SS_CENTERIMAGE,WS_EX_STATICEDGE
+    GROUPBOX        "",IDC_AUTOSCROLL_AUTOSTEP_GROUP,11,25,140,53
+    EDITTEXT        IDC_AUTOSCROLL_STEPTIME,19,40,26,12,ES_AUTOHSCROLL | 
+                    ES_NUMBER
+    LTEXT           "",IDC_AUTOSCROLL_STEPTIME_LABEL,52,42,90,8
+    EDITTEXT        IDC_AUTOSCROLL_STEPWIDTH,19,58,26,12,ES_AUTOHSCROLL
+    LTEXT           "",IDC_AUTOSCROLL_STEPWIDTH_LABEL,51,60,90,8
+    CTEXT           "NoScroll",IDC_NOSCROLL_TITLE,29,89,105,12,
+                    SS_CENTERIMAGE,WS_EX_STATICEDGE
+    GROUPBOX        "",IDC_NOSCROLL_GROUP,11,108,140,55
+    CONTROL         "",IDC_NOSCROLL_UNDO,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,20,122,125,8
+    CONTROL         "",IDC_NOSCROLL_REDO,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,20,135,125,8
+    CONTROL         "",IDC_NOSCROLL_SELECTALL,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,20,148,125,8
+    CTEXT           "SyncHorz",IDC_SYNCHORZ_TITLE,183,6,105,12,
+                    SS_CENTERIMAGE,WS_EX_STATICEDGE
+    GROUPBOX        "",IDC_SYNCHORZ_GROUP,165,25,140,53
+    CONTROL         "",IDC_SYNCHORZ_MDI,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,174,43,125,8
+    CONTROL         "",IDC_SYNCHORZ_CLONE,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,174,56,125,8
+    CTEXT           "SyncVert",IDC_SYNCVERT_TITLE,183,89,105,12,
+                    SS_CENTERIMAGE,WS_EX_STATICEDGE
+    GROUPBOX        "",IDC_SYNCVERT_GROUP,165,108,140,55
+    CONTROL         "",IDC_SYNCVERT_MDI,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,173,127,125,8
+    CONTROL         "",IDC_SYNCVERT_CLONE,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,173,140,125,8
+    CTEXT           "AutoFocus",IDC_AUTOFOCUS_TITLE,105,173,105,12,
+                    SS_CENTERIMAGE,WS_EX_STATICEDGE
+    GROUPBOX        "",IDC_AUTOFOCUS_GROUP,11,192,294,89
+    CONTROL         "",IDC_AUTOFOCUS_FOCUSBACKGROUND,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,20,208,280,8
+    CONTROL         "",IDC_AUTOFOCUS_MOVESCROLLBAR,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,20,224,140,8
+    CONTROL         "",IDC_AUTOFOCUS_MOVESCROLLBAR_INVERT,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,29,237,70,8
+    CONTROL         "",IDC_AUTOFOCUS_MOVEWITHSHIFT,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,163,224,137,8
+    CONTROL         "",IDC_AUTOFOCUS_MOVEWITHSHIFT_INVERT,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,173,237,70,8
+    CONTROL         "",IDC_AUTOFOCUS_SWITCHTAB,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,20,252,280,8
+    CONTROL         "",IDC_AUTOFOCUS_SWITCHTAB_INVERT,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,29,265,70,8
+    CONTROL         "",IDC_AUTOFOCUS_SWITCHTAB_WITHSPIN,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,109,265,191,8
+    PUSHBUTTON      "",IDOK,106,292,50,14,BS_CENTER
+    PUSHBUTTON      "",IDCANCEL,160,292,50,14,BS_CENTER
+END
+
+
+#ifdef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// TEXTINCLUDE
+//
+
+1 TEXTINCLUDE DISCARDABLE 
+BEGIN
+    "resource.h\0"
+END
+
+2 TEXTINCLUDE DISCARDABLE 
+BEGIN
+    "#if (RC_VERSIONBIT == 64)\r\n"
+    "  #define RC_VERSIONDESCRIPTION ""AkelPad (x64) text editor plugin""\r\n"
+    "#else\r\n"
+    "  #define RC_VERSIONDESCRIPTION ""AkelPad (x86) text editor plugin""\r\n"
+    "#endif\r\n"
+    "#include ""winresrc.h""\r\n"
+    "#ifdef RC_VERSIONBIT\r\n"
+    "  #include ""Version.rc""\r\n"
+    "#endif\r\n"
+    "\0"
+END
+
+3 TEXTINCLUDE DISCARDABLE 
+BEGIN
+    "\r\n"
+    "\0"
+END
+
+#endif    // APSTUDIO_INVOKED
+
+#endif    // English (U.S.) resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+
+#ifndef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 3 resource.
+//
+
+
+/////////////////////////////////////////////////////////////////////////////
+#endif    // not APSTUDIO_INVOKED
+

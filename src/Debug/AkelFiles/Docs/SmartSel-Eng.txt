@@ -1,0 +1,44 @@
+-----------------------------------------------------------------------
+                SmartSel plugin for AkelPad text editor                
+-----------------------------------------------------------------------
+
+SmartSel::NoSelEOL 
+ * excludes last end-of-line (EOL) symbol from selected text.
+ * when selecting from bottom to top (from right to left) while the
+   selection begins with EOL symbol, this EOL symbol is not excluded.
+
+SmartSel::SmartHome
+ * HOME key goes to first non-space character.
+
+SmartSel::SmartEnd
+ * when End key is pressed, cursor jumps to last non-space/non-tab character.
+ * when End key is pressed again, cursor jumps to the end of the line.
+ * key sequence End, Shift+End allows to select all trailing spaces/tabs.
+
+SmartSel::SmartUpDown
+ * Arrow Up on the very first line works as Home.
+ * Arrow Down on the very last line works as End.
+
+SmartSel::altNoSelEOL
+ * this function affects the NoSelEOL behaviour.
+   If it is enabled (and NoSelEOL is also enabled), the last end-of-line
+   (EOL) symbol is excluded only in case of just one line selected.
+   If there are two or more lines selected, the last EOL symbol is not 
+   excluded.
+
+SmartSel::altSmartEnd
+ * this function affects the SmartEnd behaviour.
+   If it is enabled (and SmartEnd is also enabled), cursor jumps to the end 
+   of the line when End key is pressed for the first time. When End key is
+   pressed again, cursor jumps to last non-space/non-tab character.
+
+SmartSel::altSmartUpDown
+ * this function affects the SmartUpDown behaviour.
+   If it is enabled (and SmartUpDown is also enabled), SmartUpDown also
+   processes Page Up (on the very first line) and Page Down (on the very 
+   last line).
+   
+
+-----------------------------------------------------------------------
+(C) Vitaliy Dovgan aka DV,  dvv81 <at> ukr <dot> net
+(C) Shengalts Aleksander aka Instructor
