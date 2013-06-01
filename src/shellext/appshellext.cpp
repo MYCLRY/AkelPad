@@ -108,7 +108,7 @@ STDMETHODIMP CAppShellExt::QueryContextMenu(HMENU hmenu, UINT indexMenu, UINT id
 
     { 
         ::LoadString(_Module.m_hInstResource, IDS_OPEN_WITH, szFormat, _countof(szFormat)); 
-        wnsprintf(szMenuItem, _countof(szMenuItem), szFormat, APPNAME); 
+        _stprintf(szMenuItem, szFormat, APPNAME); 
         InsertMenu ( hmenu, indexMenu, MF_STRING | MF_BYPOSITION | MF_OWNERDRAW, uCmdID, szMenuItem ); 
 
         stMenuInfo.uPosition = indexMenu; 
@@ -203,7 +203,7 @@ STDMETHODIMP CAppShellExt::InvokeCommand(LPCMINVOKECOMMANDINFO lpici)
     return hRes; 
 } 
 
-STDMETHODIMP CAppShellExt::GetCommandString(UINT_PTR idCmd, UINT uType, UINT * pwReserved, 
+STDMETHODIMP CAppShellExt::GetCommandString(IDCMD_TYPE idCmd, UINT uType, UINT * pwReserved, 
                                             LPSTR pszName, UINT cchMax) 
 { 
     idCmd, uType, pwReserved, pszName, cchMax; 
@@ -380,13 +380,22 @@ STDMETHODIMP CAppShellExt::HandleMenuMsg2(UINT uMsg, WPARAM wParam, LPARAM lPara
             // which the top level context menu is *not*. So drawing there the accelerators
             // is futile because they won't get used. 
 
-            //int menuID = it->second.uPosition;
+            // int menuID = it->second.uPosition;
 
             {
                 // If the "hide keyboard cues" option is turned off, we still
                 // get the ODS_NOACCEL flag! So we have to check this setting
                 // manually too.
                 BOOL bShowAccels = FALSE;
+#ifndef SPI_GETKEYBOARDCUES
+#define SPI_GETKEYBOARDCUES                 0x100A
+#endif
+#ifndef ODS_NOACCEL
+#define ODS_NOACCEL         0x0100
+#endif
+#ifndef DT_HIDEPREFIX
+#define DT_HIDEPREFIX               0x00100000
+#endif
                 SystemParametersInfo(SPI_GETKEYBOARDCUES, 0, &bShowAccels, 0);
                 uFormat |= ((lpdis->itemState & ODS_NOACCEL)&&(!bShowAccels)) ? DT_HIDEPREFIX : 0;
             }

@@ -24,6 +24,7 @@ extern CComModule _Module;
 #include <shlobj.h> 
 #include <comdef.h> 
 #include <shellapi.h>
+#include <shlwapi.h>
 
 #include <atlwin.h> 
 #include <commctrl.h> 

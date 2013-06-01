@@ -50,12 +50,18 @@ public:
     // 
     STDMETHOD(Initialize)(LPCITEMIDLIST pidlFolder, IDataObject *pdtobj, HKEY hkeyProgID); 
 
+#if _MSC_VER > 1200
+#define IDCMD_TYPE UINT_PTR
+#else
+#define IDCMD_TYPE UINT
+#endif
+
     // 
     // IContextMenu 
     // 
     STDMETHOD(QueryContextMenu)(HMENU hmenu, UINT indexMenu, UINT idCmdFirst, UINT idCmdLast, UINT uFlags); 
     STDMETHOD(InvokeCommand)(LPCMINVOKECOMMANDINFO lpici); 
-    STDMETHOD(GetCommandString)(UINT_PTR idCmd, UINT uType, UINT * pwReserved, LPSTR pszName, UINT cchMax); 
+    STDMETHOD(GetCommandString)(IDCMD_TYPE idCmd, UINT uType, UINT * pwReserved, LPSTR pszName, UINT cchMax); 
 
     // 
     // IContextMenu2 

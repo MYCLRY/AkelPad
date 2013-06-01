@@ -13,11 +13,11 @@
 #undef APSTUDIO_READONLY_SYMBOLS
 
 /////////////////////////////////////////////////////////////////////////////
-// Chinese (Simplified, PRC) resources
+// English (United States) resources
 
-#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_CHS)
-LANGUAGE LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED
-#pragma code_page(936)
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+#pragma code_page(1252)
 
 #ifdef APSTUDIO_INVOKED
 /////////////////////////////////////////////////////////////////////////////
@@ -38,49 +38,18 @@ END
 
 3 TEXTINCLUDE 
 BEGIN
-    "//1 TYPELIB ""shellext.tlb""\r\n"
+    "#define PRODUCTNAME ""AkelPad""\r\n"
+    "#define ORIGINALFILENAME ""shellext.dll""\r\n"
+    "#if RC_VERSIONBIT==64\r\n"
+    "  #define RC_VERSIONDESCRIPTION PRODUCTNAME "" (x64) text editor shell extension""\r\n"
+    "#else\r\n"
+    "  #define RC_VERSIONDESCRIPTION PRODUCTNAME "" (x86) text editor shell extension""\r\n"
+    "#endif\r\n"
+    "#include ""Version.rc""\r\n"
     "\0"
 END
 
 #endif    // APSTUDIO_INVOKED
-
-
-/////////////////////////////////////////////////////////////////////////////
-//
-// Version
-//
-
-VS_VERSION_INFO VERSIONINFO
- FILEVERSION 1,0,0,1
- PRODUCTVERSION 1,0,0,1
- FILEFLAGSMASK 0x3fL
-#ifdef _DEBUG
- FILEFLAGS 0x1L
-#else
- FILEFLAGS 0x0L
-#endif
- FILEOS 0x4L
- FILETYPE 0x2L
- FILESUBTYPE 0x0L
-BEGIN
-    BLOCK "StringFileInfo"
-    BEGIN
-        BLOCK "040904B0"
-        BEGIN
-            VALUE "FileDescription", "shellext Module"
-            VALUE "FileVersion", "1, 0, 0, 1"
-            VALUE "InternalName", "shellext"
-            VALUE "LegalCopyright", "Copyright 2013"
-            VALUE "OriginalFilename", "shellext.dll"
-            VALUE "ProductName", "shellext Module"
-            VALUE "ProductVersion", "1, 0, 0, 1"
-        END
-    END
-    BLOCK "VarFileInfo"
-    BEGIN
-        VALUE "Translation", 0x409, 1200
-    END
-END
 
 
 /////////////////////////////////////////////////////////////////////////////
@@ -92,6 +61,15 @@ IDR_APPSHELLEXT         REGISTRY                "appshellext.rgs"
 
 /////////////////////////////////////////////////////////////////////////////
 //
+// Icon
+//
+
+// Icon with lowest ID value placed first to ensure application icon
+// remains consistent on all systems.
+IDI_PROGRAM             ICON                    "appshellext.ico"
+
+/////////////////////////////////////////////////////////////////////////////
+//
 // String Table
 //
 
@@ -99,28 +77,9 @@ STRINGTABLE
 BEGIN
     IDS_OPEN_WITH           "Open with %s"
     IDS_ERROR               "Error"
-    IDS_NO_PROG             "Can't find out program %s"
+    IDS_NO_PROG             "Can't find application %s"
 END
 
-#endif    // Chinese (Simplified, PRC) resources
-/////////////////////////////////////////////////////////////////////////////
-
-
-/////////////////////////////////////////////////////////////////////////////
-// English (United States) resources
-
-#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
-LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
-#pragma code_page(1252)
-
-/////////////////////////////////////////////////////////////////////////////
-//
-// Icon
-//
-
-// Icon with lowest ID value placed first to ensure application icon
-// remains consistent on all systems.
-IDI_PROGRAM             ICON                    "appshellext.ico"
 #endif    // English (United States) resources
 /////////////////////////////////////////////////////////////////////////////
 
@@ -131,7 +90,14 @@ IDI_PROGRAM             ICON                    "appshellext.ico"
 //
 // Generated from the TEXTINCLUDE 3 resource.
 //
-//1 TYPELIB "shellext.tlb"
+#define PRODUCTNAME "AkelPad"
+#define ORIGINALFILENAME "shellext.dll"
+#if RC_VERSIONBIT==64
+  #define RC_VERSIONDESCRIPTION PRODUCTNAME " (x64) text editor shell extension"
+#else
+  #define RC_VERSIONDESCRIPTION PRODUCTNAME " (x86) text editor shell extension"
+#endif
+#include "Version.rc"
 
 /////////////////////////////////////////////////////////////////////////////
 #endif    // not APSTUDIO_INVOKED
