@@ -63,4 +63,7 @@
       <Filter>Source Files</Filter>
     </CustomBuild>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="ISystemFunction64.asm" />
+  </ItemGroup>
 </Project>

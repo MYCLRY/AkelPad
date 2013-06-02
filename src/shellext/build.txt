@@ -4,11 +4,23 @@ How to build
        http://www.microsoft.com/en-us/download/details.aspx?id=11800
        Then install it. In my PC, the path is "G:\WinDDK\7600.16385.1".
     2. Open a command window.
-    3. Type command "pushd  G:\WinDDK\7600.16385.1\bin".
+    3. Type command "pushd  g:\WinDDK\7600.16385.1\bin".
     4. Type command "setenv g:\winddk\7600.16385.1  fre x64 WNET no_oacr", for x64 CPU.
        or command   "setenv g:\winddk\7600.16385.1  fre     WXP  no_oacr", for x86 CPU.          
-    5. Type command "pushd C:\Users\Administrator\Desktop\shellext" to switch to our project work directory.
+    5. Type command "pushd  d:\dev-proj\AkelPad\src\shellext" to switch to our project work directory.
     6. Type command "build". This command will build our target binary file.
 
     
 Good Luck.
+
+
+
+pushd  g:\WinDDK\7600.16385.1\bin
+setenv g:\winddk\7600.16385.1  fre x64 WNET no_oacr
+pushd  d:\dev-proj\AkelPad\src\shellext
+build
+
+pushd  g:\WinDDK\7600.16385.1\bin
+setenv g:\winddk\7600.16385.1  fre     WNET no_oacr
+pushd  d:\dev-proj\AkelPad\src\shellext
+build

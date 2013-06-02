@@ -779,7 +779,11 @@ BOOL CALLBACK SetupDlgProcA(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
         }
         else lResult=CDRF_DODEFAULT;
 
+#if defined(_WIN64)
+        SetWindowLongA(hDlg, DWLP_MSGRESULT, (LONG)lResult);
+#else
         SetWindowLongA(hDlg, DWL_MSGRESULT, (LONG)lResult);
+#endif
         return TRUE;
       }
     }
