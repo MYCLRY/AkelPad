@@ -6,6 +6,7 @@
 #define IDS_OPEN_WITH                   101
 #define IDS_ERROR                       102
 #define IDS_NO_PROG                     103
+#define IDS_OPEN_WITH_2                 104
 #define IDI_PROGRAM                     201
 
 // Next default values for new objects

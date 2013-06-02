@@ -86,6 +86,8 @@ protected:
 
     std::map<UINT_PTR, SP_MENU_INFO> m_mapMenuInfo; 
 
+    BOOL _ExecuteCommand(void);
+
 protected: 
     _tstring_list   m_lsFiles; 
 };

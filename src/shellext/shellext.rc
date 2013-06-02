@@ -78,6 +78,7 @@ BEGIN
     IDS_OPEN_WITH           "Open with %s"
     IDS_ERROR               "Error"
     IDS_NO_PROG             "Can't find application %s"
+    IDS_OPEN_WITH_2         "Open the selected file(s) with %s"
 END
 
 #endif    // English (United States) resources

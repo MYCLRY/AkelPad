@@ -133,73 +133,59 @@ STDMETHODIMP CAppShellExt::QueryContextMenu(HMENU hmenu, UINT indexMenu, UINT id
 }
 
 
+BOOL _BuildIndicateString(LPTSTR szInfo, UINT cchMax)
+{
+    szInfo, cchMax;
+    TCHAR szOpenWith[MAX_PATH] = { 0 };
+    ::LoadString(_Module.m_hInstResource, IDS_OPEN_WITH_2, szOpenWith, _countof(szOpenWith));
+    _stprintf(szInfo, szOpenWith, APPNAME);
+    return TRUE;
+}
+
+
 STDMETHODIMP CAppShellExt::InvokeCommand(LPCMINVOKECOMMANDINFO lpici) 
 { 
     HRESULT hRes = E_FAIL; 
-    ATLASSERT(m_lsFiles.size()); 
-    if(0 == m_lsFiles.size()) 
-        return hRes; 
+    USES_CONVERSION;
+    do 
+    {
+        // If lpVerb really points to a string, ignore this function call and bail out. 
+        if ( 0 != HIWORD( lpici->lpVerb )) { 
+            TCHAR szPrompt[MAX_PATH] = { 0 }; 
+            _BuildIndicateString(szPrompt, _countof(szPrompt));
 
-    TCHAR * lpszFiles = (TCHAR *) LocalAlloc(LPTR, 
-        m_lsFiles.size()*sizeof(TCHAR)*(MAX_PATH+3)); 
-    _tstring_list::iterator it; 
-    for(it=m_lsFiles.begin(); it != m_lsFiles.end(); it++) 
-    { 
-        TCHAR szFileName[MAX_PATH] = { 0 }; 
-        wsprintf(szFileName, _T("\"%s\" "), it->c_str()); 
-        lstrcat(lpszFiles, szFileName); 
-    } 
+            if (strcmp(lpici->lpVerb, T2CA(szPrompt)) == 0) {
+                _ExecuteCommand();
+                hRes = S_OK;
+            } else {
+                hRes = E_INVALIDARG; 
+            }
+            break;
+        } 
 
-    // If lpVerb really points to a string, ignore this function call and bail out. 
-    if ( 0 != HIWORD( lpici->lpVerb )) { 
-        LocalFree(lpszFiles); 
-        hRes = E_INVALIDARG; 
-        return hRes; 
-    } 
-
-    // Check that lpVerb is one of our commands (0 or 1) 
-    switch ( LOWORD( lpici->lpVerb )) 
-    { 
-    case 0: 
+        // Check that lpVerb is one of our commands (0 or 1) 
+        switch ( LOWORD( lpici->lpVerb )) 
         { 
-            TCHAR szExeFile[MAX_PATH]; 
-            if (FindExeFile(_Module.m_hInst, APPNAME _T(".exe"), szExeFile, _countof(szExeFile))) 
-            { 
-                SHELLEXECUTEINFO ExecuteInfo = { 0 }; 
-                
-                ExecuteInfo.cbSize = sizeof(ExecuteInfo); 
-                ExecuteInfo.fMask = 0; 
-                ExecuteInfo.hwnd = 0; 
-                ExecuteInfo.lpVerb = _T("open");        // Operation to perform 
-                ExecuteInfo.lpFile = szExeFile;         // Application name 
-                ExecuteInfo.lpParameters = lpszFiles;   // Additional parameters 
-                ExecuteInfo.lpDirectory = 0;            // Default directory 
-                ExecuteInfo.nShow = SW_SHOW; 
-                ExecuteInfo.hInstApp = 0; 
-                
-                if(ShellExecuteEx(&ExecuteInfo) == FALSE) { 
-                    hRes = S_OK; 
-                } 
-            } 
-            else 
-            { 
-				TCHAR szFmt[MAX_PATH] = { 0 };
+        case 0: 
+            if (_ExecuteCommand()) { 
+                hRes = S_OK; 
+            } else { 
+                TCHAR szFmt[MAX_PATH] = { 0 };
                 ::LoadString(_Module.m_hInstResource, IDS_NO_PROG, szFmt, _countof(szFmt));
-				TCHAR szOut[MAX_PATH] = { 0 };
-				wsprintf(szOut, szFmt, APPNAME);
+                TCHAR szOut[MAX_PATH] = { 0 };
+                wsprintf(szOut, szFmt, APPNAME);
 
-				TCHAR szTitle[MAX_PATH] = { 0 };
+                TCHAR szTitle[MAX_PATH] = { 0 };
                 ::LoadString(_Module.m_hInstResource, IDS_ERROR, szTitle, _countof(szTitle));
                 ::MessageBox(::GetActiveWindow(), szOut, szTitle, MB_OK|MB_ICONSTOP); 
             } 
-        } 
-        break; 
+            break; 
 
-    default: 
-        hRes = E_INVALIDARG; 
-        break; 
-    } 
-    LocalFree(lpszFiles); 
+        default: 
+            hRes = E_INVALIDARG; 
+            break; 
+        } 
+    } while (FALSE);
     return hRes; 
 } 
 
@@ -208,14 +194,14 @@ STDMETHODIMP CAppShellExt::GetCommandString(IDCMD_TYPE idCmd, UINT uType, UINT *
 { 
     idCmd, uType, pwReserved, pszName, cchMax; 
     USES_CONVERSION; 
-    LPCTSTR szPrompt; 
+    TCHAR szPrompt[MAX_PATH] = { 0 }; 
 
     if ( uType & GCS_HELPTEXT ) 
     { 
         switch ( idCmd ) 
         { 
         case 0: 
-            szPrompt = _T("Open the selected file with ") APPNAME; 
+            _BuildIndicateString(szPrompt, _countof(szPrompt));
             break; 
 
         default: 
@@ -225,10 +211,11 @@ STDMETHODIMP CAppShellExt::GetCommandString(IDCMD_TYPE idCmd, UINT uType, UINT *
 
         // Copy the help text into the supplied buffer.  If the shell wants 
         // a Unicode string, we need to case szName to an LPCWSTR. 
-        if ( uType & GCS_UNICODE ) 
+        if ( uType & GCS_UNICODE ) {
             lstrcpynW ( (LPWSTR) pszName, T2CW(szPrompt), cchMax ); 
-        else 
+        } else {
             lstrcpynA ( pszName, T2CA(szPrompt), cchMax ); 
+        }
     } 
 
     return S_OK; 
@@ -569,4 +556,48 @@ HBITMAP CAppShellExt::IconToBitmap(UINT uIcon, COLORREF transparentColor)
         bitmaps.insert(bitmap_it, std::make_pair(uIcon, bmp)); 
     return bmp; 
 } 
+
+BOOL CAppShellExt::_ExecuteCommand( void )
+{
+    BOOL bRs = FALSE;
+    do 
+    {
+        ATLASSERT(m_lsFiles.size()); 
+        if(0 == m_lsFiles.size()) {
+            break;
+        }
+
+        TCHAR * lpszFiles = (TCHAR *) LocalAlloc(LPTR, 
+            (m_lsFiles.size()*(MAX_PATH+3) + 1)*sizeof(TCHAR)); 
+        _tstring_list::iterator it; 
+        for(it=m_lsFiles.begin(); it != m_lsFiles.end(); it++) { 
+            TCHAR szFileName[MAX_PATH+4] = { 0 }; 
+            wsprintf(szFileName, _T("\"%s\" "), it->c_str()); 
+            lstrcat(lpszFiles, szFileName); 
+        } 
+
+        TCHAR szExeFile[MAX_PATH]; 
+        if (FindExeFile(_Module.m_hInst, APPNAME _T(".exe"),
+            szExeFile, _countof(szExeFile))) 
+        { 
+            SHELLEXECUTEINFO ExecuteInfo = { 0 }; 
+
+            ExecuteInfo.cbSize = sizeof(ExecuteInfo); 
+            ExecuteInfo.fMask = 0; 
+            ExecuteInfo.hwnd = 0; 
+            ExecuteInfo.lpVerb = _T("open");        // Operation to perform 
+            ExecuteInfo.lpFile = szExeFile;         // Application name 
+            ExecuteInfo.lpParameters = lpszFiles;   // Additional parameters 
+            ExecuteInfo.lpDirectory = 0;            // Default directory 
+            ExecuteInfo.nShow = SW_SHOW; 
+            ExecuteInfo.hInstApp = 0; 
+
+            bRs = ShellExecuteEx(&ExecuteInfo);
+        } 
+
+        LocalFree(lpszFiles); 
+        bRs = TRUE;
+    } while (FALSE);
+    return bRs;
+}
 
