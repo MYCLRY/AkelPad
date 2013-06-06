@@ -2,12 +2,15 @@
 # "IA64" "AMD64" "x86"
 #==================================
 !if "$(_BUILDARCH)"=="AMD64" 
-TARGETNAME=shellext-x64
+TARGETNAME=shellext-amd64
+BIT=64
 !else
 !   if "$(_BUILDARCH)"=="x86"
 TARGETNAME=shellext-x86
+BIT=32
 !   else
 TARGETNAME=shellext-ia64
+BIT=64
 !   endif
 !endif
 
@@ -37,7 +40,7 @@ TARGETLIBS=\
         $(SDK_LIB_PATH)\shell32.lib     \
 
 
-C_DEFINES= $(C_DEFINES) -DUNICODE -D_UNICODE
+C_DEFINES= $(C_DEFINES) -DUNICODE -D_UNICODE -DRC_VERSIONBIT=$(BIT)
 
 PRECOMPILED_CXX=1
 PRECOMPILED_INCLUDE=stdafx.h

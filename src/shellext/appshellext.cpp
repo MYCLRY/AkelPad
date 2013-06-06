@@ -108,7 +108,7 @@ STDMETHODIMP CAppShellExt::QueryContextMenu(HMENU hmenu, UINT indexMenu, UINT id
 
     { 
         ::LoadString(_Module.m_hInstResource, IDS_OPEN_WITH, szFormat, _countof(szFormat)); 
-        _stprintf(szMenuItem, szFormat, APPNAME); 
+        _stprintf(szMenuItem, szFormat, _T("&") APPNAME); 
         InsertMenu ( hmenu, indexMenu, MF_STRING | MF_BYPOSITION | MF_OWNERDRAW, uCmdID, szMenuItem ); 
 
         stMenuInfo.uPosition = indexMenu; 
