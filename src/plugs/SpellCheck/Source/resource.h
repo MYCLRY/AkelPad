@@ -22,6 +22,10 @@
 #define IDC_WHITELIST                   1015
 #define IDC_PROBE                       1016
 #define IDC_MEM                         1017
+#define IDC_NOBGEDIT                    1018
+#define IDC_NOBG                        1019
+#define IDC_NOBGADD                     1020
+#define IDC_NOBGREM                     1021
 
 // Next default values for new objects
 // 
@@ -30,7 +34,7 @@
 #define _APS_NO_MFC                     1
 #define _APS_NEXT_RESOURCE_VALUE        106
 #define _APS_NEXT_COMMAND_VALUE         40001
-#define _APS_NEXT_CONTROL_VALUE         1018
+#define _APS_NEXT_CONTROL_VALUE         1021
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

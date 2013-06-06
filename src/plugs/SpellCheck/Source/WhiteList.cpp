@@ -549,6 +549,12 @@ static LRESULT CALLBACK NewEditParentProc(HWND hWnd, UINT uMsg, WPARAM wParam, L
 	{
 		DestroyAssoc(NULL);
 	}
+#if 0
+	if(uMsg == AEN_HSCROLL || uMsg == AEN_VSCROLL)
+	{
+		OutputDebugStringA("EditScroll\n");
+	}
+#endif
 	if (hWnd == rt.cmn_hMainWindow)
 		return rt.NewMainProcData->NextProc(hWnd, uMsg, wParam, lParam);
 	else

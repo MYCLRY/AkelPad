@@ -74,6 +74,7 @@
 
 #define CALLCONV __fastcall
 
+#define REDRAW_DELAY
 #define MAX_PATHW			0x00008000
 //!	iso encodings base
 #define CP_ISOBASE			28590
@@ -90,6 +91,9 @@
 #define DEF_UNDERLINESTYLE	PS_SOLID
 #define DEF_COREPATH		L""
 #define DEF_XSCROLL			XSCROLL_MASK_HORZ
+#define DEF_NOBG			L""
+#define DEF_DELAYBACK		FALSE
+#define DEF_DELAYTICK		500
 //! Settings keys
 #define SET_LANG			L"Lang"
 #define SET_JARGON			L"Jargon"
@@ -101,6 +105,9 @@
 #define SET_UNDELINESTYLE	L"UStyle"
 #define SET_COREPATH		L"CorePath"
 #define SET_WM_XSCROLL		L"WM_XSCROLL"
+#define SET_NOBG			L"NOBG"
+#define SET_DELAYBACK		L"delayback"
+#define SET_DELAYTICK		L"delaytick"
 //! ASpell core library
 #define CORE_DLL_NAME		L"aspell-15.dll"
 //! Default path
@@ -250,6 +257,10 @@ struct SPELLCHECKSETTINGS
 	UINT_PTR	UnderlineStyle;
 	WCHAR		szCorePath[MAX_PATHW];
 	DWORD_PTR	dwHook_WM_XSCROLL;
+	//NO BG
+	WCHAR		szNoBG[MAX_PATHW];
+	BOOL		bDelayBack;
+	DWORD		nDelayTick;
 };
 //! Forwarding
 struct AspellSpeller;
@@ -257,9 +268,11 @@ struct AspellSpeller;
 struct DICINFO
 {
 	WCHAR		name[MAX_PATH];
+	WCHAR		code[MAX_PATH];
 	WCHAR		jargon[MAX_PATH];
 	UINT_PTR	nEncoding;
 	AspellSpeller *pSpell;
+	BOOL		bNoBG;
 };
 //! Called when DLL loaded(DLL_PROCESS_ATTACH)
 void CALLCONV OnAttach(HMODULE h);
@@ -339,6 +352,13 @@ struct runtime
 	//! MainProcData
 	WNDPROCDATA *NewMainProcData;
 	WNDPROCDATA *NewFrameProcData;
+#ifdef REDRAW_DELAY
+	UINT_PTR	redrawtimer;
+	int			drawflag;
+	//0 - draw
+	//1 - delay
+	//-1 - not draw next tick
+#endif
 };
 
 extern "C" struct runtime rt;

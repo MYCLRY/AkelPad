@@ -86,7 +86,11 @@ static INT_PTR CALLBACK RapidCheckDialog(HWND hwndDlg,UINT uMsg,WPARAM wParam, L
 //! AkelEdit/RichEdit proc
 static LRESULT CALLBACK EditProcW(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 static void CALLCONV DrawStroke(HDC dc, INT_PTR y, INT_PTR xb, INT_PTR xe, INT_PTR fw = UNDERSCORE_SCALE, INT_PTR what=-1, COLORREF rgb=0);
-const DICINFO* CALLCONV GetDict(LPCWSTR dict, LPCWSTR jar);
+static const DICINFO* CALLCONV GetDict(LPCWSTR dict, LPCWSTR jar);
+static void ApplyNoBG(void);
+#ifdef REDRAW_DELAY
+static void CALLBACK RedrawTimer(HWND hwnd,UINT msg, UINT_PTR id, DWORD dwTime);
+#endif
 //! Resource getter
 static LPWSTR CALLCONV GetString(UINT idr,LPWSTR pBuffer,DWORD dwSize)
 {
@@ -111,11 +115,14 @@ static BOOL CALLCONV IsGoodWord(const WCHAR* pWord)
 		*tail = 0;
 		if(tail != head)
 		{
-			int good = rt.pASpell->aspell_speller_check(pCur->pSpell,head,-1);
-			if(good)
+			if(!pCur->bNoBG)
 			{
-				rt.nLastDict = nCurrent;
-				return TRUE;
+				int good = rt.pASpell->aspell_speller_check(pCur->pSpell,head,-1);
+				if(good)
+				{
+					rt.nLastDict = nCurrent;
+					return TRUE;
+				}
 			}
 		}
 		nCurrent++;
@@ -317,19 +324,37 @@ BOOL CALLCONV DoBackground(PLUGINDATA *pd)
 			//! Already running. Turn off
 			SendMessageW(pd->hMainWnd, AKD_SETEDITPROC, (WPARAM)NULL, (LPARAM)&rt.EditProcData);
 			rt.EditProcData=NULL;
-			UpdateEdit(pd->hWndEdit);
+#ifdef REDRAW_DELAY
+			if(rt.redrawtimer != 0)
+			{
+				KillTimer(rt.cmn_hMainWindow,rt.redrawtimer);
+				rt.redrawtimer = 0;
+			}
+			rt.drawflag = 0;
+#endif
+			//UpdateEdit(pd->hWndEdit);
+			UpdateEditAll();
 			return FALSE;
 		}
 		else
 		{
-			UpdateEdit(pd->hWndEdit);
+			//UpdateEdit(pd->hWndEdit);
+			UpdateEditAll();
 			return TRUE;
 		}
 	}
 	else
 	{
 		SendMessageW(pd->hMainWnd, AKD_SETEDITPROC, (WPARAM)EditProcW, (LPARAM)&rt.EditProcData);
-		UpdateEdit(pd->hWndEdit);
+#ifdef REDRAW_DELAY
+		if(rt.setting.bDelayBack)
+		{
+			rt.redrawtimer = SetTimer(rt.cmn_hMainWindow,0,rt.setting.nDelayTick,RedrawTimer);
+			rt.drawflag = -1;
+		}
+#endif
+		//UpdateEdit(pd->hWndEdit);
+		UpdateEditAll();
 		return TRUE;
 	}
 }
@@ -730,6 +755,8 @@ BOOL CALLCONV InitSpellCore(PLUGINDATA *pd)
 	lstrcpynW(rt.plugname,(WCHAR*)pd->pFunction,sizeof(rt.plugname)/sizeof(rt.plugname[0]));
 	WCHAR * p = wcschr(rt.plugname,L':');
 	if(*p) *p = L'\0';
+	rt.setting.szNoBG[0]=0;
+	rt.setting.bDelayBack = DEF_DELAYBACK;
 	//! Load params
 	LoadParam(pd);
 	if(!LoadASpell(rt.setting.szCorePath,(LPCWSTR)pd->pAkelDir,TRUE))
@@ -830,11 +857,7 @@ static void FillDictCombo(HWND hDictList)
 	SendMessageW(hDictList,CB_SETCURSEL,(WPARAM)-1,0);
 	for(i=0;i<rt.DICTIONARY_COUNT;i++)
 	{
-		int nn=0;
-		if(nn=lstrlenW(rt.DICTIONARIES[i].jargon))
-			swprintf(t,L"%s (%s)",rt.DICTIONARIES[i].name,rt.DICTIONARIES[i].jargon);
-		else
-			swprintf(t,L"%s",rt.DICTIONARIES[i].name);
+		swprintf(t,L"%s",rt.DICTIONARIES[i].name);
 		LRESULT n = SendMessageW(hDictList,CB_ADDSTRING,0,(LPARAM)t);
 		if(CB_ERR == SendMessageW(hDictList,CB_SETITEMDATA,(WPARAM)n,(LPARAM)i))
 		{
@@ -842,11 +865,82 @@ static void FillDictCombo(HWND hDictList)
 			SendMessageW(hDictList,CB_DELETESTRING,(WPARAM)n,0);
 			continue;
 		}
-		if(	lstrcmpW(rt.DICTIONARIES[i].name,rt.setting.szLanguage)==0 && 
+		if(	lstrcmpW(rt.DICTIONARIES[i].code,rt.setting.szLanguage)==0 && 
 			lstrcmpW(rt.DICTIONARIES[i].jargon,rt.setting.szJargon)==0)
 		{
 			//! Selected active
 			SendMessageW(hDictList,CB_SETCURSEL,(WPARAM)n,0);
+		}
+	}
+}
+static void FillNoBGList(HWND hList)
+{
+	WCHAR t[MAX_PATH];
+	WCHAR *head  = rt.setting.szNoBG;
+	WCHAR *start = head;
+	SendMessageW(hList,LB_RESETCONTENT,0,0);
+	while(*head)
+	{
+		if(*head==L'|')
+		{
+			lstrcpynW(t,start,head-start+1);
+			SendMessageW(hList,LB_ADDSTRING,0,(LPARAM)&t[0]);
+			head++;
+			start=head;
+			continue;
+		}
+		head++;
+	}
+	if(start < head)
+	{
+			lstrcpynW(t,start,head-start+1);
+			SendMessageW(hList,LB_ADDSTRING,0,(LPARAM)&t[0]);
+	}
+}
+//! (re)Apply NoBG
+static void ApplyNoBG(void)
+{
+	//! Mark as NoBG
+	if(lstrlenW(rt.setting.szNoBG)>0)
+	{
+		UINT c;
+		WCHAR *cache, *t, *r;
+		for(c = 0; c< rt.DICTIONARY_COUNT;c++)
+		{
+			rt.DICTIONARIES[c].bNoBG = FALSE;
+			t = rt.setting.szNoBG;
+			cache = rt.DICTIONARIES[c].name;
+			int len = lstrlenW(cache);
+			while(1)
+			{
+				r = wcsstr(t,cache);
+				//! not found
+				if(r == NULL) break;
+				//! found, or partial match
+				if(
+					(
+						//!at the beginning
+						  (r == rt.setting.szNoBG)
+						&&
+						//!at end   or  separator
+						  (r[len]==0||r[len]==L'|')
+						)
+					||
+					(
+						//! not begin but separator
+						(r > rt.setting.szNoBG  && r[-1]==L'|')
+						&&
+						//!at end   or  separator
+						(r[len]==0||r[len]==L'|')
+					)
+					)
+				{
+					//! full match
+					rt.DICTIONARIES[c].bNoBG = TRUE;
+					break;
+				}
+				t++;
+			}
 		}
 	}
 }
@@ -862,6 +956,9 @@ static INT_PTR CALLBACK SettingsDialog(HWND hwndDlg,UINT uMsg,WPARAM wParam, LPA
 	static HWND hCorePath;
 	static HWND hWhiteList;
 	static HWND hTest;
+	//////
+	static HWND hNoBGEdit,hNoBGList;
+	//////
 	static COLORREF color;
 	static UINT uStyle;
 	static PLUGINDATA* pd;
@@ -879,10 +976,16 @@ static INT_PTR CALLBACK SettingsDialog(HWND hwndDlg,UINT uMsg,WPARAM wParam, LPA
 			hCorePath = GetDlgItem(hwndDlg,IDC_CORE);
 			hWhiteList = GetDlgItem(hwndDlg, IDC_WHITELIST);
 			hTest = GetDlgItem(hwndDlg,IDC_PROBE);
+			//// NO BG LIST
+			hNoBGEdit = GetDlgItem(hwndDlg,IDC_NOBGEDIT);
+			hNoBGList = GetDlgItem(hwndDlg,IDC_NOBG);
+			SendMessageW(hNoBGEdit,EM_SETLIMITTEXT,255,0);
+			////
 			color = rt.setting.UnderlineColor;
 			SendMessageW(hDictList,CB_RESETCONTENT,0,0);
 			bInitialyHave = !!rt.pASpell;
 			FillDictCombo(hDictList);
+			FillNoBGList(hNoBGList);
 			SendMessageW(hShowNotice,BM_SETCHECK,(WPARAM)(rt.setting.ShowNotice?BST_CHECKED:BST_UNCHECKED),0);
 			SendMessageW(hHighLight,BM_SETCHECK,(WPARAM)(rt.setting.HighLight?BST_CHECKED:BST_UNCHECKED),0);
 			SendMessageW(hWhiteList,BM_SETCHECK,(WPARAM)(rt.setting.WhiteList?BST_CHECKED:BST_UNCHECKED),0);
@@ -909,13 +1012,14 @@ static INT_PTR CALLBACK SettingsDialog(HWND hwndDlg,UINT uMsg,WPARAM wParam, LPA
 		}
 		case WM_COMMAND:
 		{
+			const UINT_PTR IDC = LOWORD(wParam), CODE=HIWORD(wParam);
 			//! OK
-			if(LOWORD(wParam)==IDOK && HIWORD(wParam)==BN_CLICKED)
+			if(IDC==IDOK && CODE==BN_CLICKED)
 			{
 				//! Save data to structure
 				LRESULT i = SendMessageW(hDictList,CB_GETCURSEL,0,0);
 				i = SendMessageW(hDictList,CB_GETITEMDATA,(WPARAM)i,0);
-				lstrcpynW(rt.setting.szLanguage,rt.DICTIONARIES[i].name,MAX_PATH);
+				lstrcpynW(rt.setting.szLanguage,rt.DICTIONARIES[i].code,MAX_PATH);
 				lstrcpynW(rt.setting.szJargon,rt.DICTIONARIES[i].jargon,MAX_PATH);
 				WideCharToMultiByte(CP_ACP,0,rt.setting.szLanguage,-1,rt.setting.szLanguageA,MAX_PATH," ",NULL);
 				WideCharToMultiByte(CP_ACP,0,rt.setting.szJargon,-1,rt.setting.szJargonA,MAX_PATH," ",NULL);
@@ -926,17 +1030,29 @@ static INT_PTR CALLBACK SettingsDialog(HWND hwndDlg,UINT uMsg,WPARAM wParam, LPA
 				i = SendMessageW(hStyle,CB_GETCURSEL,0,0);
 				rt.setting.UnderlineStyle = SendMessageW(hStyle,CB_GETITEMDATA,(WPARAM)i,0);
 				SendMessageW(hCorePath,WM_GETTEXT,(WPARAM)sizeof(rt.setting.szCorePath)/sizeof(rt.setting.szCorePath[0])-1,(LPARAM)rt.setting.szCorePath);
+				//! NOBG
+				int count = SendMessageW(hNoBGList,LB_GETCOUNT,0,0);
+				lstrcpyW(rt.setting.szNoBG,L"");
+				WCHAR t[256];
+				for(i=0;i<count;i++)
+				{
+					if(i>0) lstrcatW(rt.setting.szNoBG,L"|");
+					t[0]=0;
+					SendMessageW(hNoBGList,LB_GETTEXT,i,(LPARAM)&t[0]);
+					lstrcatW(rt.setting.szNoBG,t);
+				}
+				ApplyNoBG();
 				EndDialog(hwndDlg,1);
 				return TRUE;
 			}
 			//! Cancel
-			if(LOWORD(wParam)==IDCANCEL && HIWORD(wParam)==BN_CLICKED)
+			if(IDC==IDCANCEL && CODE==BN_CLICKED)
 			{
 				EndDialog(hwndDlg,0);
 				return TRUE;
 			}
 			//! Color chooser
-			if(LOWORD(wParam)==IDC_COLOR && HIWORD(wParam)==BN_CLICKED)
+			if(IDC==IDC_COLOR && CODE==BN_CLICKED)
 			{
 				CHOOSECOLORW cc={0,0,0,0,0,0,0,0,0};
 				//! Custom color lotery
@@ -959,7 +1075,7 @@ static INT_PTR CALLBACK SettingsDialog(HWND hwndDlg,UINT uMsg,WPARAM wParam, LPA
 				return TRUE;
 			}
 			//! File browser
-			if(LOWORD(wParam)==IDC_BROWSE && HIWORD(wParam)==BN_CLICKED)
+			if(IDC==IDC_BROWSE && CODE==BN_CLICKED)
 			{
 				//! Any file. I actually do not care about any extesion.
 				const WCHAR filter[]=L"aspell-15.dll\0aspell-15.dll\0All files\0*.*\0\0";
@@ -993,7 +1109,7 @@ static INT_PTR CALLBACK SettingsDialog(HWND hwndDlg,UINT uMsg,WPARAM wParam, LPA
 				SendMessageW(hCorePath,WM_SETTEXT,0,(LPARAM)ofn.lpstrFile);
 				return TRUE;
 			}
-			if((LOWORD(wParam) == IDC_PROBE) && (HIWORD(wParam)==BN_CLICKED))
+			if((IDC == IDC_PROBE) && (CODE==BN_CLICKED))
 			{
 				if(rt.pASpell)
 					return TRUE;
@@ -1006,6 +1122,25 @@ static INT_PTR CALLBACK SettingsDialog(HWND hwndDlg,UINT uMsg,WPARAM wParam, LPA
 					rt.pASpell = CAspellModule::GetModule();
 					InitDictList();
 					FillDictCombo(hDictList);
+				}
+				return TRUE;
+			}
+			if(IDC == IDC_NOBGADD && CODE == BN_CLICKED)
+			{
+				WCHAR t[MAX_PATH]={0};
+				SendMessageW(hNoBGEdit,WM_GETTEXT,MAX_PATH-1,(LPARAM)&t[0]);
+				SendMessageW(hNoBGList,LB_ADDSTRING,0,(LPARAM)&t[0]);
+				return TRUE;
+			}
+			if(IDC == IDC_NOBGREM && CODE == BN_CLICKED)
+			{
+				int sel = SendMessageW(hNoBGList,LB_GETCURSEL,0,0);
+				if(sel != LB_ERR)
+				{
+					SendMessageW(hNoBGList,LB_DELETESTRING,sel,0);
+					if(sel == SendMessageW(hNoBGList,LB_GETCOUNT,0,0))
+						sel--;
+					if(sel != -1) SendMessageW(hNoBGList,LB_SETCURSEL,sel,0);
 				}
 				return TRUE;
 			}
@@ -1118,21 +1253,21 @@ static void CALLCONV LoadParam(PLUGINDATA *pd)
 	WideCharToMultiByte(CP_ACP,0,rt.setting.szJargon,-1,rt.setting.szJargonA,MAX_PATH," ",NULL);
 
 	po.pOptionName = SET_NOTICE;
-	po.dwType = PO_BINARY;
+	po.dwType = PO_DWORD;
 	po.lpData = (LPBYTE)&rt.setting.ShowNotice;
 	po.dwData = sizeof(rt.setting.ShowNotice);
 	if(!SendMessageW(pd->hMainWnd,AKD_OPTION,(WPARAM)hOpt,(LPARAM)&po))
 		rt.setting.ShowNotice = DEF_NOTICE;
 
 	po.pOptionName = SET_HIGHLIGHT;
-	po.dwType = PO_BINARY;
+	po.dwType = PO_DWORD;
 	po.lpData = (LPBYTE)&rt.setting.HighLight;
 	po.dwData = sizeof(rt.setting.HighLight);
 	if(!SendMessageW(pd->hMainWnd,AKD_OPTION,(WPARAM)hOpt,(LPARAM)&po))
 		rt.setting.HighLight = DEF_HIGHLIGHT;
 
 	po.pOptionName = SET_WHITELIST;
-	po.dwType = PO_BINARY;
+	po.dwType = PO_DWORD;
 	po.lpData = (LPBYTE)&rt.setting.WhiteList;
 	po.dwData = sizeof(rt.setting.WhiteList);
 	if(!SendMessageW(pd->hMainWnd,AKD_OPTION,(WPARAM)hOpt,(LPARAM)&po))
@@ -1166,6 +1301,29 @@ static void CALLCONV LoadParam(PLUGINDATA *pd)
 	if(!SendMessageW(pd->hMainWnd,AKD_OPTION,(WPARAM)hOpt,(LPARAM)&po))
 		rt.setting.dwHook_WM_XSCROLL = DEF_XSCROLL;
 
+	po.pOptionName = SET_NOBG;
+	po.dwType = PO_STRING;
+	po.lpData = (LPBYTE)rt.setting.szNoBG;
+	po.dwData = sizeof(rt.setting.szNoBG);
+	if(!SendMessageW(pd->hMainWnd,AKD_OPTION,(WPARAM)hOpt,(LPARAM)&po))
+		lstrcpynW(rt.setting.szNoBG,DEF_NOBG,sizeof(rt.setting.szNoBG)/sizeof(rt.setting.szNoBG[0]));
+
+	po.pOptionName = SET_DELAYBACK;
+	po.dwType = PO_DWORD;
+	po.lpData = (LPBYTE)&rt.setting.bDelayBack;
+	po.dwData = sizeof(rt.setting.bDelayBack);
+	if(!SendMessageW(pd->hMainWnd,AKD_OPTION,(WPARAM)hOpt,(LPARAM)&po))
+		rt.setting.HighLight = DEF_DELAYBACK;
+
+	po.pOptionName = SET_DELAYTICK;
+	po.dwType = PO_DWORD;
+	po.lpData = (LPBYTE)&rt.setting.nDelayTick;
+	po.dwData = sizeof(rt.setting.nDelayTick);
+	if(!SendMessageW(pd->hMainWnd,AKD_OPTION,(WPARAM)hOpt,(LPARAM)&po))
+		rt.setting.HighLight = DEF_DELAYTICK;
+	if(rt.setting.nDelayTick <50)
+		rt.setting.nDelayTick = 50;
+
 	SendMessageW(pd->hMainWnd,AKD_ENDOPTIONS,(WPARAM)hOpt,0);
 }
 static void CALLCONV StoreParam(PLUGINDATA *pd)
@@ -1189,19 +1347,19 @@ static void CALLCONV StoreParam(PLUGINDATA *pd)
 	i=SendMessageW(pd->hMainWnd,AKD_OPTION,(WPARAM)hOpt,(LPARAM)&po);
 
 	po.pOptionName = SET_NOTICE;
-	po.dwType = PO_BINARY;
+	po.dwType = PO_DWORD;
 	po.lpData = (LPBYTE)&rt.setting.ShowNotice;
 	po.dwData = sizeof(rt.setting.ShowNotice);
 	i=SendMessageW(pd->hMainWnd,AKD_OPTION,(WPARAM)hOpt,(LPARAM)&po);
 
 	po.pOptionName = SET_HIGHLIGHT;
-	po.dwType = PO_BINARY;
+	po.dwType = PO_DWORD;
 	po.lpData = (LPBYTE)&rt.setting.HighLight;
 	po.dwData = sizeof(rt.setting.HighLight);
 	i=SendMessageW(pd->hMainWnd,AKD_OPTION,(WPARAM)hOpt,(LPARAM)&po);
 
 	po.pOptionName = SET_WHITELIST;
-	po.dwType = PO_BINARY;
+	po.dwType = PO_DWORD;
 	po.lpData = (LPBYTE)&rt.setting.WhiteList;
 	po.dwData = sizeof(rt.setting.WhiteList);
 	i=SendMessageW(pd->hMainWnd,AKD_OPTION,(WPARAM)hOpt,(LPARAM)&po);
@@ -1226,6 +1384,12 @@ static void CALLCONV StoreParam(PLUGINDATA *pd)
 	po.dwData = (lstrlenW(rt.setting.szCorePath)+1)*sizeof(WCHAR);
 	i=SendMessageW(pd->hMainWnd,AKD_OPTION,(WPARAM)hOpt,(LPARAM)&po);
 
+	po.pOptionName = SET_NOBG;
+	po.dwType = PO_STRING;
+	po.lpData = (LPBYTE)rt.setting.szNoBG;
+	po.dwData = (lstrlenW(rt.setting.szNoBG)+1)*sizeof(WCHAR);
+	i=SendMessageW(pd->hMainWnd,AKD_OPTION,(WPARAM)hOpt,(LPARAM)&po);
+
 	SendMessageW(pd->hMainWnd,AKD_ENDOPTIONS,(WPARAM)hOpt,0);
 }
 static void CALLCONV InitDictList(void)
@@ -1242,15 +1406,17 @@ static void CALLCONV InitDictList(void)
 	const AspellDictInfo *entry=NULL;
 	while(entry = rt.pASpell->aspell_dict_info_enumeration_next(adie))
 	{
+		if(entry->code)
+			MultiByteToWideChar(CP_ACP,0,entry->code,lstrlenA(entry->code),rt.DICTIONARIES[rt.DICTIONARY_COUNT].code,MAX_PATH);
 		if(entry->name)
-			MultiByteToWideChar(CP_ACP,0,entry->code,lstrlenA(entry->name),rt.DICTIONARIES[rt.DICTIONARY_COUNT].name,MAX_PATH);
+			MultiByteToWideChar(CP_ACP,0,entry->name,lstrlenA(entry->name),rt.DICTIONARIES[rt.DICTIONARY_COUNT].name,MAX_PATH);
 		if(entry->jargon)
 			MultiByteToWideChar(CP_ACP,0,entry->jargon,lstrlenA(entry->jargon),rt.DICTIONARIES[rt.DICTIONARY_COUNT].jargon,MAX_PATH);
 		AspellConfig *pConfig = rt.pASpell->new_aspell_config();
 		if(pConfig)
 		{
-			UINT enc = FindSuitableEncodingIndex(entry->name);
-			rt.pASpell->aspell_config_replace(pConfig,"lang",entry->name);
+			UINT enc = FindSuitableEncodingIndex(entry->code);
+			rt.pASpell->aspell_config_replace(pConfig,"lang",entry->code);
 			rt.pASpell->aspell_config_replace(pConfig,"jargon",entry->jargon);
 			rt.pASpell->aspell_config_replace(pConfig,"encoding",encmap[enc]);
 			AspellSpeller *NewSp=NULL;
@@ -1264,9 +1430,11 @@ static void CALLCONV InitDictList(void)
 			NewSp = rt.pASpell->to_aspell_speller(ache);
 			rt.DICTIONARIES[rt.DICTIONARY_COUNT].pSpell = NewSp;
 			rt.DICTIONARIES[rt.DICTIONARY_COUNT].nEncoding = CP_ISOBASE + enc;
+			rt.DICTIONARIES[rt.DICTIONARY_COUNT].bNoBG = FALSE;
 		}
 		rt.DICTIONARY_COUNT++;
 	}
+	ApplyNoBG();
 	rt.pASpell->delete_aspell_dict_info_enumeration(adie);
 }
 static void CALLCONV FreeDicts(void)
@@ -1582,6 +1750,15 @@ static LRESULT CALLBACK EditProcW(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lP
 	{
 		if(uMsg == WM_PAINT && rt.pASpell)
 		{
+#ifdef REDRAW_DELAY
+			if(rt.setting.bDelayBack)
+			{
+				if(rt.drawflag > 0)
+				{
+					return rt.EditProcData->NextProc(hWnd, uMsg, wParam, lParam);
+				}
+			}
+#endif
 			RECT rcUpdate, rcEdit, rcDraw, rc;
 			HPEN hpen, holdpen;
 			HRGN hRgn, hRgnOld;
@@ -1634,6 +1811,12 @@ static LRESULT CALLBACK EditProcW(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lP
 			//DeleteObject(hFont);
 			ReleaseDC(hWnd,dc);
 			ShowCaret(hWnd);
+#ifdef REDRAW_DELAY
+			rt.drawflag = -1;
+			//char t[]="draw flag is 0\n";
+			//t[13]='0'+rt.drawflag;
+			//OutputDebugStringA(t);
+#endif
 			return lResult;
 		}
 		else if(((uMsg == WM_HSCROLL) && (rt.setting.dwHook_WM_XSCROLL & XSCROLL_MASK_HORZ))
@@ -1643,6 +1826,34 @@ static LRESULT CALLBACK EditProcW(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lP
 			UpdateEdit(hWnd);
 			return res;
 		}
+#ifdef REDRAW_DELAY
+		else if(rt.setting.bDelayBack)
+		{
+			if(uMsg >=WM_KEYFIRST && uMsg <= WM_KEYLAST)
+			{
+				if(uMsg == WM_KEYUP)
+				{
+					rt.drawflag = 0;
+					UpdateEdit(hWnd);
+				}
+				else
+				{
+					if(rt.drawflag<1) rt.drawflag=1;
+					if(rt.drawflag==1) rt.drawflag=2;
+				}
+			}
+		}
+#endif
+#if 0
+		if(uMsg == WM_SETFOCUS)
+		{
+			LRESULT mask = SendMessageW(hWnd,AEM_GETEVENTMASK,0,0);
+			if(!(mask&AENM_SCROLL))
+			{
+				SendMessageW(hWnd,AEM_SETEVENTMASK,0,AENM_SCROLL|mask);
+			}
+		}
+#endif
 	}
 	__except((ep = GetExceptionInformation())?1:0)
 	{
@@ -1764,14 +1975,14 @@ static BOOL CALLCONV CheckPattern(const WCHAR* word)
 	if(ch) return FALSE;
 	return TRUE;
 }
-const DICINFO* CALLCONV GetDict(LPCWSTR dict, LPCWSTR jar)
+static const DICINFO* CALLCONV GetDict(LPCWSTR dict, LPCWSTR jar)
 {
 	if(dict==NULL || jar==NULL) return NULL;
 	register UINT i = 0;
 	const register UINT sz = rt.DICTIONARY_COUNT;
 	for( ; i < sz; i++)
 	{
-		if(lstrcmpW(rt.DICTIONARIES[i].name,dict)==0 &&
+		if(lstrcmpW(rt.DICTIONARIES[i].code,dict)==0 &&
 			lstrcmpW(rt.DICTIONARIES[i].jargon,jar)==0)
 		{
 			return rt.DICTIONARIES + i;
@@ -1779,3 +1990,18 @@ const DICINFO* CALLCONV GetDict(LPCWSTR dict, LPCWSTR jar)
 	}
 	return NULL;
 }
+#ifdef REDRAW_DELAY
+static void CALLBACK RedrawTimer(HWND hwnd,UINT msg, UINT_PTR id, DWORD dwTime)
+{
+	//char t[]="draw flag is 0\n";
+	//t[13]='0'+rt.drawflag;
+	//OutputDebugStringA(t);
+	if(rt.drawflag >0)
+	{
+		--rt.drawflag;
+		if(rt.drawflag==0) UpdateEditAll();
+		//t[13]='0'+rt.drawflag;
+		//OutputDebugStringA(t);
+	}
+}
+#endif
