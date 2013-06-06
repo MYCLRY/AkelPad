@@ -2,14 +2,14 @@
 # "IA64" "AMD64" "x86"
 #==================================
 !if "$(_BUILDARCH)"=="AMD64" 
-TARGETNAME=shellext-amd64
+TARGETNAME=shellext-x64
 BIT=64
 !else
 !   if "$(_BUILDARCH)"=="x86"
 TARGETNAME=shellext-x86
 BIT=32
 !   else
-TARGETNAME=shellext-ia64
+TARGETNAME=shellext-x64
 BIT=64
 !   endif
 !endif
