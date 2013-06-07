@@ -106,10 +106,23 @@ STDMETHODIMP CAppShellExt::QueryContextMenu(HMENU hmenu, UINT indexMenu, UINT id
     TCHAR szMenuItem[MAX_PATH] = { 0 }; 
     SP_MENU_INFO stMenuInfo = { 0 }; 
 
+    OSVERSIONINFOEX osvi = { sizeof(osvi) };
+    if( !GetVersionEx ((OSVERSIONINFO *) &osvi)) {
+        // If OSVERSIONINFOEX doesn't work, try OSVERSIONINFO.
+        osvi.dwOSVersionInfoSize = sizeof (OSVERSIONINFO);
+        GetVersionEx ( (OSVERSIONINFO *) &osvi);
+    }
+
+    BOOL bVistaOrLater = FALSE;
+    if (osvi.dwMajorVersion >= 6) {
+        bVistaOrLater = TRUE;
+    }
+
     { 
         ::LoadString(_Module.m_hInstResource, IDS_OPEN_WITH, szFormat, _countof(szFormat)); 
         _stprintf(szMenuItem, szFormat, _T("&") APPNAME); 
-        InsertMenu ( hmenu, indexMenu, MF_STRING | MF_BYPOSITION | MF_OWNERDRAW, uCmdID, szMenuItem ); 
+        UINT flags = (MF_STRING | MF_BYPOSITION) | (bVistaOrLater ? 0 : MF_OWNERDRAW);
+        InsertMenu ( hmenu, indexMenu, flags, uCmdID, szMenuItem ); 
 
         stMenuInfo.uPosition = indexMenu; 
         stMenuInfo.uCmdID = uCmdID; 
@@ -121,13 +134,13 @@ STDMETHODIMP CAppShellExt::QueryContextMenu(HMENU hmenu, UINT indexMenu, UINT id
         uCmdID++; 
     } 
 
-/*
-    // Set the bitmap for the register item. 
-    HBITMAP bmp = IconToBitmap(IDI_PROGRAM, (COLORREF)GetSysColor(COLOR_MENU)); 
-
-    if ( NULL != bmp ) 
-        SetMenuItemBitmaps ( hmenu, indexMenu, MF_BYPOSITION, bmp, bmp ); 
-//*/
+    if (bVistaOrLater) {
+        // Set the bitmap for the register item. 
+        HBITMAP bmp = IconToBitmap(IDI_PROGRAM, (COLORREF)GetSysColor(COLOR_MENU)); 
+        if ( NULL != bmp ) {
+            SetMenuItemBitmaps ( hmenu, indexMenu, MF_BYPOSITION, bmp, bmp ); 
+        }
+    }
 
     return MAKE_HRESULT(SEVERITY_SUCCESS, FACILITY_NULL, 2);
 }
@@ -155,8 +168,11 @@ STDMETHODIMP CAppShellExt::InvokeCommand(LPCMINVOKECOMMANDINFO lpici)
             _BuildIndicateString(szPrompt, _countof(szPrompt));
 
             if (strcmp(lpici->lpVerb, T2CA(szPrompt)) == 0) {
-                _ExecuteCommand();
-                hRes = S_OK;
+                if (_ExecuteCommand()) {
+                    hRes = S_OK;
+                } else {
+                    _ShowErrorMessage();
+                }
             } else {
                 hRes = E_INVALIDARG; 
             }
@@ -170,14 +186,7 @@ STDMETHODIMP CAppShellExt::InvokeCommand(LPCMINVOKECOMMANDINFO lpici)
             if (_ExecuteCommand()) { 
                 hRes = S_OK; 
             } else { 
-                TCHAR szFmt[MAX_PATH] = { 0 };
-                ::LoadString(_Module.m_hInstResource, IDS_NO_PROG, szFmt, _countof(szFmt));
-                TCHAR szOut[MAX_PATH] = { 0 };
-                wsprintf(szOut, szFmt, APPNAME);
-
-                TCHAR szTitle[MAX_PATH] = { 0 };
-                ::LoadString(_Module.m_hInstResource, IDS_ERROR, szTitle, _countof(szTitle));
-                ::MessageBox(::GetActiveWindow(), szOut, szTitle, MB_OK|MB_ICONSTOP); 
+                _ShowErrorMessage();
             } 
             break; 
 
@@ -562,6 +571,13 @@ BOOL CAppShellExt::_ExecuteCommand( void )
     BOOL bRs = FALSE;
     do 
     {
+        TCHAR szExeFile[MAX_PATH]; 
+        if (FALSE == FindExeFile(_Module.m_hInst, APPNAME _T(".exe"),
+            szExeFile, _countof(szExeFile)))
+        { 
+            break;
+        } 
+
         ATLASSERT(m_lsFiles.size()); 
         if(0 == m_lsFiles.size()) {
             break;
@@ -576,28 +592,34 @@ BOOL CAppShellExt::_ExecuteCommand( void )
             lstrcat(lpszFiles, szFileName); 
         } 
 
-        TCHAR szExeFile[MAX_PATH]; 
-        if (FindExeFile(_Module.m_hInst, APPNAME _T(".exe"),
-            szExeFile, _countof(szExeFile))) 
-        { 
-            SHELLEXECUTEINFO ExecuteInfo = { 0 }; 
+        SHELLEXECUTEINFO ExecuteInfo = { 0 }; 
 
-            ExecuteInfo.cbSize = sizeof(ExecuteInfo); 
-            ExecuteInfo.fMask = 0; 
-            ExecuteInfo.hwnd = 0; 
-            ExecuteInfo.lpVerb = _T("open");        // Operation to perform 
-            ExecuteInfo.lpFile = szExeFile;         // Application name 
-            ExecuteInfo.lpParameters = lpszFiles;   // Additional parameters 
-            ExecuteInfo.lpDirectory = 0;            // Default directory 
-            ExecuteInfo.nShow = SW_SHOW; 
-            ExecuteInfo.hInstApp = 0; 
+        ExecuteInfo.cbSize = sizeof(ExecuteInfo); 
+        ExecuteInfo.fMask = 0; 
+        ExecuteInfo.hwnd = 0; 
+        ExecuteInfo.lpVerb = _T("open");        // Operation to perform 
+        ExecuteInfo.lpFile = szExeFile;         // Application name 
+        ExecuteInfo.lpParameters = lpszFiles;   // Additional parameters 
+        ExecuteInfo.lpDirectory = 0;            // Default directory 
+        ExecuteInfo.nShow = SW_SHOW; 
+        ExecuteInfo.hInstApp = 0; 
 
-            bRs = ShellExecuteEx(&ExecuteInfo);
-        } 
+        bRs = ShellExecuteEx(&ExecuteInfo);
 
         LocalFree(lpszFiles); 
-        bRs = TRUE;
     } while (FALSE);
     return bRs;
+}
+
+void CAppShellExt::_ShowErrorMessage( void )
+{
+    TCHAR szFmt[MAX_PATH] = { 0 };
+    ::LoadString(_Module.m_hInstResource, IDS_NO_PROG, szFmt, _countof(szFmt));
+    TCHAR szOut[MAX_PATH] = { 0 };
+    wsprintf(szOut, szFmt, APPNAME);
+
+    TCHAR szTitle[MAX_PATH] = { 0 };
+    ::LoadString(_Module.m_hInstResource, IDS_ERROR, szTitle, _countof(szTitle));
+    ::MessageBox(::GetActiveWindow(), szOut, szTitle, MB_OK|MB_ICONSTOP); 
 }
 

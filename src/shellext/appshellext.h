@@ -22,7 +22,7 @@ class ATL_NO_VTABLE CAppShellExt
     : public CComObjectRootEx < CComSingleThreadModel > 
     , public CComCoClass < CAppShellExt, & __uuidof(CAppShellExt) > 
     , public IShellExtInit 
-    , public IContextMenu3 
+    , public IContextMenu3
 {
 public:
     CAppShellExt();
@@ -87,6 +87,7 @@ protected:
     std::map<UINT_PTR, SP_MENU_INFO> m_mapMenuInfo; 
 
     BOOL _ExecuteCommand(void);
+    void _ShowErrorMessage(void);
 
 protected: 
     _tstring_list   m_lsFiles; 
