@@ -706,7 +706,7 @@ void OnEditHighlightActiveBrackets(void)
     {
       // removing selection
       if (g_bOldWindows)
-        AnyRichEdit_ReplaceSelText(hActualEditWnd, "", TRUE);
+        AnyRichEdit_ReplaceSelTextA(hActualEditWnd, "", TRUE);
       else
         AnyRichEdit_ReplaceSelTextW(hActualEditWnd, L"", TRUE);
     }
@@ -740,21 +740,21 @@ void OnEditHighlightActiveBrackets(void)
             {
               // already in brackets/quotes; exclude them
               pTextA[nSelLen] = 0;
-              AnyRichEdit_ReplaceSelText(hActualEditWnd, pTextA + 2, TRUE);
+              AnyRichEdit_ReplaceSelTextA(hActualEditWnd, pTextA + 2, TRUE);
               nEditEndPos -= nBrPairLen;
             }
             else
             {
               // enclose in brackets/quotes
               lstrcpyA(pTextA + nSelLen + 1, pBrPairA + 1);
-              AnyRichEdit_ReplaceSelText(hActualEditWnd, pTextA, TRUE);
+              AnyRichEdit_ReplaceSelTextA(hActualEditWnd, pTextA, TRUE);
               nEditEndPos += nBrPairLen;
             }
           }
           else // (g_dwOptions[OPT_DWORD_AUTOCOMPLETE_SEL_AUTOBR] == 1)
           {
             lstrcpyA(pTextA + nSelLen + 1, pBrPairA + 1);
-            AnyRichEdit_ReplaceSelText(hActualEditWnd, pTextA, TRUE);
+            AnyRichEdit_ReplaceSelTextA(hActualEditWnd, pTextA, TRUE);
             ++nEditPos;
             ++nEditEndPos;
           }
@@ -1019,7 +1019,7 @@ void OnEditHighlightActiveBrackets(void)
 
     // inserting brackets
     if (g_bOldWindows)
-      AnyRichEdit_ReplaceSelText(hActualEditWnd, getBracketsPairA(nBracketType), TRUE);
+      AnyRichEdit_ReplaceSelTextA(hActualEditWnd, getBracketsPairA(nBracketType), TRUE);
     else
       AnyRichEdit_ReplaceSelTextW(hActualEditWnd, getBracketsPairW(nBracketType), TRUE);
 

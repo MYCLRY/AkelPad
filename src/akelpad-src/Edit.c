@@ -22,10 +22,6 @@
 #include "AkelPad.h"
 #include "Edit.h"
 
-//Include AEC functions
-#define AEC_FUNCTIONS
-#include "AkelEdit\AkelEdit.h"
-
 //Process
 extern HANDLE hHeap;
 extern HANDLE hMutex;
@@ -319,10 +315,11 @@ HANDLE CreateEditWindow(HWND hWndParent, HWND hWndEditPMDI)
     cs.dwExStyle=0;
   else
     cs.dwExStyle=WS_EX_CLIENTEDGE;
-  if (moCur.bRichEditClass)
-    cs.lpszClass=bOldWindows?L"RichEdit20A":L"RichEdit20W";
-  else
+  if (moCur.bRichEditClass) {
+    cs.lpszClass=bOldWindows ? AES_RICHEDIT20A_UNICODE : AES_RICHEDIT20W;
+  } else {
     cs.lpszClass=bOldWindows?L"AkelEditA":L"AkelEditW";
+  }
   cs.lpszName=NULL;
   cs.style=WS_CHILD|WS_VISIBLE|WS_HSCROLL|WS_VSCROLL|ES_MULTILINE|
            ((moCur.dwPaintOptions & PAINT_HIDESEL)?0:ES_NOHIDESEL)|

@@ -15,6 +15,7 @@
 #define AES_RICHEDIT20A          "RichEdit20A"
 #define AES_RICHEDIT20A_UNICODE L"RichEdit20A"
 #define AES_RICHEDIT20W         L"RichEdit20W"
+#define AES_RICHEDIT20W_ANSI     "RichEdit20W"
 
 //AEM_CONTROLCLASS
 #define AECLASS_AKELEDIT        1
@@ -6223,8 +6224,6 @@ Example:
   #define AEM_HLADDMARKTEXT AEM_HLADDMARKTEXTW
 #endif
 
-#endif //__AKELEDIT_H__
-
 
 //// AkelEdit functions
 
@@ -6730,3 +6729,5 @@ __inline AEFOLD* AEC_PrevFold(AEFOLD *lpFold, BOOL bRecursive)
   AEFOLD* AEC_NextFold(AEFOLD *lpFold, BOOL bRecursive);
   AEFOLD* AEC_PrevFold(AEFOLD *lpFold, BOOL bRecursive);
 #endif //AEC_FUNCTIONS
+
+#endif //__AKELEDIT_H__

@@ -46,10 +46,6 @@
 #include "Resources\version.h"
 
 
-//Include AEC functions
-#define AEC_FUNCTIONS
-#include "AkelEdit.h"
-
 //Include RegExp functions
 #define RE_FUNCTIONS
 #include "RegExpFunc.h"
@@ -296,8 +292,9 @@ BOOL AE_UnregisterClassW(HINSTANCE hInstance)
   {
     if (UnregisterClassW(AES_AKELEDITCLASSW, hInstance))
       bAkelEditClassRegisteredW=FALSE;
-    if (UnregisterClassW(AES_RICHEDIT20W, hInstance))
+    if (UnregisterClassW(AES_RICHEDIT20W, hInstance)) {
       bRichEditClassRegisteredW=FALSE;
+    }
   }
   return !bAkelEditClassRegisteredW;
 }
@@ -4881,12 +4878,14 @@ AKELEDIT* AE_CreateWindowData(HWND hWnd, CREATESTRUCTA *cs, AEEditProc lpEditPro
       wchar_t wszRichEditClass[16];
       wchar_t *wpRichEditClass=wszRichEditClass;
 
-      if (!ae->bUnicodeWindow)
+      if (!ae->bUnicodeWindow) {
         MultiByteToWideChar(CP_ACP, 0, (char *)cs->lpszClass, -1, wszRichEditClass, 16);
-      else
+      } else {
         wpRichEditClass=(wchar_t *)cs->lpszClass;
-      if (!xstrcmpiW(wpRichEditClass, AES_RICHEDIT20W) || !xstrcmpiW(wpRichEditClass, AES_RICHEDIT20A_UNICODE))
+      }
+      if (!xstrcmpiW(wpRichEditClass, AES_RICHEDIT20W) || !xstrcmpiW(wpRichEditClass, AES_RICHEDIT20A_UNICODE)) {
         ae->bRichEditClass=TRUE;
+      }
     }
 
     if (!ae->bRichEditClass)

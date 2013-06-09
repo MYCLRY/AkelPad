@@ -214,7 +214,7 @@ int popstring(char *str, int len);
 void pushstring(const char *str, int len);
 
 //GetProcAddress
-BOOL (WINAPI *GetBinaryTypeAPtr)(LPCTSTR lpApplicationName, LPDWORD lpBinaryType);
+BOOL (WINAPI *GetBinaryTypeAPtr)(LPCSTR lpApplicationName, LPDWORD lpBinaryType);
 
 
 /* NSIS functions code */
@@ -234,7 +234,7 @@ void __declspec(dllexport) Init(HWND hwndParent, int string_size, char *variable
     wsprintfA(szPlugsDir, "%s\\Plugs", szExeDir);
 
     hKernel32=GetModuleHandleA("kernel32.dll");
-    GetBinaryTypeAPtr=(BOOL (WINAPI *)(LPCTSTR, LPDWORD))GetProcAddress(hKernel32, "GetBinaryTypeA");
+    GetBinaryTypeAPtr=(BOOL (WINAPI *)(LPCSTR, LPDWORD))GetProcAddress(hKernel32, "GetBinaryTypeA");
     if (GetBinaryTypeAPtr)
     {
       wsprintfA(szBuf, "%s\\..\\AkelPad.exe", szExeDir);

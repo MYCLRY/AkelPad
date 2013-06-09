@@ -1976,6 +1976,6 @@ void Debug_Output(const char* szFormat, ...)
 	wvsprintfA(szBuf, szFormat, arg);
 	va_end(arg);
 
-	OutputDebugString(szBuf);
+	OutputDebugStringA(szBuf);
 }
 #endif

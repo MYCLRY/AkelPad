@@ -1,7 +1,11 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include "StrFunc.h"
+
+//Include AEC functions
+#define AEC_FUNCTIONS
 #include "AkelEdit.h"
+
 #include "AkelDLL.h"
 
 

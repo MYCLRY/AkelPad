@@ -5,7 +5,11 @@
 #include "StackFunc.h"
 #include "StrFunc.h"
 #include "WideFunc.h"
+
+//Include AEC functions
+#define AEC_FUNCTIONS
 #include "AkelEdit.h"
+
 #include "AkelDLL.h"
 #include "Coder.h"
 #include "HighLight.h"

@@ -4,14 +4,13 @@
 #include <richedit.h>
 #include "StrFunc.h"
 #include "WideFunc.h"
-#include "AkelEdit.h"
-#include "AkelDLL.h"
-#include "Resources\Resource.h"
-
 
 //Include AEC functions
 #define AEC_FUNCTIONS
 #include "AkelEdit.h"
+
+#include "AkelDLL.h"
+#include "Resources\Resource.h"
 
 //Include string functions
 #define xmemcpy

@@ -253,7 +253,7 @@ void Hide()
 
 void Show()
 {
-  NOTIFYICONDATA nid;
+  NOTIFYICONDATAA nid;
 
   //Delete notify icon
   nid.cbSize=sizeof(nid);

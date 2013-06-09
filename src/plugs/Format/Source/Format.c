@@ -6,7 +6,11 @@
 #include "StackFunc.h"
 #include "StrFunc.h"
 #include "WideFunc.h"
+
+//Include AEC functions
+#define AEC_FUNCTIONS
 #include "AkelEdit.h"
+
 #include "AkelDLL.h"
 #include "Resources\Resource.h"
 
@@ -1136,10 +1140,10 @@ BOOL SetupCryptoClient()
   HCRYPTKEY hKey=0;
 
   // Attempt to acquire a handle to the default key container.
-  if (!CryptAcquireContextA(&hProv, GetLangStringA(wLangModule, STRID_PLUGIN), MS_DEF_PROV, PROV_RSA_FULL, 0))
+  if (!CryptAcquireContextA(&hProv, GetLangStringA(wLangModule, STRID_PLUGIN), MS_DEF_PROV_A, PROV_RSA_FULL, 0))
   {
-    // Some sort of error occured, create default key container.
-    if (!CryptAcquireContextA(&hProv, GetLangStringA(wLangModule, STRID_PLUGIN), MS_DEF_PROV, PROV_RSA_FULL, CRYPT_NEWKEYSET))
+    // Some sort of error occurred, create default key container.
+    if (!CryptAcquireContextA(&hProv, GetLangStringA(wLangModule, STRID_PLUGIN), MS_DEF_PROV_A, PROV_RSA_FULL, CRYPT_NEWKEYSET))
     {
       // Error creating key container!
       return FALSE;
@@ -1208,7 +1212,7 @@ BOOL EncryptString(unsigned char *lpData, DWORD *dwDataLen, unsigned char *lpKey
   BOOL bResult=FALSE;
 
   // Get handle to default provider.
-  if (CryptAcquireContextA(&hProv, GetLangStringA(wLangModule, STRID_PLUGIN), MS_DEF_PROV, PROV_RSA_FULL, 0))
+  if (CryptAcquireContextA(&hProv, GetLangStringA(wLangModule, STRID_PLUGIN), MS_DEF_PROV_A, PROV_RSA_FULL, 0))
   {
     // Create hash object.
     if (CryptCreateHash(hProv, CALG_MD5, 0, 0, &hHash))
@@ -1242,7 +1246,7 @@ BOOL DecryptString(unsigned char *lpData, DWORD *dwDataLen, unsigned char *lpKey
   BOOL bResult=FALSE;
 
   // Get handle to default provider.
-  if (CryptAcquireContextA(&hProv, GetLangStringA(wLangModule, STRID_PLUGIN), MS_DEF_PROV, PROV_RSA_FULL, 0))
+  if (CryptAcquireContextA(&hProv, GetLangStringA(wLangModule, STRID_PLUGIN), MS_DEF_PROV_A, PROV_RSA_FULL, 0))
   {
     // Create hash object.
     if (CryptCreateHash(hProv, CALG_MD5, 0, 0, &hHash))

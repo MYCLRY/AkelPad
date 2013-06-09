@@ -6,7 +6,10 @@
 #include "StackFunc.h"
 #include "StrFunc.h"
 #include "WideFunc.h"
+
+#define AEC_FUNCTIONS
 #include "AkelEdit.h"
+
 #include "AkelDLL.h"
 #include "Resources\Resource.h"
 

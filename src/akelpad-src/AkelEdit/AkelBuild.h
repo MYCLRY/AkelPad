@@ -6,6 +6,9 @@
 
 #include <shlobj.h>
 #include <imm.h>
+
+//Include AEC functions
+#define AEC_FUNCTIONS
 #include "AkelEdit.h"
 
 

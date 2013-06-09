@@ -154,7 +154,7 @@ INT AnyRichEdit_LineLength(HWND hEd, INT_X nCharacterIndex)
   return ((INT) SendMessage(hEd, EM_LINELENGTH, (WPARAM) nCharacterIndex, 0));
 }
 
-void AnyRichEdit_ReplaceSelText(HWND hEd, const TCHAR* cszText, BOOL bCanUndo )
+void AnyRichEdit_ReplaceSelTextA(HWND hEd, const CHAR* cszText, BOOL bCanUndo )
 {
   SendMessage(hEd, EM_REPLACESEL, (WPARAM) bCanUndo, (LPARAM) cszText);
 }

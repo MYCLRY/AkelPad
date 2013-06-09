@@ -40,12 +40,6 @@
 #define StackClear
 #include "AkelEdit\StackFunc.h"
 
-//Include AEC functions
-#ifndef AKELEDIT_STATICBUILD
-  #define AEC_FUNCTIONS
-  #include "AkelEdit\AkelEdit.h"
-#endif
-
 //Include string functions
 #ifndef AKELEDIT_STATICBUILD
   #define WideCharLower

@@ -1201,7 +1201,7 @@ typedef struct {
 #ifdef __AKELEDIT_H__
 typedef struct {
   AECHARRANGE cr;             //Characters range to retrieve.
-  BOOL bColumnSel;            //Column selection. If this value is –1, active column selection mode is used.
+  BOOL bColumnSel;            //Column selection. If this value is -1, active column selection mode is used.
   unsigned char *pText;       //Pointer that receive allocated text.
                               //Must be deallocated with AKD_FREETEXT message.
                               //  char *pText      if bOldWindows == TRUE
@@ -1564,10 +1564,10 @@ typedef struct {
                                               //Return Value: zero.
                                               //
 #define IDM_EDIT_FINDNEXTDOWN           4159  //Find last string down.
-                                              //Return Value: Character position of the next match. If there are no more matches, the return value is –1.
+                                              //Return Value: Character position of the next match. If there are no more matches, the return value is -1.
                                               //
 #define IDM_EDIT_FINDNEXTUP             4160  //Find last string up.
-                                              //Return Value: Character position of the next match. If there are no more matches, the return value is –1.
+                                              //Return Value: Character position of the next match. If there are no more matches, the return value is -1.
                                               //
 #define IDM_EDIT_REPLACE                4161  //Replace dialog.
                                               //Return Value: zero.
@@ -3016,9 +3016,9 @@ Finds text in a edit control.
 
 Return Value
  Character position of the next match.
- If there are no more matches, the return value is –1.
- If there is syntax error occurred with FRF_REGEXP or FRF_ESCAPESEQ flag, the return value is (–100 - PatternOffset).
- For example, TEXTFINDW.pFindIt equal to "ab[c" with FRF_REGEXP, syntax error in third symbol, return value is –102.
+ If there are no more matches, the return value is -1.
+ If there is syntax error occurred with FRF_REGEXP or FRF_ESCAPESEQ flag, the return value is (-100 - PatternOffset).
+ For example, TEXTFINDW.pFindIt equal to "ab[c" with FRF_REGEXP, syntax error in third symbol, return value is -102.
 
 Example (Unicode):
  TEXTFINDW tf;
@@ -3039,9 +3039,9 @@ Replaces text in a edit control.
 
 Return Value
  Character position of the next match.
- If there are no more matches, the return value is –1.
- If there is syntax error occurred with FRF_REGEXP or FRF_ESCAPESEQ flag, the return value is (–100 - PatternOffset).
- For example, TEXTREPLACEW.pFindIt equal to "ab[c" with FRF_REGEXP, syntax error in third symbol, return value is –102.
+ If there are no more matches, the return value is -1.
+ If there is syntax error occurred with FRF_REGEXP or FRF_ESCAPESEQ flag, the return value is (-100 - PatternOffset).
+ For example, TEXTREPLACEW.pFindIt equal to "ab[c" with FRF_REGEXP, syntax error in third symbol, return value is -102.
 
 Example (Unicode):
  TEXTREPLACEW tr;

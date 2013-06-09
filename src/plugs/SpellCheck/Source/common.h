@@ -63,8 +63,12 @@
 #include <richedit.h>
 //! Common Dialogs
 #include <commdlg.h>
+
+//Include AEC functions
+#define AEC_FUNCTIONS
 //! Akelpad's will
 #include "AkelEdit.h"
+
 #include "AkelDLL.h"
 //! Resources
 #include "resource.h"

@@ -1062,8 +1062,8 @@ void GetMsgProcCommon(int code, WPARAM wParam, LPARAM lParam)
           }
           else if (!lstrcmpiA(szClassName, "AkelEditA") ||
                    !lstrcmpiA(szClassName, "AkelEditW") ||
-                   !lstrcmpiA(szClassName, "RichEdit20A") ||
-                   !lstrcmpiA(szClassName, "RichEdit20W") ||
+                   !lstrcmpiA(szClassName, AES_RICHEDIT20A) ||
+                   !lstrcmpiA(szClassName, AES_RICHEDIT20W_ANSI) ||
                    !lstrcmpiA(szClassName, "SysListView32") ||
                    !lstrcmpiA(szClassName, "SysTreeView32") ||
                    !lstrcmpiA(szClassName, "ListBox") ||

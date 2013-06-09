@@ -7,7 +7,11 @@
 #include "StrFunc.h"
 #include "x64Func.h"
 #include "WideFunc.h"
+
+//Include AEC functions
+#define AEC_FUNCTIONS
 #include "AkelEdit.h"
+
 #include "AkelDLL.h"
 #include "Coder.h"
 #include "HighLight.h"

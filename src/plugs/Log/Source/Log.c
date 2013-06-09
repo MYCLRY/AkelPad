@@ -5,7 +5,11 @@
 #include "x64Func.h"
 #include "WideFunc.h"
 #include "RegExpFunc.h"
+
+//Include AEC functions
+#define AEC_FUNCTIONS
 #include "AkelEdit.h"
+
 #include "AkelDLL.h"
 #include "Resources\Resource.h"
 
