@@ -2,6 +2,7 @@
 #define WINVER 0x0500
 #define _WIN32_IE 0x0500
 #include <windows.h>
+#include <tchar.h>
 #include <commdlg.h>
 #include <commctrl.h>
 #include <shellapi.h>
@@ -573,7 +574,8 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 #endif
 
 //Entry point
-void _WinMain()
+//void _WinMain()
+EXTERN_C int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPTSTR lpCmdLine, int nShowCmd)
 {
   WNDCLASSW wndclassW;
   HMODULE hUser32;
@@ -968,7 +970,7 @@ void _WinMain()
   }
   #endif
 
-  //Parse commmand line on load
+  //Parse command line on load
   if (wpCmdLine)
   {
     int nResult=ParseCmdLine(&wpCmdLine, PCL_ONLOAD);
@@ -1203,7 +1205,7 @@ void _WinMain()
     ExitProcess(0);
   #endif
 
-  return;
+  return 0;
 }
 
 void WinMainCleanUp()
