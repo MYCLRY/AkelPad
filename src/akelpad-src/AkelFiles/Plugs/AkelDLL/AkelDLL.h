@@ -8,7 +8,7 @@
   #define MAKE_IDENTIFIER(a, b, c, d)  ((DWORD)MAKELONG(MAKEWORD(a, b), MAKEWORD(c, d)))
 #endif
 
-#define AKELDLL MAKE_IDENTIFIER(1, 8, 3, 0)
+#define AKELDLL MAKE_IDENTIFIER(1, 9, 0, 0)
 
 
 //// Defines
@@ -575,6 +575,7 @@
 #define FRF_DOWN               0x00000001  //Same as AEFR_DOWN.
 #define FRF_WHOLEWORD          0x00000002  //Same as AEFR_WHOLEWORD.
 #define FRF_MATCHCASE          0x00000004  //Same as AEFR_MATCHCASE.
+#define FRF_REGEXPNONEWLINEDOT 0x00040000  //Symbol . specifies any character except new line. Uses with FRF_REGEXP.
 #define FRF_REGEXP             0x00080000  //Same as AEFR_REGEXP.
 #define FRF_UP                 0x00100000
 #define FRF_BEGINNING          0x00200000
@@ -992,12 +993,14 @@ typedef struct _FRAMEDATA {
   char szFile[MAX_PATH];                              //Frame file (Ansi).
   wchar_t wszFile[MAX_PATH];                          //Frame file (Unicode).
   int nFileLen;                                       //Frame file length.
+  int nStreamOffset;                                  //":" symbol offset in FRAMEDATA.wszFile.
   HICON hIcon;                                        //Frame icon.
   int nIconIndex;                                     //Frame ImageList icon index.
   RECT rcEditWindow;                                  //Edit RECT. rcEditWindow.right - is width and rcEditWindow.bottom is height.
   RECT rcMasterWindow;                                //Master window RECT. rcMasterWindow.right - is width and rcMasterWindow.bottom is height.
 
   //Edit settings (AkelPad)
+  DWORD dwLockInherit;                                //See LI_* defines.
   LOGFONTW lf;                                        //Edit font.
   BOOL bTabStopAsSpaces;                              //Insert tab stop as spaces.
   DWORD dwCaretOptions;                               //See CO_* defines.
@@ -1033,22 +1036,20 @@ typedef struct _FRAMEDATA {
   HBITMAP hBkImageBitmap;                             //Background image handle.
   AECOLORS aec;                                       //Edit colors.
 
-  //Edit state internal.
+  //Edit state internal. AKD_FRAMEINIT not copy data below.
   AEEditProc lpEditProc;                              //Edit window procedure.
   FILETIME ft;                                        //File time.
   HKL dwInputLocale;                                  //Keyboard layout.
-  DWORD dwLockInherit;                                //See LI_* defines.
-  int nStreamOffset;                                  //":" symbol offset in FRAMEDATA.wszFile.
-  INT_PTR nCompileErrorOffset;                        //Contain pattern offset, if error occurred during compile pattern.
-  BOOL bCompileErrorReplace;                          //TRUE - error in "ReplaceWith" complitaion, FALSE - error in "FindIt" complitaion.
   STACKRECENTCARET hRecentCaretStack;                 //Recent caret stack.
   RECENTCARETITEM *lpCurRecentCaret;                  //Current recent caret position.
 
-  //Substract selection. AKD_FRAMEINIT not copy data below.
+  //Find/Replace
+  INT_PTR nCompileErrorOffset;                        //Contain pattern offset, if error occurred during compile pattern.
+  BOOL bCompileErrorReplace;                          //TRUE - error in "ReplaceWith" complitaion, FALSE - error in "FindIt" complitaion.
+
+  //Statusbar
   AECHARRANGE crPrevSel;
   INT_PTR nSelSubtract;
-
-  //"StatusUserFormat" variables.
   INT_PTR nCaretRichOffset;
   INT_PTR nCaretByteOffset;
   int nCaretChar;
@@ -1980,6 +1981,7 @@ typedef struct {
 #define AKD_GETCODEPAGELIST        (WM_USER + 213)
 #define AKD_RECENTFILES            (WM_USER + 214)
 #define AKD_SEARCHHISTORY          (WM_USER + 215)
+#define AKD_SETEDITNOTIFY          (WM_USER + 216)
 
 //Windows
 #define AKD_GETMODELESS            (WM_USER + 251)
@@ -3384,6 +3386,21 @@ Return Value
 
 Example:
  SendMessage(pd->hMainWnd, AKD_SEARCHHISTORY, SH_GET, 0);
+
+
+AKD_SETEDITNOTIFY
+_________________
+
+Set standard AkelPad's event mask for an edit control.
+
+(HWND)wParam == edit window.
+lParam       == not used.
+
+Return Value
+ Zero.
+
+Example:
+ SendMessage(pd->hMainWnd, AKD_SETEDITNOTIFY, (LPARAM)hWndEdit, 0);
 
 
 AKD_GETMODELESS

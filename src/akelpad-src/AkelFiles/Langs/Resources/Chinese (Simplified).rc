@@ -18,8 +18,8 @@
 #endif
 #include "winresrc.h"
 #include "staticedit.h"
-#include "..\..\Plugs\AkelDLL\AkelDLL.h"
 #include "version.h"
+#include "..\..\Plugs\AkelDLL\AkelDLL.h"
 
 /////////////////////////////////////////////////////////////////////////////
 #undef APSTUDIO_READONLY_SYMBOLS
@@ -951,8 +951,8 @@ BEGIN
     "#endif\r\n"
     "#include ""winresrc.h""\r\n"
     "#include ""staticedit.h""\r\n"
-    "#include ""..\\..\\Plugs\\AkelDLL\\AkelDLL.h""\r\n"
     "#include ""version.h""\r\n"
+    "#include ""..\\..\\Plugs\\AkelDLL\\AkelDLL.h""\r\n"
     "\0"
 END
 

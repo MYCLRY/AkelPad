@@ -2833,6 +2833,11 @@ LRESULT CALLBACK MainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
       }
       return 0;
     }
+    if (uMsg == AKD_SETEDITNOTIFY)
+    {
+      SetEditNotify((HWND)wParam);
+      return 0;
+    }
 
     //Windows
     if (uMsg == AKD_GETMODELESS)
