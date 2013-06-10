@@ -1,5 +1,6 @@
 #include <windows.h>
 #include <tchar.h>
+#define _RICHEDIT_VER 0x0200
 #include <richedit.h>
 #include <commctrl.h>
 #include <stdio.h>
@@ -21,11 +22,11 @@ static BOOL codepages[65536];
 BOOL CALLBACK SelectDlgProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 BOOL CALLBACK EnumCodePagesProc(LPTSTR lpCodePageString);
 int getmaxelement(int *base,int iCount);
-void ChangeByteOrder(char *,int);
+void ChangeByteOrder(unsigned char *,int);
 void ChangeByteOrder2(WORD *);
 
-void swap(char *c1, char *c2) {
-    char ch;
+void swap(unsigned char *c1, unsigned char *c2) {
+    unsigned char ch;
     ch=*c1;
     *c1=*c2;
     *c2=ch;
@@ -36,7 +37,7 @@ int GetCodePage() {
 }
 
 BOOL ChangeCodePage(int cp) {
-    char cpbuf[256];
+    TCHAR cpbuf[256];
     CPINFOEX CPInfoEx;
 
     CodePage=cp;
@@ -48,10 +49,10 @@ BOOL ChangeCodePage(int cp) {
     else if(CodePage==CP_UNICODE_UTF8) lstrcpy(cpbuf,STR_CP_UNICODE_UTF8);
     else {
         if(GetCPInfoExPtr) {
-            if((*GetCPInfoExPtr)(CodePage,0,&CPInfoEx)) sprintf(cpbuf,"CP-%s",CPInfoEx.CodePageName);
-            else sprintf(cpbuf,"CP-%u",CodePage);
+            if((*GetCPInfoExPtr)(CodePage,0,&CPInfoEx)) _stprintf(cpbuf, _T("CP-%s"), CPInfoEx.CodePageName);
+            else _stprintf(cpbuf, _T("CP-%u"), CodePage);
         }
-        else sprintf(cpbuf,"CP-%u",CodePage);
+        else _stprintf(cpbuf,_T("CP-%u"),CodePage);
     }
 
     SendMessage(hStatus,SB_SETTEXT,3,(LPARAM)cpbuf);
@@ -62,10 +63,10 @@ BOOL SelectCodePage(HWND hWnd) {
     return (BOOL)DialogBox(GetModuleHandle(NULL),MAKEINTRESOURCE(IDD_SELECTCODEPAGE),hWnd,(DLGPROC)SelectDlgProc);
 }
 
-int TranslateTextToRepresent(char *pcBuff,int iBufSize,char *pcOutBuf,char **endptr,BOOL firsttime) {
+int TranslateTextToRepresent(unsigned char *pcBuff,int iBufSize, unsigned char *pcOutBuf, unsigned char **endptr,BOOL firsttime) {
     int iBytesInOut=0;
     int cp,i;
-    char ch,*p;
+    unsigned char ch,*p;
 
     cp=GetCodePage();
 
@@ -109,7 +110,7 @@ int TranslateTextToRepresent(char *pcBuff,int iBufSize,char *pcOutBuf,char **end
         //Decoding is always full and unambigiouis
         iBytesInOut=2*MultiByteToWideChar(cp,
             MB_PRECOMPOSED,
-            pcBuff,
+            (LPSTR) pcBuff,
             iBufSize,
             (WCHAR *)pcOutBuf,
             TRANSLATEBUFFERSIZE/2);
@@ -177,12 +178,12 @@ int TranslateTextToRepresent(char *pcBuff,int iBufSize,char *pcOutBuf,char **end
     return iBytesInOut;
 }
 
-int TranslateTextFromRepresent(char *pcBuff,int iBufSize,char *pcOutBuf,BOOL firsttime) {
+int TranslateTextFromRepresent(unsigned char *pcBuff,int iBufSize, unsigned char *pcOutBuf,BOOL firsttime) {
     //This function requires even number of bytes in input buffer
     //It provides always full encoding
 
     int cp,iBytesInOut,i;
-    char *pOut;
+    unsigned char *pOut;
 
     cp=GetCodePage();
 
@@ -204,7 +205,7 @@ int TranslateTextFromRepresent(char *pcBuff,int iBufSize,char *pcOutBuf,BOOL fir
             WC_COMPOSITECHECK|WC_DISCARDNS,
             (WCHAR *)pcBuff,
             iBufSize/2,
-            pcOutBuf,
+            (LPSTR) pcOutBuf,
             TRANSLATEBUFFERSIZE,
             NULL,
             NULL);
@@ -252,11 +253,13 @@ BOOL CALLBACK SelectDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPara
 {
     int cp,i,icurrent;
     WCHAR wc;
-    char c='А';
+    char c=(char)'А';
     static int iActiveCPIndex;
     static HWND hWndCP;
-    char szCpString[16];
+    TCHAR szCpString[16];
     CPINFOEX CPInfoEx;
+
+    UNREFERENCED_PARAMETER(lParam);
 
     switch(message)
     {
@@ -417,7 +420,7 @@ int getmaxelement(int *base,int iCount) {
     return number;
 }
 
-void ChangeByteOrder(char *string,int iSize) {
+void ChangeByteOrder(unsigned char *string,int iSize) {
     //iSize=number of bytes
     int i;
 
@@ -434,6 +437,6 @@ void ChangeByteOrder2(WORD *word) {
 }
 
 BOOL CALLBACK EnumCodePagesProc(LPTSTR lpCodePageString) {
-    if(lpCodePageString) codepages[atoi(lpCodePageString)]=TRUE;
+    if(lpCodePageString) codepages[_ttoi(lpCodePageString)]=TRUE;
     return TRUE;
 }

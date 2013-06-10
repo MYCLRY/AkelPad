@@ -21,8 +21,8 @@ BOOL ChangeCodePage(int cp);
 
 BOOL SelectCodePage(HWND hWnd);
 
-int TranslateTextToRepresent(char *pcBuff,int iBufSize,char *pcOutBuf,char **endptr,BOOL firsttime);
-int TranslateTextFromRepresent(char *pcBuff,int iBufSize,char *pcOutBuf,BOOL firsttime);
+int TranslateTextToRepresent(unsigned char *pcBuff,int iBufSize, unsigned char *pcOutBuf, unsigned char **endptr,BOOL firsttime);
+int TranslateTextFromRepresent(unsigned char *pcBuff,int iBufSize, unsigned char *pcOutBuf,BOOL firsttime);
 /* WARNING: Caller must allocate data for pcOutBuf, 6*iBufSize should be enough for everyone ;).*/
 
 BOOL AutodetectCodePage(unsigned char *pcBuffer,int iCount);

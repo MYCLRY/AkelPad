@@ -2,6 +2,7 @@
 
 #include <windows.h>
 #include <tchar.h>
+#define _RICHEDIT_VER 0x0200
 #include <richedit.h>
 #include <commctrl.h>
 #include <stdio.h>
@@ -17,10 +18,10 @@ extern BOOL open_in_new_window;
 extern BOOL unix_newline;
 extern BOOL support_asian;
 
-extern char recent_names[RECENTFILES][MAX_PATH+1];
+extern TCHAR recent_names[RECENTFILES][MAX_PATH+1];
 extern DWORD recent_positions[RECENTFILES];
 
-char *CmdLine;
+TCHAR *CmdLine;
 UINT uiOpenOnStartMessage;
 HWND hStatus,hSyncWindow;
 BOOL modified=FALSE;
@@ -41,8 +42,8 @@ LRESULT CALLBACK DummyWndProc(HWND,UINT,WPARAM,LPARAM);
 
 int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE hPrev, PTSTR szCmdLine, int iCmdShow)
 {
-    char *szAppName = APP_FULL_TITLE;
-    char *szDummyClassName=STR_DUMMY_NAME;
+    TCHAR *szAppName = APP_FULL_TITLE;
+    TCHAR *szDummyClassName=STR_DUMMY_NAME;
     HACCEL hAccel;
     HWND         hWnd;
     MSG          msg;
@@ -51,7 +52,9 @@ int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE hPrev, PTSTR szCmdLine, int 
     BOOL msgstatus;
     HMODULE hKernel32;
 
-    hKernel32=LoadLibrary("kernel32.dll");
+    UNREFERENCED_PARAMETER(hPrev);
+
+    hKernel32=LoadLibrary(_T("kernel32.dll"));
     GetCPInfoExPtr=(int(WINAPI *)(UINT,DWORD,LPCPINFOEX))GetProcAddress(hKernel32,"GetCPInfoExA");
 
     CmdLine=szCmdLine;
@@ -62,13 +65,13 @@ int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE hPrev, PTSTR szCmdLine, int 
     MainWindowRect.right=CW_USEDEFAULT;
     MainWindowRect.bottom=CW_USEDEFAULT;
 
-    hRTFLib=LoadLibrary("RICHED20.DLL");
+    hRTFLib=LoadLibrary(_T("RICHED20.DLL"));
     if(!hRTFLib) {
         MessageBox(NULL,MSG_ERROR_LOADING_DLL,APP_SHORT_TITLE,MB_OK|MB_ICONERROR);
         return 0;
     }
 
-    uiOpenOnStartMessage=RegisterWindowMessage("AkelPad Open-On-Start message");
+    uiOpenOnStartMessage=RegisterWindowMessage(_T("AkelPad Open-On-Start message"));
 
     InitCommonControls();
 
@@ -116,7 +119,7 @@ int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE hPrev, PTSTR szCmdLine, int 
         NULL);                        // creation parameters
 
     hSyncWindow = CreateWindow(szDummyClassName,                    // window class name
-        "",              // window caption
+        _T(""),              // window caption
         WS_POPUP,          // window style
         CW_USEDEFAULT,                // initial x position
         CW_USEDEFAULT,                // initial y position
@@ -158,12 +161,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     DWORD dwLong;
     POINT point;
 
-    char tmpbuf[256],*p;
-    char *spacebuf;
+    TCHAR tmpbuf[256],*p;
+    TCHAR *spacebuf;
     int line,column;
     int linelength;
 
-    char szFullFileName[MAX_PATH];
+    TCHAR szFullFileName[MAX_PATH];
     HWND hWndFriend;
 
     if(message==uiOpenOnStartMessage) {
@@ -217,7 +220,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         GetClientRect(hWnd, &ClientRect);
 
         hStatus=CreateWindow(STATUSCLASSNAME,
-            "",
+            _T(""),
             WS_CHILD|WS_VISIBLE|SBARS_SIZEGRIP,
             0,0,0,0,
             hWnd,
@@ -226,12 +229,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
         SendMessage(hStatus,SB_SIMPLE,FALSE,0);
         SendMessage(hStatus,SB_SETPARTS,4,(LPARAM)&iSBParts);
-        SendMessage(hStatus,SB_SETTEXT,0,(LPARAM)"1:1");
+        SendMessage(hStatus,SB_SETTEXT,0,(LPARAM)_T("1:1"));
         SendMessage(hStatus,SB_SETTEXT,1,(LPARAM)STR_MODE_INSERT);
-        SendMessage(hStatus,SB_SETTEXT,2,(LPARAM)"");
+        SendMessage(hStatus,SB_SETTEXT,2,(LPARAM)_T(""));
         ChangeCodePage(WINDOWS_1251);
 
-        hWndEdit=CreateWindow("richedit20a",
+        hWndEdit=CreateWindow(RICHEDIT_CLASS,
             NULL,
             WS_CHILD|WS_VISIBLE|WS_HSCROLL|WS_VSCROLL|
             /*WS_BORDER|*/ES_LEFT|ES_MULTILINE|
@@ -541,7 +544,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                     column=1;
                 }
 
-                sprintf(tmpbuf,"%u:%u",line,column);
+                _stprintf(tmpbuf,_T("%u:%u"),line,column);
                 SendMessage(hStatus,SB_SETTEXT,0,(LPARAM)tmpbuf);
             }
             else if(((LPNMHDR)lParam)->code==EN_MSGFILTER) { //Space-keeping mode and other related stuff
@@ -561,17 +564,17 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
                     linelength=SendMessage(hWndEdit,EM_LINELENGTH,(chrg.cpMin-1>=0)?chrg.cpMin:0,0);
 
-                    spacebuf=(char *)HeapAlloc(GetProcessHeap(),HEAP_ZERO_MEMORY,linelength+lstrlen("\n")+1+2);
+                    spacebuf=(TCHAR *)HeapAlloc(GetProcessHeap(),HEAP_ZERO_MEMORY, (linelength+lstrlen(_T("\n"))+1+2)*sizeof(TCHAR));
                     if(!spacebuf) {
                         MessageBox(NULL,MSG_ERROR_NOT_ENOUGH_MEMORY,NULL,MB_OK|MB_ICONERROR);
                         ExitProcess(1);
                     }
 
-                    lstrcpy(spacebuf,"\n");
-                    *(WORD*)&spacebuf[lstrlen("\n")]=linelength+1;
-                    SendMessage(hWndEdit,EM_GETLINE,line,(LPARAM)(spacebuf+lstrlen("\n")));
-                    for(p=spacebuf+lstrlen("\n");(*p==' '||*p==0x09)&&*p&&column>1;p++,column--);
-                    *p='\0';
+                    lstrcpy(spacebuf, _T("\n"));
+                    *(WORD*)&spacebuf[lstrlen(_T("\n"))]=linelength+1;
+                    SendMessage(hWndEdit,EM_GETLINE,line,(LPARAM)(spacebuf+lstrlen(_T("\n"))));
+                    for(p=spacebuf+lstrlen(_T("\n"));(*p==_T(' ')||*p==0x09)&&*p&&column>1;p++,column--) { ; }
+                    *p=_T('\0');
 
                     SendMessage(hWndEdit,EM_REPLACESEL,TRUE,(LPARAM)spacebuf);
                     HeapFree(GetProcessHeap(),0,spacebuf);
@@ -644,14 +647,14 @@ BOOL GetModify() {
 
 void SetModify(BOOL state) {
     modified=state;
-    SendMessage(hStatus,SB_SETTEXT,2,(LPARAM)(modified?STR_MODIFIED:""));
+    SendMessage(hStatus,SB_SETTEXT,2,(LPARAM)(modified?STR_MODIFIED:_T("")));
 }
 
 int RenewHistoryMenu() {
     int i=0;
     int added=0;
     int res;
-    char buf[HISTORY_STRING_LENGTH+1];
+    TCHAR buf[HISTORY_STRING_LENGTH+1];
 
     while(TRUE) {
         res=DeleteMenu(hHistoryMenu,i,MF_BYPOSITION);
@@ -668,7 +671,7 @@ int RenewHistoryMenu() {
             if(lstrlen(recent_names[i])<=HISTORY_STRING_LENGTH) {
                 lstrcpy(buf,recent_names[i]);
             } else {
-                lstrcpy(buf,"...");
+                lstrcpy(buf,_T("..."));
                 lstrcpy(buf+3,recent_names[i]+lstrlen(recent_names[i])-HISTORY_STRING_LENGTH+3);
             }
             AppendMenu(hHistoryMenu,MF_STRING|MF_ENABLED,IDM_HISTORY_BASE+i,buf);
