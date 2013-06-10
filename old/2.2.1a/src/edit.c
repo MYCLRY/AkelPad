@@ -103,8 +103,8 @@ void InitEditor(HWND hWndEdit) {
 
     ofn.lpstrFile=file_buffer;
 
-    ofn.lpstrFile[0]='\0';
-    ofn.lpstrFile[MAX_PATH]='\0';
+    ofn.lpstrFile[0]=_T('\0');
+    ofn.lpstrFile[MAX_PATH]=_T('\0');
 
     ofn.lStructSize       = sizeof (OPENFILENAME);
     ofn.hwndOwner         = GetParent(hWndEdit);
@@ -164,7 +164,7 @@ void InitEditor(HWND hWndEdit) {
     psdPage.Flags=PSD_MARGINS;
 
     if(GetLocaleInfo(LOCALE_USER_DEFAULT,LOCALE_IMEASURE,pBuf,16)) {
-        if(*pBuf=='0') {
+        if(*pBuf==_T('0')) {
             psdPage.rtMargin.left=1000;
             psdPage.rtMargin.right=1000;
             psdPage.rtMargin.top=1000;
@@ -205,7 +205,7 @@ int DoFileNew(HWND hWndEdit) {
             SetWindowText(hWndEdit, _T(""));
             ShowCaret(NULL);
             SetWindowText(GetParent(hWndEdit),APP_SHORT_TITLE);
-            ofn.lpstrFile[0]='\0';
+            ofn.lpstrFile[0]=_T('\0');
             SetModify(FALSE);
             break;
         }
@@ -219,7 +219,7 @@ int DoFileNew(HWND hWndEdit) {
         SetWindowText(hWndEdit, _T(""));
         ShowCaret(NULL);
         SetWindowText(GetParent(hWndEdit),APP_SHORT_TITLE);
-        ofn.lpstrFile[0]='\0';
+        ofn.lpstrFile[0]=_T('\0');
         SetModify(FALSE);
         return -1;
     }
@@ -478,7 +478,7 @@ void DoEditPaste(HWND hWndEdit) {
 }
 
 void DoEditClear(HWND hWndEdit) {
-    SendMessage(hWndEdit,EM_REPLACESEL,TRUE,(LPARAM)"");
+    SendMessage(hWndEdit,EM_REPLACESEL,TRUE,(LPARAM)_T(""));
 }
 
 void DoEditSelectAll(HWND hWndEdit) {
@@ -730,14 +730,14 @@ void DoNonMenuDelLine(HWND hWndEdit) {
     chrg.cpMax=chrg.cpMin+len+1;
 
     SendMessage(hWndEdit,EM_EXSETSEL,0,(LPARAM)&chrg);
-    SendMessage(hWndEdit,EM_REPLACESEL,TRUE,(LPARAM)"");
+    SendMessage(hWndEdit,EM_REPLACESEL,TRUE,(LPARAM)_T(""));
 }
 
 void DoNonMenuTab(HWND hWndEdit, BOOL istab, BOOL add) {
     CHARRANGE chrg;
     TEXTRANGE tr;
     EDITSTREAM es;
-    char szIndent[2]={'\t','\0'};
+    TCHAR szIndent[2]={_T('\t'),_T('\0')};
     TCHAR tmpbuf[16];
     int iFirstLine,iLastLine;
     int iCharacters,iLines;
@@ -759,7 +759,7 @@ void DoNonMenuTab(HWND hWndEdit, BOOL istab, BOOL add) {
     iLines=iLastLine-iFirstLine+1;
 
     if(chrg.cpMin==chrg.cpMax) {
-        if(!istab) szIndent[0]=' ';
+        if(!istab) szIndent[0]=_T(' ');
         if(!insertstate) SendMessage(hWndEdit,EM_SETSEL,chrg.cpMin,chrg.cpMin+1);
         SendMessage(hWndEdit,EM_REPLACESEL,(WPARAM)TRUE,(LPARAM)szIndent);
         return;
@@ -769,7 +769,7 @@ void DoNonMenuTab(HWND hWndEdit, BOOL istab, BOOL add) {
     tr.chrg.cpMax=chrg.cpMax;
     tr.lpstrText=tmpbuf;
     SendMessage(hWndEdit,EM_GETTEXTRANGE,(WPARAM)0,(LPARAM)&tr);
-    if(tmpbuf[0]=='\x0D') {
+    if(tmpbuf[0]==_T('\x0D')) {
         chrg.cpMax--;
         SendMessage(hWndEdit,EM_EXSETSEL,(WPARAM)0,(LPARAM)&chrg);
         SendMessage(hWndEdit,EM_EXGETSEL,0,(LPARAM)&chrg);
@@ -781,7 +781,7 @@ void DoNonMenuTab(HWND hWndEdit, BOOL istab, BOOL add) {
     }
 
     if(iLines==1) {
-        if(!istab) szIndent[0]=' ';
+        if(!istab) szIndent[0]=_T(' ');
         SendMessage(hWndEdit,EM_REPLACESEL,(WPARAM)TRUE,(LPARAM)szIndent);
     }
     else {
@@ -1113,7 +1113,7 @@ void OpenDocument(HWND hWndEdit, BOOL mustexist) {
         NULL);
 
     if(hFile==INVALID_HANDLE_VALUE) {
-        file_buffer[0]='\0';
+        file_buffer[0]=_T('\0');
         MessageBox(hWndParent,MSG_ERROR_CANNOT_OPEN_FILE,APP_SHORT_TITLE,MB_OK|MB_ICONERROR);
         return;
     }
@@ -1155,11 +1155,11 @@ void OpenDocument(HWND hWndEdit, BOOL mustexist) {
 
     if(hFile!=INVALID_HANDLE_VALUE) {
         for(i=_tcslen(ofn.lpstrFile)-1;i>=0;i--) {
-            if(ofn.lpstrFile[i]=='\\') break;
+            if(ofn.lpstrFile[i]==_T('\\')) break;
         }
-        if(ofn.lpstrFile[i]=='\\') {
+        if(ofn.lpstrFile[i]==_T('\\')) {
             i++;
-            ofn.lpstrFile[i]='\0';
+            ofn.lpstrFile[i]=_T('\0');
             _tcsncat(ofn.lpstrFile,w32fdInfo.cFileName,MAX_PATH-_tcslen(ofn.lpstrFile));
         }
     }
@@ -1210,11 +1210,11 @@ void SaveDocument(HWND hWndEdit) {
 
     if(hFile!=INVALID_HANDLE_VALUE) {
         for(i=_tcslen(realname)-1;i>=0;i--) {
-            if(realname[i]=='\\') break;
+            if(realname[i]==_T('\\')) break;
         }
-        if(realname[i]=='\\') {
+        if(realname[i]==_T('\\')) {
             i++;
-            realname[i]='\0';
+            realname[i]=_T('\0');
             _tcsncat(realname,w32fdInfo.cFileName,MAX_PATH-_tcslen(realname));
         }
         else _tcsncpy(realname,w32fdInfo.cFileName,MAX_PATH);
@@ -1429,7 +1429,7 @@ BOOL CALLBACK ReplaceDlgProc(HWND hDlg,UINT msg,WPARAM wParam,LPARAM lParam) {
             if(SendMessage(GetDlgItem(hDlg,IDC_WHOLEWORD),BM_GETCHECK,0,0)) ftflags|=FR_WHOLEWORD;
             if(SendMessage(GetDlgItem(hDlg,IDC_ESCAPESEQ),BM_GETCHECK,0,0)) {
                 use_escape=TRUE;
-                if(!TranslateBackslashes(ft.lpstrText,org_query)||
+                if(!TranslateBackslashes((TCHAR *)ft.lpstrText,org_query)||
                     !TranslateBackslashes(replaceto.lpstrNewText,replaceto.org_query))
                 {
                     MessageBox(hDlg,MSG_ERROR_SYNTAX,APP_SHORT_TITLE,MB_OK|MB_ICONERROR);
@@ -1437,7 +1437,7 @@ BOOL CALLBACK ReplaceDlgProc(HWND hDlg,UINT msg,WPARAM wParam,LPARAM lParam) {
                 }
             } else {
                 use_escape=FALSE;
-                _tcscpy(ft.lpstrText,org_query);
+                _tcscpy((TCHAR *)ft.lpstrText,org_query);
                 _tcscpy(replaceto.lpstrNewText,replaceto.org_query);
             }
             EndDialog(hDlg,LOWORD(wParam)==IDOK?-1:-2);
@@ -1567,8 +1567,8 @@ void _ReplaceText(HWND hWndEdit,BOOL all)
             case IDC_ALL:
                 all=TRUE;
             case IDOK:
-                if((ft.lpstrText[lstrlen(ft.lpstrText)-1]=='\x0D')&&(lstrlen(replaceto.lpstrNewText)==1)) {
-                    SendMessage(hWndEdit,EM_REPLACESEL,TRUE,(LPARAM)"");
+                if((ft.lpstrText[lstrlen(ft.lpstrText)-1]==_T('\x0D'))&&(lstrlen(replaceto.lpstrNewText)==1)) {
+                    SendMessage(hWndEdit,EM_REPLACESEL,TRUE,(LPARAM)_T(""));
                 }
                 SendMessage(hWndEdit,EM_REPLACESEL,TRUE,(LPARAM)replaceto.lpstrNewText);
                 ft.chrg.cpMax=ft.chrg.cpMin-_tcslen(ft.lpstrText)+_tcslen(replaceto.lpstrNewText);

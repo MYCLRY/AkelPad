@@ -173,14 +173,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         RestoreOptionsFromRegistry(hWndEdit);
         if(lstrlen(CmdLine)!=0) {
             if ((lstrlen(CmdLine)>=4) &&
-                (CmdLine[0]=='/') &&
-                ((CmdLine[1]=='p')||(CmdLine[1]=='P')))
+                (CmdLine[0]==_T('/')) &&
+                ((CmdLine[1]==_T('p'))||(CmdLine[1]==_T('P'))))
             {
                 GlobalPrint=TRUE;
                 CmdLine+=3;
             }
-            if(CmdLine[0]=='\"') {
-                CmdLine[lstrlen(CmdLine)-1]='\0';
+            if(CmdLine[0]==_T('\"')) {
+                CmdLine[lstrlen(CmdLine)-1]=_T('\0');
                 lstrcpyn(ofn.lpstrFile,CmdLine+1,MAX_PATH);
             }
             else lstrcpyn(ofn.lpstrFile,CmdLine,MAX_PATH);
