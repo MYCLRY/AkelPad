@@ -17,6 +17,13 @@
   }
 #endif
 
+
+#define AKEL_DLL_VERSION    AKELDLL
+#define EXE_MIN_VERSION_3X  MAKE_IDENTIFIER(-1, -1, -1, -1)
+#define EXE_MIN_VERSION_4X  MAKE_IDENTIFIER(4, 8, 4, 0)
+#define PLUGIN_NAME         "XBrackets"
+
+
 /*
 // const
 const TCHAR* cszPluginName = _T("XBrackets Plugin");
@@ -278,10 +285,10 @@ static int xitoaW(INT_PTR nNumber, wchar_t *wszStr)
 /* extern "C" */
 void __declspec(dllexport) DllAkelPadID(PLUGINVERSION *pv)
 {
-  pv->dwAkelDllVersion  = AKELDLL;
-  pv->dwExeMinVersion3x = MAKE_IDENTIFIER(-1, -1, -1, -1);
-  pv->dwExeMinVersion4x = MAKE_IDENTIFIER(4, 8, 1, 0);
-  pv->pPluginName = "XBrackets";
+  pv->dwAkelDllVersion  = AKEL_DLL_VERSION;
+  pv->dwExeMinVersion3x = EXE_MIN_VERSION_3X;
+  pv->dwExeMinVersion4x = EXE_MIN_VERSION_4X;
+  pv->pPluginName = PLUGIN_NAME;
 }
 
 // Plugin extern function

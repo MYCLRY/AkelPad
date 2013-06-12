@@ -179,6 +179,9 @@ When you activate the plugin it automatically re-reads its settings.
 --------
 History:
 --------
+v.5.5 (June 2013)
+ * AkelPad 4.8.4+
+
 v.5.4 (February 2013)
  * AkelPad 4.8.1+
  + 'highlight.br_max_lines'
@@ -363,5 +366,5 @@ of this plugin.
 -----------------------------------------------------------
 The icon by se7h.
 -----------------------------------------------------------
-(C) Oct 2006 - Feb 2013, Vitaliy Dovgan aka DV
+(C) Oct 2006 - Jun 2013, Vitaliy Dovgan aka DV
           dvv81 <at> ukr <dot> net

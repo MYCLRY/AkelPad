@@ -180,7 +180,7 @@ void __declspec(dllexport) DllAkelPadID(PLUGINVERSION *pv)
 {
   pv->dwAkelDllVersion=AKELDLL;
   pv->dwExeMinVersion3x=MAKE_IDENTIFIER(-1, -1, -1, -1);
-  pv->dwExeMinVersion4x=MAKE_IDENTIFIER(4, 7, 9, 0);
+  pv->dwExeMinVersion4x=MAKE_IDENTIFIER(4, 8, 4, 0);
   pv->pPluginName="Coder";
 }
 
@@ -430,15 +430,12 @@ void __declspec(dllexport) Settings(PLUGINDATA *pd)
           if (IsExtCallParamValid(pd->lParam, 5))
             lpnAliasLen=(INT_PTR *)GetExtCallParam(pd->lParam, 5);
 
-          if (pAlias)
-          {
-            StackGetSyntaxFileByWindow(&hSyntaxFilesStack, hWnd, hDoc, &wpAlias);
-            if (pd->dwSupport & PDS_STRANSI)
-              nAliasLen=WideCharToMultiByte(CP_ACP, 0, wpAlias, -1, (char *)pAlias, MAX_PATH, NULL, NULL);
-            else
-              nAliasLen=xstrcpynW((wchar_t *)pAlias, wpAlias, MAX_PATH) + 1;
-            if (lpnAliasLen) *lpnAliasLen=nAliasLen;
-          }
+          StackGetSyntaxFileByWindow(&hSyntaxFilesStack, hWnd, hDoc, &wpAlias);
+          if (pd->dwSupport & PDS_STRANSI)
+            nAliasLen=WideCharToMultiByte(CP_ACP, 0, wpAlias, -1, (char *)pAlias, MAX_PATH, NULL, NULL);
+          else
+            nAliasLen=xstrcpynW((wchar_t *)pAlias, wpAlias, MAX_PATH) + (pAlias?1:0);
+          if (lpnAliasLen) *lpnAliasLen=nAliasLen;
         }
         else if (nAction == DLLA_CODER_GETVARTHEME)
         {
@@ -512,7 +509,7 @@ void __declspec(dllexport) Settings(PLUGINDATA *pd)
                 if (pd->dwSupport & PDS_STRANSI)
                   nVariableValueLen=WideCharToMultiByte(CP_ACP, 0, lpVarInfo->wpVarValue, lpVarInfo->nVarValueLen + 1, (char *)pVariableValue, 0x3FFFFFFF, NULL, NULL);
                 else
-                  nVariableValueLen=xstrcpynW((wchar_t *)pVariableValue, lpVarInfo->wpVarValue, lpVarInfo->nVarValueLen + 1) + 1;
+                  nVariableValueLen=xstrcpynW((wchar_t *)pVariableValue, lpVarInfo->wpVarValue, lpVarInfo->nVarValueLen + 1) + (pVariableValue?1:0);
               }
             }
             if (lpnVariableValueLen) *lpnVariableValueLen=nVariableValueLen;
@@ -4035,6 +4032,7 @@ void StackDeleteManual(HSTACK *hStack, MANUALSET *lpManual, DWORD dwDllFunction)
     {
       if (lpManual->lpFoldWindow)
       {
+        StackEndBoard(&hFoldWindowsStack, lpManual->lpFoldWindow);
         StackDeleteFoldWindow(&hFoldWindowsStack, lpManual->lpFoldWindow);
         lpManual->lpFoldWindow=NULL;
       }
@@ -4952,7 +4950,7 @@ void ReadSyntaxFiles()
         }
       }
       while (FindNextFileWide(hSearch, &wfd));
-  
+
       FindClose(hSearch);
     }
   }

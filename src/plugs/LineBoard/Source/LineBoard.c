@@ -64,6 +64,7 @@
 #define DLLA_LINEBOARD_DELBOOKMARKS     14
 #define DLLA_LINEBOARD_ADDWINDOW        50
 #define DLLA_LINEBOARD_DELWINDOW        51
+#define DLLA_LINEBOARD_GETWINDOW        52
 #define DLLA_LINEBOARDBOOKMARKLIST_SHOW 1
 
 #define STRID_SHOW                    1
@@ -321,7 +322,7 @@ void __declspec(dllexport) DllAkelPadID(PLUGINVERSION *pv)
 {
   pv->dwAkelDllVersion=AKELDLL;
   pv->dwExeMinVersion3x=MAKE_IDENTIFIER(-1, -1, -1, -1);
-  pv->dwExeMinVersion4x=MAKE_IDENTIFIER(4, 7, 9, 0);
+  pv->dwExeMinVersion4x=MAKE_IDENTIFIER(4, 8, 4, 0);
   pv->pPluginName="LineBoard";
 }
 
@@ -493,6 +494,24 @@ void __declspec(dllexport) Main(PLUGINDATA *pd)
               StackEndBoard(lpBoard);
               StackDeleteBoard(&hWindowStack, lpBoard);
             }
+          }
+        }
+        else if (nAction == DLLA_LINEBOARD_GETWINDOW)
+        {
+          HWND hWndEdit=NULL;
+          BOOL *lpbFound=NULL;
+          BOOL bFound=FALSE;
+
+          if (IsExtCallParamValid(pd->lParam, 2))
+            hWndEdit=(HWND)GetExtCallParam(pd->lParam, 2);
+          if (IsExtCallParamValid(pd->lParam, 3))
+            lpbFound=(BOOL *)GetExtCallParam(pd->lParam, 3);
+
+          if (hWndEdit && lpbFound)
+          {
+            if (StackGetBoard(&hWindowStack, hWndEdit, NULL, GB_READ))
+              bFound=TRUE;
+            *lpbFound=bFound;
           }
         }
       }

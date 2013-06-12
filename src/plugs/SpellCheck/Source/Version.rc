@@ -74,8 +74,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 1,16,0,0
- PRODUCTVERSION 1,16,0,0
+ FILEVERSION 1,17,0,0
+ PRODUCTVERSION 1,17,0,0
  FILEFLAGSMASK 0x17L
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -92,12 +92,12 @@ BEGIN
         BEGIN
             VALUE "Comments", "Юникод версия"
             VALUE "FileDescription", "SpellCheck: проверка орфографии в AkelPad на базе ASpell"
-            VALUE "FileVersion", "1, 16, 0, 0"
+            VALUE "FileVersion", "1, 17, 0, 0"
             VALUE "InternalName", "SpellCheck.dll"
             VALUE "LegalCopyright", " (c) Паныч Я.В. 2010-2013"
             VALUE "OriginalFilename", "SpellCheck.dll"
             VALUE "ProductName", "SpellCheck: проверка орфографии в AkelPad на базе ASpell"
-            VALUE "ProductVersion", "1, 16, 0, 0"
+            VALUE "ProductVersion", "1, 17, 0, 0"
         END
     END
     BLOCK "VarFileInfo"
@@ -203,8 +203,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 1,16,0,0
- PRODUCTVERSION 1,16,0,0
+ FILEVERSION 1,17,0,0
+ PRODUCTVERSION 1,17,0,0
  FILEFLAGSMASK 0x17L
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -221,12 +221,12 @@ BEGIN
         BEGIN
             VALUE "Comments", "Юнікод версія"
             VALUE "FileDescription", "SpellCheck: перевірка орфографії у AkelPad на базі ASpell"
-            VALUE "FileVersion", "1, 16, 0, 0"
+            VALUE "FileVersion", "1, 17, 0, 0"
             VALUE "InternalName", "SpellCheck.dll"
             VALUE "LegalCopyright", " (c) Панич Я.В. 2010-2013"
             VALUE "OriginalFilename", "SpellCheck.dll"
             VALUE "ProductName", "SpellCheck: перевірка орфографії у AkelPad на базі ASpell"
-            VALUE "ProductVersion", "1, 16, 0, 0"
+            VALUE "ProductVersion", "1, 17, 0, 0"
         END
     END
     BLOCK "VarFileInfo"
@@ -335,9 +335,9 @@ FONT 8, "MS Shell Dlg", 400, 0, 0x1
 BEGIN
     LTEXT           "Default dictionary",IDC_STATIC,7,4,58,8
     COMBOBOX        IDC_DEFDICT,7,12,187,300,CBS_DROPDOWNLIST | CBS_SORT | WS_VSCROLL | WS_TABSTOP
-    CONTROL         "Show notice about missspellings w/o suggestions",IDC_SHOWNOTICE,
+    CONTROL         "Show notice about misspellings w/o suggestions",IDC_SHOWNOTICE,
                     "Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,30,186,10
-    CONTROL         "Highlight missspelled word",IDC_HIGHLIGHT,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,41,186,10
+    CONTROL         "Highlight misspelled word",IDC_HIGHLIGHT,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,41,186,10
     CONTROL         "Use white list",IDC_WHITELIST,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,52,186,10
     LTEXT           "Background markup setting",IDC_STATIC,7,63,186,8
     COMBOBOX        IDC_STYLE,7,71,166,53,CBS_DROPDOWNLIST | CBS_OWNERDRAWFIXED | WS_VSCROLL | WS_TABSTOP
@@ -376,8 +376,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 1,16,0,0
- PRODUCTVERSION 1,16,0,0
+ FILEVERSION 1,17,0,0
+ PRODUCTVERSION 1,17,0,0
  FILEFLAGSMASK 0x37L
 #ifdef _DEBUG
  FILEFLAGS 0x21L
@@ -394,23 +394,23 @@ BEGIN
         BEGIN
             VALUE "Comments", "Unicode version"
             VALUE "FileDescription", "SpellCheck: ASpell based spellchecker for AkelPad"
-            VALUE "FileVersion", "1, 16, 0, 0"
+            VALUE "FileVersion", "1, 17, 0, 0"
             VALUE "InternalName", "SpellCheck.dll"
             VALUE "LegalCopyright", " (c) Panych Y.W. 2010-2013"
             VALUE "OriginalFilename", "SpellCheck.dll"
             VALUE "ProductName", "SpellCheck: ASpell based spellchecker for AkelPad"
-            VALUE "ProductVersion", "1, 16, 0, 0"
+            VALUE "ProductVersion", "1, 17, 0, 0"
         END
         BLOCK "000904b0"
         BEGIN
             VALUE "Comments", "Unicode version"
             VALUE "FileDescription", "SpellCheck: ASpell based spellchecker for AkelPad"
-            VALUE "FileVersion", "1, 16, 0, 0"
+            VALUE "FileVersion", "1, 17, 0, 0"
             VALUE "InternalName", "SpellCheck.dll"
             VALUE "LegalCopyright", " (c) Panych Y.W. 2010-2013"
             VALUE "OriginalFilename", "SpellCheck.dll"
             VALUE "ProductName", "SpellCheck: ASpell based spellchecker for AkelPad"
-            VALUE "ProductVersion", "1, 16, 0, 0"
+            VALUE "ProductVersion", "1, 17, 0, 0"
         END
     END
     BLOCK "VarFileInfo"

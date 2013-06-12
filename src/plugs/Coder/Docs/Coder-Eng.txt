@@ -1,5 +1,5 @@
 *****************************************************************
-***                 Coder AkelPad plugin v10.8                ***
+***                 Coder AkelPad plugin v11.1                ***
 *****************************************************************
 
 2013 Shengalts Aleksander aka Instructor (Shengalts@mail.ru)

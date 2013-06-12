@@ -3,7 +3,7 @@
 
 IDI_QSEARCH ICON DISCARDABLE "QSearch.ico"
 
-IDD_QSEARCH DIALOGEX 6, 12, 436, 16
+IDD_QSEARCH DIALOGEX 6, 12, 418, 16
 FONT 8, "MS Shell Dlg", 0, 0
 STYLE WS_CHILD | WS_CLIPSIBLINGS | WS_CLIPCHILDREN
 EXSTYLE WS_EX_CONTROLPARENT
@@ -15,16 +15,16 @@ BEGIN
     CONTROL "", IDC_PB_PROGRESS, "msctls_progress32", WS_CHILD | NOT WS_VISIBLE, 
             182, 5, 108, 8
     CONTROL "Match case", IDC_CH_MATCHCASE, "Button", WS_VISIBLE | 
-            WS_CHILD | WS_TABSTOP | BS_AUTOCHECKBOX, 182, 4, 86, 10
+            WS_CHILD | WS_TABSTOP | BS_AUTOCHECKBOX, 182, 4, 82, 10
     CONTROL "Whole word", IDC_CH_WHOLEWORD, "Button", WS_VISIBLE |
-            WS_CHILD | WS_TABSTOP | BS_AUTOCHECKBOX, 270, 4, 80, 10
+            WS_CHILD | WS_TABSTOP | BS_AUTOCHECKBOX, 266, 4, 72, 10
     CONTROL "Highlight all", IDC_CH_HIGHLIGHTALL, "Button", WS_VISIBLE |
-            WS_CHILD | WS_TABSTOP | BS_AUTOCHECKBOX, 352, 4, 80, 10
+            WS_CHILD | WS_TABSTOP | BS_AUTOCHECKBOX, 340, 4, 72, 10
     CONTROL "", IDC_BT_CANCEL, "Button", WS_VISIBLE | WS_CHILD | BS_FLAT | 
             BS_PUSHBUTTON | BS_OWNERDRAW | BS_CENTER | BS_VCENTER, 4, 3, 10, 10
 END
 
-IDD_QSEARCH_NEW_01 DIALOGEX 6, 12, 484, 16
+IDD_QSEARCH_NEW_01 DIALOGEX 6, 12, 466, 16
 FONT 8, "MS Shell Dlg", 0, 0
 STYLE WS_CHILD | WS_CLIPSIBLINGS | WS_CLIPCHILDREN
 EXSTYLE WS_EX_CONTROLPARENT
@@ -40,11 +40,11 @@ BEGIN
     CONTROL "", IDC_PB_PROGRESS, "msctls_progress32", WS_CHILD | NOT WS_VISIBLE, 
             232, 5, 108, 8
     CONTROL "Match case", IDC_CH_MATCHCASE, "Button", WS_VISIBLE | 
-            WS_CHILD | WS_TABSTOP | BS_AUTOCHECKBOX, 230, 4, 86, 10
+            WS_CHILD | WS_TABSTOP | BS_AUTOCHECKBOX, 230, 4, 82, 10
     CONTROL "Whole word", IDC_CH_WHOLEWORD, "Button", WS_VISIBLE |
-            WS_CHILD | WS_TABSTOP | BS_AUTOCHECKBOX, 318, 4, 80, 10
+            WS_CHILD | WS_TABSTOP | BS_AUTOCHECKBOX, 314, 4, 72, 10
     CONTROL "Highlight all", IDC_CH_HIGHLIGHTALL, "Button", WS_VISIBLE |
-            WS_CHILD | WS_TABSTOP | BS_AUTOCHECKBOX, 400, 4, 80, 10
+            WS_CHILD | WS_TABSTOP | BS_AUTOCHECKBOX, 388, 4, 72, 10
     CONTROL "", IDC_BT_CANCEL, "Button", WS_VISIBLE | WS_CHILD | BS_FLAT | 
             BS_PUSHBUTTON | BS_OWNERDRAW | BS_CENTER | BS_VCENTER, 4, 3, 10, 10
 END
@@ -71,8 +71,8 @@ BEGIN
 END
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 5,4,0,0
- PRODUCTVERSION 5,4,0,0
+ FILEVERSION 5,5,0,0
+ PRODUCTVERSION 5,5,0,0
  FILEFLAGSMASK 0x17L
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -90,12 +90,12 @@ BEGIN
             VALUE "Comments", "Pig is really neat! :-)"
             VALUE "CompanyName", "Full of Madness Co."
             VALUE "FileDescription", "QSearch plugin for AkelPad text editor"
-            VALUE "FileVersion", "5, 4, 0, 0"
+            VALUE "FileVersion", "5, 5, 0, 0"
             VALUE "InternalName", "QSearch"
-            VALUE "LegalCopyright", "(C) Sep 2007 - May 2013, Vitaliy Dovgan aka DV"
+            VALUE "LegalCopyright", "(C) Sep 2007 - Jun 2013, Vitaliy Dovgan aka DV"
             VALUE "OriginalFilename", "QSearch.dll"
             VALUE "ProductName", "QSearch plugin for AkelPad text editor"
-            VALUE "ProductVersion", "5, 4, 0, 0"
+            VALUE "ProductVersion", "5, 5, 0, 0"
         END
     END
     BLOCK "VarFileInfo"

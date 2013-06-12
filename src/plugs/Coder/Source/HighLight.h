@@ -21,6 +21,7 @@
 #define DLLA_HIGHLIGHT_GETMARKSTACK        12
 #define DLLA_HIGHLIGHT_ADDWINDOW           50
 #define DLLA_HIGHLIGHT_DELWINDOW           51
+#define DLLA_HIGHLIGHT_GETWINDOW           52
 
 #define FF_FONTSTYLE 0x1
 #define FF_FONTSIZE  0x2

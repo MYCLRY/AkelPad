@@ -40,6 +40,7 @@
 #define DLLA_CODEFOLD_SHOWDOCK   1
 #define DLLA_CODEFOLD_ADDWINDOW  50
 #define DLLA_CODEFOLD_DELWINDOW  51
+#define DLLA_CODEFOLD_GETWINDOW  52
 
 #define INIT_CODEFOLD_HOTKEYS      0x1
 #define INIT_CODEFOLD_WINDOWS      0x2
@@ -117,6 +118,7 @@
 #define FIF_FOLDEND_NOLEFTDELIM     0x00008000  //Don't check delimiters from left of fold end.
 #define FIF_FOLDEND_NORIGHTDELIM    0x00010000  //Don't check delimiters from right of fold end.
 #define FIF_DENYDELIM               0x00020000  //Deny specified delimiters.
+#define FIF_NOLISTFOLD              0x00040000  //Don't show fold in list.
 #define FIF_XMLNAMED_ONETAG         0x10000000  //
 #define FIF_XMLNONAME_ONETAG        0x20000000  //
 #define FIF_XMLNONAME_TWOTAG        0x40000000  //

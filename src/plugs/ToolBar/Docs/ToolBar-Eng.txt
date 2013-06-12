@@ -1,5 +1,5 @@
 *****************************************************************
-***                ToolBar AkelPad plugin v9.5                ***
+***                ToolBar AkelPad plugin v9.7                ***
 *****************************************************************
 
 2013 Shengalts Aleksander aka Instructor (Shengalts@mail.ru)
@@ -179,13 +179,21 @@ Examples:
 
 *** External call ***
 
-Call("ToolBar::Main", 1, "ROWS")
+Call("ToolBar::Main", 1, "ROWS(SHOW)")
   Parameters:
     1
       Open ToolBar with specified rows. See BREAK description.
        If ToolBar is already open, then:
-       - If the specified numbers of rows are equal to the active ones, then panel is closed;
-       - If the specified numbers of rows are not equal to the active ones, then panel stay open and the new set of rows is activated.
-    "ROWS"
-      String with row numbers separated by commas. For example: "1,2,4".
+       - If the specified string of rows are equal to the active one, then panel is closed;
+       - If the specified string of rows are not equal to the active one, then panel stay open and the new set of rows is activated.
+    "ROWS(SHOW)"
+      String with row numbers and they visibility (optionally) separated by commas. For example: "1,2,4" or  "1(1),2(-1),4".
       If "", then all rows displayed.
+      ROWS
+        Row number.
+      SHOW
+        Row visibility (one of the following):
+          -2  don't change row visibility.
+          -1  invert row visibility.
+           0  hide row.
+           1  show row (default).

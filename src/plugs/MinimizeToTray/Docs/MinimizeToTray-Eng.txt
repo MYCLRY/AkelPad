@@ -1,5 +1,5 @@
 *****************************************************************
-***            MinimizeToTray AkelPad plugin v4.0             ***
+***            MinimizeToTray AkelPad plugin v4.1             ***
 *****************************************************************
 
 2013 Shengalts Aleksander aka Instructor (Shengalts@mail.ru)

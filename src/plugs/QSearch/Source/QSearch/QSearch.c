@@ -6,6 +6,13 @@
 #define TEST_UNINIT 0
 
 
+#define AKEL_DLL_VERSION    AKELDLL
+#define EXE_MIN_VERSION_3X  MAKE_IDENTIFIER(-1, -1, -1, -1)
+#define EXE_MIN_VERSION_4X  MAKE_IDENTIFIER(4, 8, 4, 0)
+#define PLUGIN_NAME         "QSearch"
+
+
+
 #if TEST_UNINIT
 HANDLE hLogFile = NULL;
 CRITICAL_SECTION csLog;
@@ -423,10 +430,10 @@ static BOOL doSelectCurrentWord(HWND hEdit, UINT uSelectMode, CHARRANGE_X* pcrNe
 // Identification
 void __declspec(dllexport) DllAkelPadID(PLUGINVERSION *pv)
 {
-    pv->dwAkelDllVersion  = AKELDLL;
-    pv->dwExeMinVersion3x = MAKE_IDENTIFIER(-1, -1, -1, -1);
-    pv->dwExeMinVersion4x = MAKE_IDENTIFIER(4, 8, 3, 0);
-    pv->pPluginName = "QSearch";
+    pv->dwAkelDllVersion  = AKEL_DLL_VERSION;
+    pv->dwExeMinVersion3x = EXE_MIN_VERSION_3X;
+    pv->dwExeMinVersion4x = EXE_MIN_VERSION_4X;
+    pv->pPluginName = PLUGIN_NAME;
 }
 
 // Plugin extern function

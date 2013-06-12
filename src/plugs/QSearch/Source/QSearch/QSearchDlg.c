@@ -2759,6 +2759,7 @@ void qsearchDoSearchText(HWND hEdit, DWORD dwParams)
     if ( g_Options.dwFlags[OPTF_SRCH_USE_REGEXP] )
     {
         dwSearchFlags |= FRF_REGEXP;
+        //dwSearchFlags |= FRF_REGEXPNONEWLINEDOT;
     }
 
     if ( g_Plugin.bOldWindows )

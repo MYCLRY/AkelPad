@@ -318,6 +318,9 @@ Additional options (QSearch panel's popup menu or file
 --------
 History:
 --------
+v.5.5 (Jun 2013)
+ * AkelPad 4.8.4+
+
 v.5.4 (May 2013)
  * AkelPad 4.8.3+
  * now the search ignores "+", "*", "+?" and "*?" at the end of regexp to
@@ -513,5 +516,5 @@ aka Instructor for the AkelPad text editor  ;-)
 The original icon by Yusuke Kamiyamane, http://p.yusukekamiyamane.com/
 The icon has been modified by DV.
 ---------------------------------------------------------------------------
-(C) Sep 2007 - May 2013, Vitaliy Dovgan aka DV
+(C) Sep 2007 - Jun 2013, Vitaliy Dovgan aka DV
           dvv81 <at> ukr <dot> net

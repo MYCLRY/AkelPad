@@ -1,5 +1,5 @@
 *****************************************************************
-***                 Scripts AkelPad plugin v12.6              ***
+***                 Scripts AkelPad plugin v12.7              ***
 *****************************************************************
 
 2013 Шенгальц Александр aka Instructor (Shengalts@mail.ru)
@@ -359,8 +359,8 @@ GetSelStart, GetSelEnd, SetSel, GetSelText, GetTextRange, ReplaceSel будут испол
 
 Аргументы
   hHandle
-    Дескриптор окна редактирования. Если ноль, либо hHandle не являтся окном редактирования AkelEdit/RichEdit20,
-    либо hHandle являтся стандартным окном редактирования, то управление дескрипторами передается программе и
+    Дескриптор окна редактирования. Если ноль, либо hHandle не является окном редактирования AkelEdit/RichEdit20,
+    либо hHandle является стандартным окном редактирования, то управление дескрипторами передается программе и
     возвращается ноль.
 
 Возвращаемое значение
@@ -371,8 +371,8 @@ GetSelStart, GetSelEnd, SetSel, GetSelText, GetTextRange, ReplaceSel будут испол
 
   if (hWndOutput=GetOutputWindow())
   {
-    hWndOutput=AkelPad.SetEditWnd(hWndOutput);
-    AkelPad.SetSel(0, -1);
+    if (AkelPad.SetEditWnd(hWndOutput))
+      AkelPad.SetSel(0, -1);
   }
 
   function GetOutputWindow()
@@ -778,17 +778,18 @@ ________________
   pFindIt
     Текст для поиска.
   nFlags
-    0x00000001  //FRF_DOWN               Найти вниз.
-    0x00000002  //FRF_WHOLEWORD          Найти слово целиком.
-    0x00000004  //FRF_MATCHCASE          Поиск чувствителен к регистру.
-    0x00080000  //FRF_REGEXP             Поиск с регулярными выражениями.
-    0x00100000  //FRF_UP                 Найти вверх.
-    0x00200000  //FRF_BEGINNING          Поиск с начала (использование: FRF_DOWN|FRF_BEGINNING).
-    0x00400000  //FRF_SELECTION          Поиск в выделении (использование: FRF_DOWN|FRF_SELECTION).
-    0x00800000  //FRF_ESCAPESEQ          Поиск с esc-последовательностями.
-    0x01000000  //FRF_ALLFILES           Поиск во всех открытых вкладках (не реализовано).
-    0x08000000  //FRF_CYCLESEARCH        Поиск по кругу.
-    0x10000000  //FRF_CYCLESEARCHPROMPT  Запрос при поиске по кругу.
+    0x00000001  //FRF_DOWN                Найти вниз.
+    0x00000002  //FRF_WHOLEWORD           Найти слово целиком.
+    0x00000004  //FRF_MATCHCASE           Поиск чувствителен к регистру.
+    0x00040000  //FRF_REGEXPNONEWLINEDOT  Символ . в регулярных выражениях обозначает любой символ, кроме новой строки (использование: FRF_REGEXP|FRF_REGEXPNONEWLINEDOT).
+    0x00080000  //FRF_REGEXP              Поиск с регулярными выражениями.
+    0x00100000  //FRF_UP                  Найти вверх.
+    0x00200000  //FRF_BEGINNING           Поиск с начала (использование: FRF_DOWN|FRF_BEGINNING).
+    0x00400000  //FRF_SELECTION           Поиск в выделении (использование: FRF_DOWN|FRF_SELECTION).
+    0x00800000  //FRF_ESCAPESEQ           Поиск с esc-последовательностями.
+    0x01000000  //FRF_ALLFILES            Поиск во всех открытых вкладках (не реализовано).
+    0x08000000  //FRF_CYCLESEARCH         Поиск по кругу.
+    0x10000000  //FRF_CYCLESEARCHPROMPT   Запрос при поиске по кругу.
 
 Возвращаемое значение
   Число. Позиция найденного текста.
@@ -816,17 +817,18 @@ ___________________
   pReplaceWith
     Текст для замены.
   nFlags
-    0x00000001  //FRF_DOWN               Найти вниз.
-    0x00000002  //FRF_WHOLEWORD          Найти слово целиком.
-    0x00000004  //FRF_MATCHCASE          Поиск чувствителен к регистру.
-    0x00080000  //FRF_REGEXP             Поиск с регулярными выражениями.
-    0x00100000  //FRF_UP                 Найти вверх.
-    0x00200000  //FRF_BEGINNING          Поиск с начала (использование: FRF_DOWN|FRF_BEGINNING).
-    0x00400000  //FRF_SELECTION          Поиск в выделении (использование: FRF_DOWN|FRF_SELECTION).
-    0x00800000  //FRF_ESCAPESEQ          Поиск с esc-последовательностями.
-    0x01000000  //FRF_ALLFILES           Поиск во всех открытых вкладках (не реализовано).
-    0x08000000  //FRF_CYCLESEARCH        Поиск по кругу (работает, если bAll == false).
-    0x10000000  //FRF_CYCLESEARCHPROMPT  Запрос при поиске по кругу.
+    0x00000001  //FRF_DOWN                Найти вниз.
+    0x00000002  //FRF_WHOLEWORD           Найти слово целиком.
+    0x00000004  //FRF_MATCHCASE           Поиск чувствителен к регистру.
+    0x00040000  //FRF_REGEXPNONEWLINEDOT  Символ . в регулярных выражениях обозначает любой символ, кроме новой строки (использование: FRF_REGEXP|FRF_REGEXPNONEWLINEDOT).
+    0x00080000  //FRF_REGEXP              Поиск с регулярными выражениями.
+    0x00100000  //FRF_UP                  Найти вверх.
+    0x00200000  //FRF_BEGINNING           Поиск с начала (использование: FRF_DOWN|FRF_BEGINNING).
+    0x00400000  //FRF_SELECTION           Поиск в выделении (использование: FRF_DOWN|FRF_SELECTION).
+    0x00800000  //FRF_ESCAPESEQ           Поиск с esc-последовательностями.
+    0x01000000  //FRF_ALLFILES            Поиск во всех открытых вкладках (не реализовано).
+    0x08000000  //FRF_CYCLESEARCH         Поиск по кругу (работает, если bAll == false).
+    0x10000000  //FRF_CYCLESEARCHPROMPT   Запрос при поиске по кругу.
   bAll
     true   заменить всё.
     false  одна замена.
@@ -995,8 +997,8 @@ ____________
   pWorkDirectory
     Рабочая директория. По умолчанию "". Может содержать %a - директория AkelPad'а, а также переменные окружения, например, %WinDir% - директория Windows.
   nWait
-    0  не ожидать завешения программы, автоматически присвоив возвращаемое значение нулю (по умолчанию).
-    1  ожидать завешения программы и вернуть код выхода указанный программой.
+    0  не ожидать завершения программы, автоматически присвоив возвращаемое значение нулю (по умолчанию).
+    1  ожидать завершения программы и вернуть код выхода указанный программой.
     2  ожидать до тех пор, пока процесс не начнет ожидать ввода от пользователя, и автоматически присвоить возвращаемое значение нулю.
 
 Возвращаемое значение
@@ -1315,7 +1317,7 @@ _________________________________________
   lpCallback
     Функция обратного вызова. См. замечания.
   nArgCount
-    Число аргуметов в функции обратного вызова. См. замечания.
+    Число аргументов в функции обратного вызова. См. замечания.
 
 Замечания
   Если аргументы lpCallback и nArgCount указаны, то pFunction игнорируется.
@@ -1354,18 +1356,18 @@ _________________________________________
 Пример (обратный вызов из VBScript):
   set oSys=AkelPad.SystemFunction()
   nStopAfter=3
-  
+
   set lpEnumWindowsCallback = oSys.RegisterCallback ("", GetRef("EnumWindowsProc"), 2)
   oSys.Call "user32::EnumWindows", lpEnumWindowsCallback, 0
   oSys.UnregisterCallback lpEnumWindowsCallback
-  
+
   Function EnumWindowsProc(hWnd, lParam)
     'Convert hWnd to hex
     hWnd="0x" & Hex(hWnd)
-  
+
     'Show parameters
     WScript.Echo "hWnd=" & hWnd & "; lParam=" & lParam
-  
+
     nStopAfter = nStopAfter - 1
     if nStopAfter <= 0 Then
       EnumWindowsProc = 0
@@ -2018,7 +2020,7 @@ _____________________________
 
 Аргументы
   pClassName
-    Имя класса для разрегистрации.
+    Имя класса для отмены регистрации.
 
 Возвращаемое значение
   true   успешно.

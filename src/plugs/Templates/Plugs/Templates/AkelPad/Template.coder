@@ -60,6 +60,13 @@ Colors:
 ${HighLight_BasicTextColor} ${HighLight_BasicBkColor} ${HighLight_SelTextColor} ${HighLight_SelBkColor} ${HighLight_LineTextColor} ${HighLight_LineBkColor} ${HighLight_LineBorderColor} ${HighLight_AltTextColor} ${HighLight_AltBkColor} ${HighLight_AltBorderColor} ${HighLight_ColumnColor} ${HighLight_MarkerColor} ${HighLight_CaretColor} ${HighLight_UrlColor} ${HighLight_ActiveUrlColor} ${HighLight_VisitUrlColor}
 
 
+BkImage:
+;==================================================
+;BkImageFile              BkImageAlpha
+;==================================================
+${HighLight_BkImageFile}  ${HighLight_BkImageAlpha}
+
+
 AutoMark:
 ;====================================================================================================================
 ;AutoMarkFlags             AutoMarkFontStyle              AutoMarkTextColor              AutoMarkBkColor
@@ -72,6 +79,13 @@ Quotes:
 ;Flags  Font    Color   Color   Quote   Quote   Escape  Quote   Quote
 ;       style   text    bkgrnd  start   end     char    include exclude
 ;======================================================================
+
+
+QuotesRE:
+;=========================================================================================
+;Flags  Pattern                        \BackRef=(FontStyle,ColorText,ColorBk) \BackRef=...
+;=========================================================================================
+;0	`(")([^"\\]*(\\.[^"\\]*)*)(")` `\1=(0,${DEL1},0) \2=(3,${STR},0) \4=(0,${DEL1},0)`
 
 
 Delimiters:
@@ -154,7 +168,8 @@ Blocks:
 ;======================================================================
 ;Abbreviations and blocks
 ;
-; $~abbr   abbreviation.
+; $~abbr   normal abbreviation.
+; $=abbr   exact abbreviation. May contain delimiters.
 ; $[]      set caret to this position. Can be multiple (hot spots).
 ; $[text]  select text. Can be multiple (hot spots).
 ; $$       symbol $.

@@ -1,5 +1,5 @@
 *****************************************************************
-***                  Log AkelPad plugin v3.3                  ***
+***                  Log AkelPad plugin v3.5                  ***
 *****************************************************************
 
 2013 Шенгальц Александр aka Instructor (Shengalts@mail.ru)
@@ -24,7 +24,7 @@ Log::Settings
 
 *** Внешний вызов Log::Output ***
 
-Call("Log::Output", 1, "PROGRAM", "WORKDIR", "REPATTERN", "RETAGS", INPUTCODEPAGE, OUTPUTCODEPAGE, FLAGS)
+Call("Log::Output", 1, "PROGRAM", "WORKDIR", "REPATTERN", "RETAGS", INPUTCODEPAGE, OUTPUTCODEPAGE, FLAGS, "ALIAS")
   Параметры:
     1
       Запустить приложение и захватить вывод.
@@ -67,6 +67,8 @@ Call("Log::Output", 1, "PROGRAM", "WORKDIR", "REPATTERN", "RETAGS", INPUTCODEPAG
    4194304  Приемник для вывода - выделение текущего документа.
    8388608  Приемник для вывода - новая вкладка.
             По умолчанию: приемник для вывода - панель вывода.
+    "ALIAS"
+      Псевдоним для темы Coder плагина, например: ".html". По умочанию не используется.
 
   Пример (вывод в панель вывода):
     Call("Log::Output", 1, `tracert akelpad.sourceforge.net`)
@@ -132,7 +134,7 @@ Call("Log::Output", 3, *EXECSTATE, *PLUGINTHREAD, *PROCESSHANDLE, *PROCESSID)
       return nState;
     }
 
-Call("Log::Output", 4, "TEXT", TEXTLEN, APPEND, CODEPAGE)
+Call("Log::Output", 4, "TEXT", TEXTLEN, APPEND, CODEPAGE, "ALIAS")
   Параметры:
     4
       Установить/Добавить текст в панель вывода. Использовать с помощью Scripts плагина.
@@ -144,7 +146,9 @@ Call("Log::Output", 4, "TEXT", TEXTLEN, APPEND, CODEPAGE)
       0 Заменить весь текст, присутствующий в панели вывода.
       1 Добавить к тексту, присутствующему в панели вывода (по умолчанию).
     CODEPAGE
-      Кодировка вставляемого ANSI текста. Не используется, если текст в формате Unicode. По умолчанию используется системная ANSI кодировка.
+      Кодировка вставляемого ANSI текста. По умолчанию ноль - задействуется системная ANSI кодировка. Не используется, если текст в формате Unicode.
+    "ALIAS"
+      Псевдоним для темы Coder плагина, например: ".html". По умочанию не используется.
 
 Call("Log::Output", 5, "TEXT", TEXTLEN, APPEND)
   То же, что и 4. Оставлено для совместимости.

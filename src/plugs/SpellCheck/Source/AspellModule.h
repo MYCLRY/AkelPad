@@ -2,7 +2,7 @@
 #define ASPELL_ASPELLMODULE__H
 /**
  *		SpellChecker for AkelPad
- *		Panych Y.W. aka FeyFre (c) 2010-2012 (panych.y@gmail.com)
+ *		Panych Y.W. aka FeyFre (c) 2010-2013 (panych.y@gmail.com)
  *
  *		This piece of software is distributed under BSD license.
  *		AkelPad is property of its copyright holders.

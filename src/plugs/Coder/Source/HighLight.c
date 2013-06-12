@@ -366,6 +366,20 @@ void __declspec(dllexport) HighLight(PLUGINDATA *pd)
                 ((HIGHLIGHTWINDOW *)lpManual->lpHighlightWindow)->hDocEdit=lpManual->hDocEdit;
                 ((HIGHLIGHTWINDOW *)lpManual->lpHighlightWindow)->lpUser=lpManual;
 
+                //Create FRAMEDATA in memory
+                {
+                  FRAMEDATA *lpFrameTarget;
+
+                  if (lpFrameTarget=GlobalAlloc(GPTR, sizeof(FRAMEDATA)))
+                  {
+                    SendMessage(hMainWnd, AKD_FRAMEINIT, (WPARAM)NULL, (LPARAM)lpFrameTarget);
+                    lpFrameTarget->ei.hWndEdit=lpManual->hWndEdit;
+                    lpFrameTarget->ei.hDocEdit=lpManual->hDocEdit;
+                    SendMessage(hMainWnd, AKD_FRAMEAPPLYEDIT, 0, (WPARAM)lpFrameTarget);
+                  }
+                  ((HIGHLIGHTWINDOW *)lpManual->lpHighlightWindow)->lpFrame=lpFrameTarget;
+                }
+
                 if (bInitHighLight)
                 {
                   bUpdateTheme=TRUE;
@@ -387,7 +401,35 @@ void __declspec(dllexport) HighLight(PLUGINDATA *pd)
         if (hWndEdit)
         {
           if (lpManual=StackGetManual(&hManualStack, hWndEdit, NULL))
-            StackDeleteManual(&hManualStack, lpManual, CODER_HIGHLIGHT);
+          {
+            if (lpManual->lpHighlightWindow && ((HIGHLIGHTWINDOW *)lpManual->lpHighlightWindow)->lpUser)
+            {
+              StackDeleteManual(&hManualStack, lpManual, CODER_HIGHLIGHT);
+              SendMessage(hWndEdit, AEM_SETRECT, AERC_UPDATE, (LPARAM)NULL);
+            }
+          }
+        }
+      }
+      else if (nAction == DLLA_HIGHLIGHT_GETWINDOW)
+      {
+        MANUALSET *lpManual;
+        HWND hWndEdit=NULL;
+        BOOL *lpbFound=NULL;
+        BOOL bFound=FALSE;
+
+        if (IsExtCallParamValid(pd->lParam, 2))
+          hWndEdit=(HWND)GetExtCallParam(pd->lParam, 2);
+        if (IsExtCallParamValid(pd->lParam, 3))
+          lpbFound=(BOOL *)GetExtCallParam(pd->lParam, 3);
+
+        if (hWndEdit && lpbFound)
+        {
+          if (lpManual=StackGetManual(&hManualStack, hWndEdit, NULL))
+          {
+            if (lpManual->lpHighlightWindow && ((HIGHLIGHTWINDOW *)lpManual->lpHighlightWindow)->lpUser)
+              bFound=TRUE;
+          }
+          *lpbFound=bFound;
         }
       }
     }
@@ -1581,6 +1623,7 @@ void StackDeleteHighLightWindow(STACKHIGHLIGHTWINDOW *hStack, HIGHLIGHTWINDOW *l
   UnmarkSelection(lpHighlightWindow, 0, (DWORD)-1, (DWORD)-1);
   RestoreFontAndColors(lpHighlightWindow);
   UnassignTheme(lpHighlightWindow->hWndEdit);
+  if (lpUser) GlobalFree((HGLOBAL)lpHighlightWindow->lpFrame);
   StackDelete((stack **)&hStack->first, (stack **)&hStack->last, (stack *)lpHighlightWindow);
 
   if (nMDI == WMD_PMDI && !lpUser)

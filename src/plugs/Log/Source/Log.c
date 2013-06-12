@@ -26,6 +26,7 @@
 #define xstrlenW
 #define xstrcpyW
 #define xstrcpynW
+#define xstrcmpiW
 #define xstrcmpinW
 #define xatoiW
 #define xitoaW
@@ -115,9 +116,10 @@
 #define STRID_PREVMATCH                 51
 #define STRID_RUNCMD                    52
 #define STRID_RUNCMDDLG                 53
-#define STRID_PLUGIN                    54
-#define STRID_OK                        55
-#define STRID_CANCEL                    56
+#define STRID_CODERALIAS                54
+#define STRID_PLUGIN                    55
+#define STRID_OK                        56
+#define STRID_CANCEL                    57
 
 #define DLLA_LOGSETTINGS            1
 #define DLLA_LOGOUTPUT_EXEC         1
@@ -182,8 +184,8 @@
 #define OUTF_TARGETNEWTAB    0x00800000
 
 //Patterns
-#define PAT_MICROSOFTGCC    L"^\\s*(.*)[(:](\\d+)([,:](\\d+))?[):]"
-#define PAT_MICROSOFTGCCTAG L"/FILE=$1 /GOTOLINE=$2:$4"
+#define PAT_MICROSOFTGCC    L"^\\s*(.*)([(:](\\d+)[,:](\\d+)[):]|[(:](\\d+)[):])"
+#define PAT_MICROSOFTGCCTAG L"/FILE=$1 /GOTOLINE=$3:$4"
 #define PAT_BORLAND         L"^(\\[.*\\] )?(.*)\\((\\d+)(,(\\d+))?\\)"
 #define PAT_BORLANDTAG      L"/FILE=$2 /GOTOLINE=$3:$5"
 
@@ -222,6 +224,7 @@ typedef struct {
   wchar_t wszCmdLine[COMMANDLINE_SIZE];
   wchar_t wszDir[MAX_PATH];
   wchar_t wszInputWrite[BUFFER_SIZE];
+  wchar_t wszCoderAlias[MAX_PATH];
   HANDLE hInitMutex;
   HANDLE hProcess;
   DWORD dwProcessId;
@@ -235,10 +238,49 @@ typedef struct {
   DWORD dwConsoleProcessId;
 } CONSOLEWINDOW;
 
+//Coder external call
+#define CODER_HIGHLIGHT     0x01
+#define CODER_CODEFOLD      0x02
+
+#define DLLA_CODER_GETALIAS      18
+
+#define DLLA_HIGHLIGHT_ADDWINDOW 50
+#define DLLA_HIGHLIGHT_DELWINDOW 51
+#define DLLA_HIGHLIGHT_GETWINDOW 52
+
+#define DLLA_CODEFOLD_ADDWINDOW  50
+#define DLLA_CODEFOLD_DELWINDOW  51
+#define DLLA_CODEFOLD_GETWINDOW  52
+
+typedef struct {
+  UINT_PTR dwStructSize;
+  INT_PTR nAction;
+  HWND hWndEdit;
+  wchar_t *wpAlias;
+} DLLEXTCODERADDWINDOW;
+
+typedef struct {
+  UINT_PTR dwStructSize;
+  INT_PTR nAction;
+  HWND hWndEdit;
+  BOOL *lpbFound;
+} DLLEXTCODERGETWINDOW;
+
+typedef struct {
+  UINT_PTR dwStructSize;
+  INT_PTR nAction;
+  HWND hWndEdit;
+  AEHDOC hDoc;
+  wchar_t *wpAlias;
+  INT_PTR *lpnAliasLen;
+} DLLEXTCODERGETALIAS;
+
 //Functions prototypes
 void CreateOutput(PLUGINDATA *pd);
 void CreateDock(HWND *hWndDock, DOCK **dkDock, BOOL bShow);
 void DestroyDock(HWND hWndDock, DWORD dwType);
+void SetCoderAlias();
+void RemoveCoderAlias();
 BOOL CALLBACK DockDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
 BOOL CALLBACK DockRunDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
 LRESULT CALLBACK NewOutputProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
@@ -337,6 +379,8 @@ BOOL bOutputDockWaitResize=FALSE;
 BOOL bOnMainStart=FALSE;
 wchar_t wszPattern[BUFFER_SIZE];
 wchar_t wszPatTags[BUFFER_SIZE];
+wchar_t wszCoderAlias[MAX_PATH];
+DWORD dwDllFunction=0;
 int nForceCodePage=CP_OEMCP;
 BOOL bAutoCodePage=TRUE;
 DWORD dwOutputFlags=0;
@@ -384,7 +428,7 @@ void __declspec(dllexport) DllAkelPadID(PLUGINVERSION *pv)
 {
   pv->dwAkelDllVersion=AKELDLL;
   pv->dwExeMinVersion3x=MAKE_IDENTIFIER(-1, -1, -1, -1);
-  pv->dwExeMinVersion4x=MAKE_IDENTIFIER(4, 7, 8, 0);
+  pv->dwExeMinVersion4x=MAKE_IDENTIFIER(4, 8, 4, 0);
   pv->pPluginName="Log";
 }
 
@@ -461,6 +505,7 @@ void __declspec(dllexport) Output(PLUGINDATA *pd)
         unsigned char *pDir=NULL;
         unsigned char *pPattern=NULL;
         unsigned char *pPatTags=NULL;
+        unsigned char *pCoderAlias=NULL;
 
         xmemset(&oe, 0, sizeof(OUTPUTEXEC));
         FillOutputDefault(&oe);
@@ -480,6 +525,8 @@ void __declspec(dllexport) Output(PLUGINDATA *pd)
           oe.nOutputCodePage=(int)GetExtCallParam(pd->lParam, 7);
         if (IsExtCallParamValid(pd->lParam, 8))
           oe.dwOutputFlags=(DWORD)GetExtCallParam(pd->lParam, 8);
+        if (IsExtCallParamValid(pd->lParam, 9))
+          pCoderAlias=(unsigned char *)GetExtCallParam(pd->lParam, 9);
 
         if (pCmd)
         {
@@ -514,6 +561,13 @@ void __declspec(dllexport) Output(PLUGINDATA *pd)
           oe.nInputCodePage=bAutoCodePage?-1:nForceCodePage;
         if (oe.nOutputCodePage == -2)
           oe.nOutputCodePage=bAutoCodePage?-1:nForceCodePage;
+        if (pCoderAlias)
+        {
+          if (pd->dwSupport & PDS_STRANSI)
+            MultiByteToWideChar(CP_ACP, 0, (char *)pCoderAlias, -1, oe.wszCoderAlias, MAX_PATH);
+          else
+            xstrcpynW(oe.wszCoderAlias, (wchar_t *)pCoderAlias, MAX_PATH);
+        }
 
         if (oe.dwOutputFlags & OUTF_HIDEPANEL)
         {
@@ -525,11 +579,13 @@ void __declspec(dllexport) Output(PLUGINDATA *pd)
           if (!nInitOutput)
           {
             CreateOutput(pd);
+            SetCoderAlias();
 
             //Stay in memory, and show as active
             pd->nUnload=UD_NONUNLOAD_ACTIVE;
             return;
           }
+          SetCoderAlias();
           oe.dwExecState=OES_EXECUTED;
           PostMessage(hWndDockDlg, AKDLL_SHOWINPUT, !(oe.dwOutputFlags & OUTF_HIDEINPUT), 0);
           PostMessage(hWndDockDlg, AKDLL_EXECSTART, 0, 0);
@@ -579,9 +635,10 @@ void __declspec(dllexport) Output(PLUGINDATA *pd)
              nAction == DLLA_LOGOUTPUT_SETTEXTW)
     {
       unsigned char *pText=NULL;
+      unsigned char *pCoderAlias=NULL;
       INT_PTR nTextLen=-1;
       BOOL bAppend=TRUE;
-      int nCodePage=CP_ACP;
+      int nCodePage=0;
 
       if (IsExtCallParamValid(pd->lParam, 2))
         pText=(unsigned char *)GetExtCallParam(pd->lParam, 2);
@@ -591,9 +648,21 @@ void __declspec(dllexport) Output(PLUGINDATA *pd)
         bAppend=(BOOL)GetExtCallParam(pd->lParam, 4);
       if (IsExtCallParamValid(pd->lParam, 5))
         nCodePage=(int)GetExtCallParam(pd->lParam, 5);
+      if (IsExtCallParamValid(pd->lParam, 6))
+        pCoderAlias=(unsigned char *)GetExtCallParam(pd->lParam, 6);
 
       if (pText)
       {
+        if (!nCodePage)
+          nCodePage=CP_ACP;
+        if (pCoderAlias)
+        {
+          if (pd->dwSupport & PDS_STRANSI)
+            MultiByteToWideChar(CP_ACP, 0, (char *)pCoderAlias, -1, oe.wszCoderAlias, MAX_PATH);
+          else
+            xstrcpynW(oe.wszCoderAlias, (wchar_t *)pCoderAlias, MAX_PATH);
+        }
+
         if (!nInitOutput)
         {
           oe.dwOutputFlags|=OUTF_HIDEINPUT;
@@ -605,6 +674,7 @@ void __declspec(dllexport) Output(PLUGINDATA *pd)
         //  PostMessage(hWndDockDlg, AKDLL_SHOWINPUT, FALSE, 0);
         //}
 
+        SetCoderAlias();
         GetOutputScroll(&oe);
 
         if (pd->dwSupport & PDS_STRANSI)
@@ -659,19 +729,11 @@ void __declspec(dllexport) Output(PLUGINDATA *pd)
   else
   {
     CreateOutput(pd);
+    SetCoderAlias();
 
     //Stay in memory, and show as active
     pd->nUnload=UD_NONUNLOAD_ACTIVE;
   }
-}
-
-void CreateOutput(PLUGINDATA *pd)
-{
-  InitMain();
-  InitOutput();
-
-  bOutputDockWaitResize=pd->bOnStart;
-  CreateDock(&hWndDockDlg, &dkOutputDlg, !bOutputDockWaitResize);
 }
 
 void __declspec(dllexport) Settings(PLUGINDATA *pd)
@@ -703,6 +765,15 @@ void __declspec(dllexport) Settings(PLUGINDATA *pd)
 
   //If plugin already loaded, stay in memory, but show as non-active
   if (pd->bInMemory) pd->nUnload=UD_NONUNLOAD_NONACTIVE;
+}
+
+void CreateOutput(PLUGINDATA *pd)
+{
+  InitMain();
+  InitOutput();
+
+  bOutputDockWaitResize=pd->bOnStart;
+  CreateDock(&hWndDockDlg, &dkOutputDlg, !bOutputDockWaitResize);
 }
 
 void CreateDock(HWND *hWndDock, DOCK **dkDock, BOOL bShow)
@@ -744,6 +815,150 @@ void CreateDock(HWND *hWndDock, DOCK **dkDock, BOOL bShow)
 void DestroyDock(HWND hWndDock, DWORD dwType)
 {
   SendMessage(hWndDock, WM_COMMAND, IDCANCEL, dwType);
+}
+
+void SetCoderAlias()
+{
+  if (*oe.wszCoderAlias || dwDllFunction)
+  {
+    PLUGINFUNCTION *pfHighLight;
+    PLUGINFUNCTION *pfCodeFold;
+    PLUGINCALLSENDW pcs;
+    DLLEXTCODERGETALIAS decga;
+    DLLEXTCODERADDWINDOW decaw;
+    DLLEXTCODERGETWINDOW decgw;
+    wchar_t wszAlias[MAX_PATH];
+    INT_PTR nAliasLen=0;
+    BOOL bFound=FALSE;
+
+    pfHighLight=(PLUGINFUNCTION *)SendMessage(hMainWnd, AKD_DLLFINDW, (WPARAM)L"Coder::HighLight", 0);
+    pfCodeFold=(PLUGINFUNCTION *)SendMessage(hMainWnd, AKD_DLLFINDW, (WPARAM)L"Coder::CodeFold", 0);
+
+    if ((pfHighLight && pfHighLight->bRunning) ||
+        (pfCodeFold && pfCodeFold->bRunning))
+    {
+      //Check is window already associated
+      if (!bFound && pfHighLight && pfHighLight->bRunning)
+      {
+        decgw.dwStructSize=sizeof(DLLEXTCODERGETWINDOW);
+        decgw.nAction=DLLA_HIGHLIGHT_GETWINDOW;
+        decgw.hWndEdit=hWndOutputView;
+        decgw.lpbFound=&bFound;
+
+        pcs.pFunction=L"Coder::HighLight";
+        pcs.lParam=(LPARAM)&decgw;
+        pcs.dwSupport=PDS_STRWIDE;
+        SendMessage(hMainWnd, AKD_DLLCALLW, 0, (LPARAM)&pcs);
+      }
+      if (!bFound && pfCodeFold && pfCodeFold->bRunning)
+      {
+        decgw.dwStructSize=sizeof(DLLEXTCODERGETWINDOW);
+        decgw.nAction=DLLA_CODEFOLD_GETWINDOW;
+        decgw.hWndEdit=hWndOutputView;
+        decgw.lpbFound=&bFound;
+
+        pcs.pFunction=L"Coder::CodeFold";
+        pcs.lParam=(LPARAM)&decgw;
+        pcs.dwSupport=PDS_STRWIDE;
+        SendMessage(hMainWnd, AKD_DLLCALLW, 0, (LPARAM)&pcs);
+      }
+
+      //If window associated, get current alias and compare with a new one (oe.wszCoderAlias).
+      if (bFound)
+      {
+        decga.dwStructSize=sizeof(DLLEXTCODERGETALIAS);
+        decga.nAction=DLLA_CODER_GETALIAS;
+        decga.hWndEdit=hWndOutputView;
+        decga.hDoc=NULL;
+        decga.wpAlias=wszAlias;
+        decga.lpnAliasLen=&nAliasLen;
+
+        pcs.pFunction=L"Coder::Settings";
+        pcs.lParam=(LPARAM)&decga;
+        pcs.dwSupport=PDS_STRWIDE;
+        SendMessage(hMainWnd, AKD_DLLCALLW, 0, (LPARAM)&pcs);
+
+        if (xstrcmpiW(wszAlias, oe.wszCoderAlias))
+          RemoveCoderAlias();
+        else
+          return;
+      }
+
+      if (*oe.wszCoderAlias)
+      {
+        //Associate window with Coder theme
+        if (pfHighLight && pfHighLight->bRunning)
+        {
+          decaw.dwStructSize=sizeof(DLLEXTCODERADDWINDOW);
+          decaw.nAction=DLLA_HIGHLIGHT_ADDWINDOW;
+          decaw.hWndEdit=hWndOutputView;
+          decaw.wpAlias=oe.wszCoderAlias;
+
+          pcs.pFunction=L"Coder::HighLight";
+          pcs.lParam=(LPARAM)&decaw;
+          pcs.dwSupport=PDS_STRWIDE;
+          SendMessage(hMainWnd, AKD_DLLCALLW, 0, (LPARAM)&pcs);
+
+          dwDllFunction|=CODER_HIGHLIGHT;
+        }
+        if (pfCodeFold && pfCodeFold->bRunning)
+        {
+          decaw.dwStructSize=sizeof(DLLEXTCODERADDWINDOW);
+          decaw.nAction=DLLA_CODEFOLD_ADDWINDOW;
+          decaw.hWndEdit=hWndOutputView;
+          decaw.wpAlias=oe.wszCoderAlias;
+
+          pcs.pFunction=L"Coder::CodeFold";
+          pcs.lParam=(LPARAM)&decaw;
+          pcs.dwSupport=PDS_STRWIDE;
+          SendMessage(hMainWnd, AKD_DLLCALLW, 0, (LPARAM)&pcs);
+
+          dwDllFunction|=CODER_CODEFOLD;
+        }
+      }
+    }
+  }
+}
+
+void RemoveCoderAlias()
+{
+  if (dwDllFunction)
+  {
+    PLUGINFUNCTION *pfHighLight;
+    PLUGINFUNCTION *pfCodeFold;
+    PLUGINCALLSENDW pcs;
+    DLLEXTCODERADDWINDOW decaw;
+
+    if (dwDllFunction & CODER_CODEFOLD)
+    {
+      if ((pfCodeFold=(PLUGINFUNCTION *)SendMessage(hMainWnd, AKD_DLLFINDW, (WPARAM)L"Coder::CodeFold", 0)) && pfCodeFold->bRunning)
+      {
+        decaw.dwStructSize=sizeof(DLLEXTCODERADDWINDOW);
+        decaw.nAction=DLLA_CODEFOLD_DELWINDOW;
+        decaw.hWndEdit=hWndOutputView;
+
+        pcs.pFunction=L"Coder::CodeFold";
+        pcs.lParam=(LPARAM)&decaw;
+        pcs.dwSupport=PDS_STRWIDE;
+        SendMessage(hMainWnd, AKD_DLLCALLW, 0, (LPARAM)&pcs);
+      }
+    }
+    if (dwDllFunction & CODER_HIGHLIGHT)
+    {
+      if ((pfHighLight=(PLUGINFUNCTION *)SendMessage(hMainWnd, AKD_DLLFINDW, (WPARAM)L"Coder::HighLight", 0)) && pfHighLight->bRunning)
+      {
+        decaw.dwStructSize=sizeof(DLLEXTCODERADDWINDOW);
+        decaw.nAction=DLLA_HIGHLIGHT_DELWINDOW;
+        decaw.hWndEdit=hWndOutputView;
+
+        pcs.pFunction=L"Coder::HighLight";
+        pcs.lParam=(LPARAM)&decaw;
+        pcs.dwSupport=PDS_STRWIDE;
+        SendMessage(hMainWnd, AKD_DLLCALLW, 0, (LPARAM)&pcs);
+      }
+    }
+    dwDllFunction=0;
+  }
 }
 
 BOOL CALLBACK DockDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -916,6 +1131,9 @@ BOOL CALLBACK DockDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     else if (LOWORD(wParam) == IDC_CLOSE ||
              LOWORD(wParam) == IDCANCEL)
     {
+      if (!(lParam & DKT_ONMAINFINISH))
+        RemoveCoderAlias();
+
       //Save OF_DOCKRECT
       if (dwSaveFlags)
       {
@@ -1423,6 +1641,7 @@ BOOL CALLBACK OutputSetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
   static HWND hWndPrevMatchKey;
   static HWND hWndRunCmdKey;
   static HWND hWndRunCmdDlgKey;
+  static HWND hWndCoderAliasEdit;
   static HMENU hMenuPattern;
   static HMENU hMenuPatTags;
 
@@ -1446,6 +1665,7 @@ BOOL CALLBACK OutputSetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
     hWndPrevMatchKey=GetDlgItem(hDlg, IDC_OUTPUT_SETUP_PREVMATCH_KEY);
     hWndRunCmdKey=GetDlgItem(hDlg, IDC_OUTPUT_SETUP_RUNCMD_KEY);
     hWndRunCmdDlgKey=GetDlgItem(hDlg, IDC_OUTPUT_SETUP_RUNCMDDLG_KEY);
+    hWndCoderAliasEdit=GetDlgItem(hDlg, IDC_OUTPUT_SETUP_CODERALIAS_EDIT);
 
     if (lpCodepageList=(int *)SendMessage(hMainWnd, AKD_GETCODEPAGELIST, (WPARAM)NULL, 0))
     {
@@ -1471,6 +1691,7 @@ BOOL CALLBACK OutputSetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
     SetDlgItemTextWide(hDlg, IDC_OUTPUT_SETUP_PREVMATCH_LABEL, GetLangStringW(wLangModule, STRID_PREVMATCH));
     SetDlgItemTextWide(hDlg, IDC_OUTPUT_SETUP_RUNCMD_LABEL, GetLangStringW(wLangModule, STRID_RUNCMD));
     SetDlgItemTextWide(hDlg, IDC_OUTPUT_SETUP_RUNCMDDLG_LABEL, GetLangStringW(wLangModule, STRID_RUNCMDDLG));
+    SetDlgItemTextWide(hDlg, IDC_OUTPUT_SETUP_CODERALIAS_LABEL, GetLangStringW(wLangModule, STRID_CODERALIAS));
     SetDlgItemTextWide(hDlg, IDOK, GetLangStringW(wLangModule, STRID_OK));
     SetDlgItemTextWide(hDlg, IDCANCEL, GetLangStringW(wLangModule, STRID_CANCEL));
 
@@ -1504,6 +1725,7 @@ BOOL CALLBACK OutputSetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 
     SetWindowTextWide(hWndPatternEdit, wszPattern);
     SetWindowTextWide(hWndPatTagsEdit, wszPatTags);
+    SetWindowTextWide(hWndCoderAliasEdit, wszCoderAlias);
 
     if (dwOutputFlags & OUTF_SAVEALL)
       SendMessage(hWndSaveAllCheck, BM_SETCHECK, BST_CHECKED, 0);
@@ -1589,6 +1811,7 @@ BOOL CALLBACK OutputSetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 
       GetWindowTextWide(hWndPatternEdit, wszPattern, BUFFER_SIZE);
       GetWindowTextWide(hWndPatTagsEdit, wszPatTags, BUFFER_SIZE);
+      GetWindowTextWide(hWndCoderAliasEdit, wszCoderAlias, MAX_PATH);
 
       dwOutputFlagsOld=dwOutputFlags;
       dwOutputFlags=0;
@@ -2477,6 +2700,7 @@ void FillOutputDefault(OUTPUTEXEC *oe)
 {
   xstrcpynW(oe->wszPattern, wszPattern, BUFFER_SIZE);
   GetPatOptions(wszPatTags, oe);
+  xstrcpynW(oe->wszCoderAlias, wszCoderAlias, BUFFER_SIZE);
   oe->nInputCodePage=bAutoCodePage?-1:nForceCodePage;
   oe->nOutputCodePage=bAutoCodePage?-1:nForceCodePage;
   oe->dwOutputFlags=dwOutputFlags;
@@ -3035,6 +3259,7 @@ void ReadOptions(DWORD dwFlags)
     WideOption(hOptions, L"OutputForceCodepage", PO_DWORD, (LPBYTE)&nForceCodePage, sizeof(DWORD));
     WideOption(hOptions, L"Pattern", PO_STRING, (LPBYTE)wszPattern, sizeof(wszPattern));
     WideOption(hOptions, L"PatTags", PO_STRING, (LPBYTE)wszPatTags, sizeof(wszPatTags));
+    WideOption(hOptions, L"CoderAlias", PO_STRING, (LPBYTE)wszCoderAlias, sizeof(wszCoderAlias));
     WideOption(hOptions, L"OutputFlags", PO_DWORD, (LPBYTE)&dwOutputFlags, sizeof(DWORD));
     WideOption(hOptions, L"NextMatchKey", PO_DWORD, (LPBYTE)&dwNextMatchKey, sizeof(DWORD));
     WideOption(hOptions, L"PrevMatchKey", PO_DWORD, (LPBYTE)&dwPrevMatchKey, sizeof(DWORD));
@@ -3070,6 +3295,7 @@ void SaveOptions(DWORD dwFlags)
       WideOption(hOptions, L"OutputForceCodepage", PO_DWORD, (LPBYTE)&nForceCodePage, sizeof(DWORD));
       WideOption(hOptions, L"Pattern", PO_STRING, (LPBYTE)wszPattern, ((int)xstrlenW(wszPattern) + 1) * sizeof(wchar_t));
       WideOption(hOptions, L"PatTags", PO_STRING, (LPBYTE)wszPatTags, ((int)xstrlenW(wszPatTags) + 1) * sizeof(wchar_t));
+      WideOption(hOptions, L"CoderAlias", PO_STRING, (LPBYTE)wszCoderAlias, ((int)xstrlenW(wszCoderAlias) + 1) * sizeof(wchar_t));
       WideOption(hOptions, L"OutputFlags", PO_DWORD, (LPBYTE)&dwOutputFlags, sizeof(DWORD));
       WideOption(hOptions, L"NextMatchKey", PO_DWORD, (LPBYTE)&dwNextMatchKey, sizeof(DWORD));
       WideOption(hOptions, L"PrevMatchKey", PO_DWORD, (LPBYTE)&dwPrevMatchKey, sizeof(DWORD));
@@ -3209,6 +3435,8 @@ const wchar_t* GetLangStringW(LANGID wLangID, int nStringID)
       return L"\x0412\x044B\x043F\x043E\x043B\x043D\x0438\x0442\x044C\x0020\x043A\x043E\x043C\x0430\x043D\x0434\x0443";
     if (nStringID == STRID_RUNCMDDLG)
       return L"\x0414\x0438\x0430\x043B\x043E\x0433\x0020\x0437\x0430\x043F\x0443\x0441\x043A\x0430";
+    if (nStringID == STRID_CODERALIAS)
+      return L"\x041F\x0441\x0435\x0432\x0434\x043E\x043D\x0438\x043C\x0020\x0434\x043B\x044F\x0020\x0442\x0435\x043C\x044B\x0020\x0043\x006F\x0064\x0065\x0072";
     if (nStringID == STRID_PLUGIN)
       return L"%s \x043F\x043B\x0430\x0433\x0438\x043D";
     if (nStringID == STRID_OK)
@@ -3320,6 +3548,8 @@ const wchar_t* GetLangStringW(LANGID wLangID, int nStringID)
       return L"Execute command";
     if (nStringID == STRID_RUNCMDDLG)
       return L"Execute dialog";
+    if (nStringID == STRID_CODERALIAS)
+      return L"Alias for Coder theme";
     if (nStringID == STRID_PLUGIN)
       return L"%s plugin";
     if (nStringID == STRID_OK)
@@ -3373,6 +3603,7 @@ void InitCommon(PLUGINDATA *pd)
   wszRunDir[0]=L'\0';
   xstrcpynW(wszPattern, PAT_MICROSOFTGCC, BUFFER_SIZE);
   xstrcpynW(wszPatTags, PAT_MICROSOFTGCCTAG, BUFFER_SIZE);
+  wszCoderAlias[0]=L'\0';
   ReadOptions(0);
 
   xmemset(&oe, 0, sizeof(OUTPUTEXEC));

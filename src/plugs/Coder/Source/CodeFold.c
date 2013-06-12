@@ -33,6 +33,7 @@ BOOL bCodeFoldDockWaitResize=FALSE;
 BOOL bCodeFoldDialogRectSave=FALSE;
 STACKFOLDWINDOW hFoldWindowsStack={0};
 FOLDWINDOW *lpCurrentFoldWindow=NULL;
+BOOL bFocusResetList=FALSE;
 BOOL bResetFold=FALSE;
 BOOL bIgnoreFilter=FALSE;
 FRAMEDATA *lpLastPostUpdateFrame=NULL;
@@ -152,7 +153,7 @@ void __declspec(dllexport) CodeFold(PLUGINDATA *pd)
 
                   if (nInitCodeFold)
                   {
-                    SetActiveEdit(hWndEdit, hWndCodeFoldList, SAE_RESETFOLD|SAE_RESETLIST);
+                    SendMessage(hMainWnd, AKD_SETEDITNOTIFY, (LPARAM)hWndEdit, 0);
                     UpdateEdit(hWndEdit, UE_ALLRECT);
                   }
                 }
@@ -171,7 +172,32 @@ void __declspec(dllexport) CodeFold(PLUGINDATA *pd)
           if (hWndEdit)
           {
             if (lpManual=StackGetManual(&hManualStack, hWndEdit, NULL))
-              StackDeleteManual(&hManualStack, lpManual, CODER_CODEFOLD);
+            {
+              if (lpManual->lpFoldWindow && ((FOLDWINDOW *)lpManual->lpFoldWindow)->lpUser)
+                StackDeleteManual(&hManualStack, lpManual, CODER_CODEFOLD);
+            }
+          }
+        }
+        else if (nAction == DLLA_CODEFOLD_GETWINDOW)
+        {
+          MANUALSET *lpManual;
+          HWND hWndEdit=NULL;
+          BOOL *lpbFound=NULL;
+          BOOL bFound=FALSE;
+
+          if (IsExtCallParamValid(pd->lParam, 2))
+            hWndEdit=(HWND)GetExtCallParam(pd->lParam, 2);
+          if (IsExtCallParamValid(pd->lParam, 3))
+            lpbFound=(BOOL *)GetExtCallParam(pd->lParam, 3);
+
+          if (hWndEdit && lpbFound)
+          {
+            if (lpManual=StackGetManual(&hManualStack, hWndEdit, NULL))
+            {
+              if (lpManual->lpFoldWindow && ((FOLDWINDOW *)lpManual->lpFoldWindow)->lpUser)
+                bFound=TRUE;
+            }
+            *lpbFound=bFound;
           }
         }
       }
@@ -494,7 +520,7 @@ BOOL CALLBACK CodeFoldDockDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lP
         else
           nShowDock=CFSD_ALWAYS;
       }
-      lpCurrentFoldWindow=SetActiveEdit(GetCurEdit(), hWndCodeFoldList, SAE_RESETLIST|SAE_IGNOREMAXFOLDS);
+      lpCurrentFoldWindow=SetActiveEdit(GetFocusEdit(), hWndCodeFoldList, SAE_RESETLIST|SAE_IGNOREMAXFOLDS);
       dwSaveFlags|=OF_CODEFOLD_SETTINGS;
 
       if (dwSaveFlags)
@@ -708,7 +734,7 @@ BOOL CALLBACK CodeFold1SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM 
 
       if (nInitCodeFold)
       {
-        lpCurrentFoldWindow=SetActiveEdit(GetCurEdit(), hWndCodeFoldList, SAE_RESETLIST);
+        lpCurrentFoldWindow=SetActiveEdit(GetFocusEdit(), hWndCodeFoldList, SAE_RESETLIST);
       }
 
       if (pshn->lParam)
@@ -1402,7 +1428,8 @@ BOOL CALLBACK CodeFoldParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM
                   CreateAllFolds(&fwChange->pfwd->hTempStack, fwChange->hWndEdit);
 
                   //Update list and edit control
-                  SetActiveEdit(fwChange->hWndEdit, hWndCodeFoldList, SAE_RESETLIST);
+                  if (lpCurrentFoldWindow && lpCurrentFoldWindow->hWndEdit == fwChange->hWndEdit)
+                    SetActiveEdit(fwChange->hWndEdit, hWndCodeFoldList, SAE_RESETLIST);
 
                   if (bNeedUpdate)
                     SendMessage(fwChange->hWndEdit, AEM_UPDATEFOLD, 0, -1);
@@ -1934,6 +1961,21 @@ BOOL CALLBACK CodeFoldEditMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM l
       }
     }
   }
+  else if (uMsg == WM_SETFOCUS)
+  {
+    MANUALSET *lpManual;
+
+    if (bFocusResetList || ((lpManual=StackGetManual(&hManualStack, hWnd, NULL)) && lpManual->lpFoldWindow && ((FOLDWINDOW *)lpManual->lpFoldWindow)->lpUser))
+      lpCurrentFoldWindow=SetActiveEdit(hWnd, hWndCodeFoldList, SAE_RESETLIST);
+    bFocusResetList=FALSE;
+  }
+  else if (uMsg == WM_KILLFOCUS)
+  {
+    MANUALSET *lpManual;
+
+    if ((lpManual=StackGetManual(&hManualStack, hWnd, NULL)) && lpManual->lpFoldWindow && ((FOLDWINDOW *)lpManual->lpFoldWindow)->lpUser)
+      bFocusResetList=TRUE;
+  }
   return FALSE;
 }
 
@@ -2457,7 +2499,10 @@ void StackEndBoard(STACKFOLDWINDOW *hStack, FOLDWINDOW *lpFoldWindow)
 
   if (nMDI == WMD_PMDI)
   {
-    hWndCurEdit=GetCurEdit();
+    if (lpFoldWindow == NULL)
+      hWndCurEdit=GetCurEdit();
+    else
+      hWndCurEdit=lpFoldWindow->hWndEdit;
     SendMessage(hWndCurEdit, AEM_UPDATESCROLLBAR, SB_BOTH, 0);
     SendMessage(hWndCurEdit, AEM_UPDATECARET, 0, 0);
   }
@@ -3291,7 +3336,8 @@ void FillTreeView(HWND hWndTreeView, FOLDWINDOW *lpFoldWindow, const wchar_t *wp
   {
     while (lpFold)
     {
-      if (FoldData(lpFold)->wpName && xstrstrW(FoldData(lpFold)->wpName, -1, wpFilter, -1, FALSE, NULL, NULL))
+      if (!(FoldData(lpFold)->lpFoldInfo->dwFlags & FIF_NOLISTFOLD) &&
+            FoldData(lpFold)->wpName && xstrstrW(FoldData(lpFold)->wpName, -1, wpFilter, -1, FALSE, NULL, NULL))
       {
         tvis.item.mask=TVIF_TEXT|TVIF_PARAM;
         tvis.item.pszText=FoldData(lpFold)->wpName;
@@ -3308,14 +3354,16 @@ void FillTreeView(HWND hWndTreeView, FOLDWINDOW *lpFoldWindow, const wchar_t *wp
   {
     while (lpFold)
     {
-      tvis.item.mask=TVIF_TEXT|TVIF_PARAM;
-      tvis.item.pszText=FoldData(lpFold)->wpName;
-      tvis.item.cchTextMax=MAX_PATH;
-      tvis.item.lParam=(LPARAM)lpFold;
-      tvis.hInsertAfter=TVI_LAST;
-      tvis.hParent=lpFold->parent?FoldData(lpFold->parent)->hItem:NULL;
-      FoldData(lpFold)->hItem=(HTREEITEM)TreeView_InsertItemWide(hWndTreeView, &tvis);
-
+      if (!(FoldData(lpFold)->lpFoldInfo->dwFlags & FIF_NOLISTFOLD))
+      {
+        tvis.item.mask=TVIF_TEXT|TVIF_PARAM;
+        tvis.item.pszText=FoldData(lpFold)->wpName;
+        tvis.item.cchTextMax=MAX_PATH;
+        tvis.item.lParam=(LPARAM)lpFold;
+        tvis.hInsertAfter=TVI_LAST;
+        tvis.hParent=lpFold->parent?FoldData(lpFold->parent)->hItem:NULL;
+        FoldData(lpFold)->hItem=(HTREEITEM)TreeView_InsertItemWide(hWndTreeView, &tvis);
+      }
       lpFold=AEC_NextFold(lpFold, TRUE);
     }
   }

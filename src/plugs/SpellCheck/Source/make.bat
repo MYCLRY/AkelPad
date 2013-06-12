@@ -14,15 +14,15 @@ SET INCLUDE_OLD=%INCLUDE%
 SET LIB_OLD=%LIB%
 SET PATH_OLD=%PATH%
 
-IF /I .static==.%1 (
-	REM compile in libc[for MSVC 6 and 7 only]
-	SET CRT_LIB=libc.lib
-	SET CRT_FLAG=/ML
-) ELSE (
+rem IF /I .static==.%1 (
+rem 	REM compile in libc[for MSVC 6 and 7 only]
+rem 	SET CRT_LIB=libc.lib
+rem 	SET CRT_FLAG=/ML
+rem ) ELSE (
 	REM libc in shared dll
 	SET CRT_LIB=msvcrt.lib
 	SET CRT_FLAG=/MD
-)
+rem )
 
 CALL "C:\Program Files\Microsoft Visual Studio\VC98\bin\vcvars32.bat"
 SET SRCDIR=.
@@ -33,7 +33,7 @@ SET CSOURCE=%SRCDIR%\*.cpp
 SET RCSOURCE=%SRCDIR%\version.rc
 SET LINKSOURCE=%INTDIR%\*.res %INTDIR%\*.obj
 
-SET PSDK=d:\.SYSTEM\Microsoft SDKs\Windows\v5.0
+SET PSDK=c:\psdk
 SET INCLUDE=%PSDK%\INCLUDE;%INCLUDE%
 SET LIB=%PSDK%\LIB;%LIB%
 

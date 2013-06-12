@@ -1,5 +1,5 @@
 *****************************************************************
-***              ContextMenu AkelPad plugin v13.4             ***
+***              ContextMenu AkelPad plugin v13.5             ***
 *****************************************************************
 
 2013 Shengalts Aleksander aka Instructor (Shengalts@mail.ru)
@@ -292,6 +292,7 @@ Call("ContextMenu::Show", 1, "X", "Y", INDEX, "SUBMENU")
     - If X and Y equal to "-3", then edit window right-bottom corner position is used.
     - If X and Y equal to "-4", then edit window left-bottom corner position is used.
     - If X and Y equal to "-5", then edit window caret position is used.
+    - If X and Y equal to "-6", then cursor position is used.
     - INDEX is zero-based.
 
 Call("ContextMenu::Show", 2, "X", "Y")

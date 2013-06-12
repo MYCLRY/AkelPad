@@ -138,6 +138,11 @@
 #define TOOLBARBACKGROUNDA   "ToolbarBG"
 #define TOOLBARBACKGROUNDW  L"ToolbarBG"
 
+#define ROWSHOW_UNCHANGE -2
+#define ROWSHOW_INVERT   -1
+#define ROWSHOW_OFF       0
+#define ROWSHOW_ON        1
+
 typedef struct _EXTPARAM {
   struct _EXTPARAM *next;
   struct _EXTPARAM *prev;
@@ -315,7 +320,7 @@ void __declspec(dllexport) DllAkelPadID(PLUGINVERSION *pv)
 {
   pv->dwAkelDllVersion=AKELDLL;
   pv->dwExeMinVersion3x=MAKE_IDENTIFIER(-1, -1, -1, -1);
-  pv->dwExeMinVersion4x=MAKE_IDENTIFIER(4, 7, 7, 0);
+  pv->dwExeMinVersion4x=MAKE_IDENTIFIER(4, 8, 4, 0);
   pv->pPluginName="ToolBar";
 }
 
@@ -1378,22 +1383,46 @@ DWORD IsFlagOn(DWORD dwSetFlags, DWORD dwCheckFlags)
 
 int ParseRows(STACKROW *lpRowListStack)
 {
+  STACKROW hCurRowListStack;
   ROWITEM *lpRowItem;
-  const wchar_t *wpCount=wszRowList;
-  int nNumber;
+  wchar_t *wpCount=wszRowList;
+  int nRow;
+  int nShow;
+  BOOL bCurExist;
 
-  FreeRows(lpRowListStack);
+  xmemcpy(&hCurRowListStack, lpRowListStack, sizeof(STACKROW));
+  xmemset(lpRowListStack, 0, sizeof(STACKROW));
 
   if (*wpCount)
   {
-    while (nNumber=(int)xatoiW(wpCount, &wpCount))
+    while (nRow=(int)xatoiW(wpCount, &wpCount))
     {
-      if (!GetRow(lpRowListStack, nNumber))
+      nShow=ROWSHOW_ON;
+      if (*wpCount == L'(')
       {
-        if (!StackInsertIndex((stack **)&lpRowListStack->first, (stack **)&lpRowListStack->last, (stack **)&lpRowItem, -1, sizeof(TOOLBARITEM)))
+        nShow=(int)xatoiW(++wpCount, &wpCount);
+        if (*wpCount == L')') ++wpCount;
+      }
+
+      if (nShow != ROWSHOW_OFF)
+      {
+        if (!hCurRowListStack.nElements || GetRow(&hCurRowListStack, nRow))
+          bCurExist=TRUE;
+        else
+          bCurExist=FALSE;
+
+        if (nShow == ROWSHOW_ON ||
+            (nShow == ROWSHOW_UNCHANGE && bCurExist) ||
+            (nShow == ROWSHOW_INVERT && !bCurExist))
         {
-          lpRowItem->nRow=nNumber;
-          ++lpRowListStack->nElements;
+          if (!GetRow(lpRowListStack, nRow))
+          {
+            if (!StackInsertIndex((stack **)&lpRowListStack->first, (stack **)&lpRowListStack->last, (stack **)&lpRowItem, -1, sizeof(ROWITEM)))
+            {
+              lpRowItem->nRow=nRow;
+              ++lpRowListStack->nElements;
+            }
+          }
         }
       }
 
@@ -1403,6 +1432,15 @@ int ParseRows(STACKROW *lpRowListStack)
         break;
     }
   }
+  FreeRows(&hCurRowListStack);
+
+  //Rebuild rows
+  wpCount=wszRowList;
+  for (lpRowItem=lpRowListStack->first; lpRowItem; lpRowItem=lpRowItem->next)
+  {
+    wpCount+=xprintfW(wpCount, L"%s%d", (lpRowItem == lpRowListStack->first?L"":L","), lpRowItem->nRow);
+  }
+
   return lpRowListStack->nElements;
 }
 
@@ -1930,7 +1968,6 @@ void DestroyToolbarWindow(BOOL bDestroyBG)
   DestroyWindow(hToolbar);
   hToolbar=NULL;
   FreeToolbarData(&hToolbarData);
-  FreeRows(&hRowListStack);
 
   if (bDestroyBG)
   {
@@ -3165,6 +3202,7 @@ void UninitMain()
 
   //Destroy toolbar
   DestroyToolbarWindow(TRUE);
+  FreeRows(&hRowListStack);
 
   if (wszToolBarText)
   {

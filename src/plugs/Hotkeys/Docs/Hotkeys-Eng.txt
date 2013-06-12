@@ -1,5 +1,5 @@
 *****************************************************************
-***                Hotkeys AkelPad plugin v5.5                ***
+***                Hotkeys AkelPad plugin v5.6                ***
 *****************************************************************
 
 2013 Shengalts Aleksander aka Instructor (Shengalts@mail.ru)

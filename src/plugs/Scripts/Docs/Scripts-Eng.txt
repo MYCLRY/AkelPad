@@ -1,5 +1,5 @@
 *****************************************************************
-***                 Scripts AkelPad plugin v12.6              ***
+***                 Scripts AkelPad plugin v12.7              ***
 *****************************************************************
 
 2013 Shengalts Aleksander aka Instructor (Shengalts@mail.ru)
@@ -370,8 +370,8 @@ Example:
 
   if (hWndOutput=GetOutputWindow())
   {
-    hWndOutput=AkelPad.SetEditWnd(hWndOutput);
-    AkelPad.SetSel(0, -1);
+    if (AkelPad.SetEditWnd(hWndOutput))
+      AkelPad.SetSel(0, -1);
   }
 
   function GetOutputWindow()
@@ -777,17 +777,18 @@ Arguments
   pFindIt
     Text to find.
   nFlags
-    0x00000001  //FRF_DOWN               Find down.
-    0x00000002  //FRF_WHOLEWORD          Find whole word.
-    0x00000004  //FRF_MATCHCASE          Search is case-sensitive.
-    0x00080000  //FRF_REGEXP             Search with regular expressions.
-    0x00100000  //FRF_UP                 Find up.
-    0x00200000  //FRF_BEGINNING          Search from beginning (usage: FRF_DOWN|FRF_BEGINNING).
-    0x00400000  //FRF_SELECTION          Search in selection (usage: FRF_DOWN|FRF_SELECTION).
-    0x00800000  //FRF_ESCAPESEQ          Search with escape sequences.
-    0x01000000  //FRF_ALLFILES           Search in all opened MDI documents (not implemented).
-    0x08000000  //FRF_CYCLESEARCH        Cycle search.
-    0x10000000  //FRF_CYCLESEARCHPROMPT  Prompt during cycle search.
+    0x00000001  //FRF_DOWN                Find down.
+    0x00000002  //FRF_WHOLEWORD           Find whole word.
+    0x00000004  //FRF_MATCHCASE           Search is case-sensitive.
+    0x00040000  //FRF_REGEXPNONEWLINEDOT  Symbol . in regular expressions specifies any character except new line (usage: FRF_REGEXP|FRF_REGEXPNONEWLINEDOT).
+    0x00080000  //FRF_REGEXP              Search with regular expressions.
+    0x00100000  //FRF_UP                  Find up.
+    0x00200000  //FRF_BEGINNING           Search from beginning (usage: FRF_DOWN|FRF_BEGINNING).
+    0x00400000  //FRF_SELECTION           Search in selection (usage: FRF_DOWN|FRF_SELECTION).
+    0x00800000  //FRF_ESCAPESEQ           Search with escape sequences.
+    0x01000000  //FRF_ALLFILES            Search in all opened MDI documents (not implemented).
+    0x08000000  //FRF_CYCLESEARCH         Cycle search.
+    0x10000000  //FRF_CYCLESEARCHPROMPT   Prompt during cycle search.
 
 Return Value
   Number. Character position of the next match.
@@ -815,17 +816,18 @@ Arguments
   pReplaceWith
     Text to replace with.
   nFlags
-    0x00000001  //FRF_DOWN               Find down.
-    0x00000002  //FRF_WHOLEWORD          Find whole word.
-    0x00000004  //FRF_MATCHCASE          Search is case-sensitive.
-    0x00080000  //FRF_REGEXP             Search with regular expressions.
-    0x00100000  //FRF_UP                 Find up.
-    0x00200000  //FRF_BEGINNING          Search from beginning (usage: FRF_DOWN|FRF_BEGINNING).
-    0x00400000  //FRF_SELECTION          Search in selection (usage: FRF_DOWN|FRF_SELECTION).
-    0x00800000  //FRF_ESCAPESEQ          Search with escape sequences.
-    0x01000000  //FRF_ALLFILES           Search in all opened MDI documents (not implemented).
-    0x08000000  //FRF_CYCLESEARCH        Cycle search (works, if bAll == false).
-    0x10000000  //FRF_CYCLESEARCHPROMPT  Prompt during cycle search.
+    0x00000001  //FRF_DOWN                Find down.
+    0x00000002  //FRF_WHOLEWORD           Find whole word.
+    0x00000004  //FRF_MATCHCASE           Search is case-sensitive.
+    0x00040000  //FRF_REGEXPNONEWLINEDOT  Symbol . in regular expressions specifies any character except new line (usage: FRF_REGEXP|FRF_REGEXPNONEWLINEDOT).
+    0x00080000  //FRF_REGEXP              Search with regular expressions.
+    0x00100000  //FRF_UP                  Find up.
+    0x00200000  //FRF_BEGINNING           Search from beginning (usage: FRF_DOWN|FRF_BEGINNING).
+    0x00400000  //FRF_SELECTION           Search in selection (usage: FRF_DOWN|FRF_SELECTION).
+    0x00800000  //FRF_ESCAPESEQ           Search with escape sequences.
+    0x01000000  //FRF_ALLFILES            Search in all opened MDI documents (not implemented).
+    0x08000000  //FRF_CYCLESEARCH         Cycle search (works, if bAll == false).
+    0x10000000  //FRF_CYCLESEARCHPROMPT   Prompt during cycle search.
   bAll
     true   replace all.
     false  replace single.

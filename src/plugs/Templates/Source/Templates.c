@@ -1,6 +1,6 @@
 /**
  *		Templates for AkelPad
- *		Panych Y.W. aka FeyFre (c) 2010-2012 (panych.y@gmail.com)
+ *		Panych Y.W. aka FeyFre (c) 2010-2013 (panych.y@gmail.com)
  *
  *		This piece of software is distributed under BSD license.
  *		AkelPad is property of its copyright holders.
@@ -948,8 +948,8 @@ static void CALLCONV OpenTemplate(HWND hWnd, BOOL bInsert)
 {
 	LRESULT			res = 0;
 	LRESULT			pos = 0;
-	TEXTFINDW		tf = {FRF_BEGINNING|FR_DOWN|FR_MATCHCASE,CARETPOSMARKER,-1};
-	TEXTREPLACEW	tr = {FRF_BEGINNING|FR_DOWN|FR_MATCHCASE,CARETPOSMARKER,-1,L"",0,TRUE,0};
+	TEXTFINDW		tf = {FRF_BEGINNING|FRF_DOWN|FRF_MATCHCASE,CARETPOSMARKER,-1};
+	TEXTREPLACEW	tr = {FRF_BEGINNING|FRF_DOWN|FRF_MATCHCASE,CARETPOSMARKER,-1,L"",0,TRUE,0};
 	DETECTFILEW	dc = {g_szTemplate,1024,ADT_BINARY_ERROR|ADT_DETECT_BOM|ADT_DETECT_CODEPAGE,0,FALSE};
 	if(g_szTemplate[0]/*!<EMPTY>*/ && (EDT_SUCCESS == SendMessageW(g_hMainWnd, AKD_DETECTFILEW,0,(LPARAM)&dc)))
 	{
@@ -1009,7 +1009,7 @@ static void CALLCONV OpenTemplate(HWND hWnd, BOOL bInsert)
 						//! Mark newly inserted text
 						cursel.cpMax = cursel.cpMin + lSize;
 						SendMessageW(hWnd,PEM_EXSETSEL,0,(LPARAM)&cursel);
-						tr.dwFlags = FRF_SELECTION|FR_DOWN|FR_MATCHCASE;
+						tr.dwFlags = FRF_SELECTION|FRF_DOWN|FRF_MATCHCASE;
 						//! Remove all markers
 						SendMessageW(g_hMainWnd,AKD_TEXTREPLACEW,(WPARAM)hWnd,(LPARAM)&tr);
 						//! Put caret after inserted text
