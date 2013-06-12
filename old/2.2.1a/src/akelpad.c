@@ -55,7 +55,11 @@ int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE hPrev, PTSTR szCmdLine, int 
     UNREFERENCED_PARAMETER(hPrev);
 
     hKernel32=LoadLibrary(_T("kernel32.dll"));
+#if defined(UNICODE)
+    GetCPInfoExPtr=(int(WINAPI *)(UINT,DWORD,LPCPINFOEX))GetProcAddress(hKernel32,"GetCPInfoExW");
+#else
     GetCPInfoExPtr=(int(WINAPI *)(UINT,DWORD,LPCPINFOEX))GetProcAddress(hKernel32,"GetCPInfoExA");
+#endif // defined(UNICODE)
 
     CmdLine=szCmdLine;
     g_iCmdShow=iCmdShow;
