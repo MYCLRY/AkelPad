@@ -2,11 +2,9 @@
 #define __CODEPAGE_H__
 
 #ifndef FOREIGN_BUILD
-#define WINDOWS_1251 1251
 #define DOS_866 866
 #define KOI8_R 20866
 #else
-#define WINDOWS_1251 CP_ACP
 #define DOS_866 CP_OEMCP
 #define KOI8_R 20866
 #endif
@@ -14,6 +12,8 @@
 #define CP_UNICODE_UCS2_LE -17
 #define CP_UNICODE_UCS2_BE -18
 #define CP_UNICODE_UTF8 -19
+
+int GetDefultCodePage(void);
 
 int GetCodePage();
 

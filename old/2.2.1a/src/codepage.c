@@ -15,7 +15,7 @@ extern BOOL append_header;
 
 extern BOOL (WINAPI *GetCPInfoExPtr) (UINT,DWORD,LPCPINFOEX);
 
-int CodePage=WINDOWS_1251;
+int CodePage=CP_ACP;
 
 static BOOL codepages[65536];
 
@@ -36,12 +36,27 @@ int GetCodePage() {
     return CodePage;
 }
 
+int GetDefultCodePage(void)
+{
+    static int nCP = CP_ACP;
+    if (CP_ACP == nCP) {
+        TCHAR szCodePage[MAX_PATH/4] = { 0 };
+        GetLocaleInfo(LOCALE_USER_DEFAULT, LOCALE_IDEFAULTCODEPAGE, szCodePage, _countof(szCodePage));
+        nCP = _ttoi(szCodePage);
+    }
+    return nCP;
+}
+
 BOOL ChangeCodePage(int cp) {
     TCHAR cpbuf[256];
     CPINFOEX CPInfoEx;
 
+    if (CP_ACP == cp) {
+        cp = GetDefultCodePage();
+    }
+
     CodePage=cp;
-    if(CodePage==WINDOWS_1251) lstrcpy(cpbuf,STR_CP_WINDOWS);
+    if(CodePage==GetDefultCodePage()) lstrcpy(cpbuf,STR_CP_WINDOWS);
     else if(CodePage==DOS_866) lstrcpy(cpbuf,STR_CP_DOS);
     else if(CodePage==KOI8_R) lstrcpy(cpbuf,STR_CP_KOI);
     else if(CodePage==CP_UNICODE_UCS2_LE) lstrcpy(cpbuf,STR_CP_UNICODE_UCS2_LE);
@@ -52,7 +67,7 @@ BOOL ChangeCodePage(int cp) {
             if((*GetCPInfoExPtr)(CodePage,0,&CPInfoEx)) _stprintf(cpbuf, _T("CP-%s"), CPInfoEx.CodePageName);
             else _stprintf(cpbuf, _T("CP-%u"), CodePage);
         }
-        else _stprintf(cpbuf,_T("CP-%u"),CodePage);
+        else _stprintf(cpbuf, _T("CP-%u"), CodePage);
     }
 
     SendMessage(hStatus,SB_SETTEXT,3,(LPARAM)cpbuf);
@@ -355,7 +370,7 @@ BOOL AutodetectCodePage(unsigned char *pcBuffer, int iCount) {
     }
 
 #ifdef FOREIGN_BUILD
-    ChangeCodePage(WINDOWS_1251);
+    ChangeCodePage(GetDefultCodePage());
     return TRUE;
 #else
 
@@ -370,7 +385,7 @@ BOOL AutodetectCodePage(unsigned char *pcBuffer, int iCount) {
 
     //Give it up if there's no representative selection
     if(exchars<15) {
-        ChangeCodePage(WINDOWS_1251);
+        ChangeCodePage(GetDefultCodePage());
         return TRUE;
     }
 
@@ -388,7 +403,7 @@ BOOL AutodetectCodePage(unsigned char *pcBuffer, int iCount) {
     iANSIrate*=1.2; //because ANSI is the most popular in Win32
 
     if(iANSIrate>=iOEMrate&&iANSIrate>=iKOIrate&&iANSIrate>=iUTF8rate) {
-        ChangeCodePage(WINDOWS_1251);
+        ChangeCodePage(GetDefultCodePage());
         return TRUE;
     }
     if(iOEMrate>=iKOIrate&&iOEMrate>=iUTF8rate) {

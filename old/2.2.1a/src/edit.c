@@ -30,7 +30,7 @@ TCHAR recent_names[RECENTFILES][MAX_PATH+1]; //names of recent files
 DWORD recent_positions[RECENTFILES]; //positions in recent files
 
 OPENFILENAME ofn;
-TCHAR file_buffer[MAX_PATH+1]; //placeholder for ofn.lpstrFile
+TCHAR szCurrentFileName[MAX_PATH+1] = { 0 }; //placeholder for ofn.lpstrFile
 
 unsigned char pcReadBuffer[READBUFFERSIZE];
 unsigned char pcTranslateBuffer[TRANSLATEBUFFERSIZE];
@@ -101,10 +101,8 @@ void InitEditor(HWND hWndEdit) {
     SendMessage(hWndEdit,EM_SETTEXTMODE,TM_PLAINTEXT|TM_MULTILEVELUNDO|TM_MULTICODEPAGE,0);
     SendMessage(hWndEdit,EM_SETEVENTMASK,0,ENM_SELCHANGE|ENM_CHANGE|ENM_MOUSEEVENTS|ENM_KEYEVENTS);
 
-    ofn.lpstrFile=file_buffer;
-
-    ofn.lpstrFile[0]=_T('\0');
-    ofn.lpstrFile[MAX_PATH]=_T('\0');
+    ZeroMemory(szCurrentFileName, sizeof(szCurrentFileName));
+    ofn.lpstrFile=szCurrentFileName;
 
     ofn.lStructSize       = sizeof (OPENFILENAME);
     ofn.hwndOwner         = GetParent(hWndEdit);
@@ -200,12 +198,12 @@ int DoFileNew(HWND hWndEdit) {
             if(!DoFileSave(hWndEdit)) break;
         case IDNO:
             unix_newline=FALSE;
-            ChangeCodePage(WINDOWS_1251);
+            ChangeCodePage(GetDefultCodePage());
             HideCaret(NULL);
             SetWindowText(hWndEdit, _T(""));
             ShowCaret(NULL);
             SetWindowText(GetParent(hWndEdit),APP_SHORT_TITLE);
-            ofn.lpstrFile[0]=_T('\0');
+            szCurrentFileName[0]=_T('\0');
             SetModify(FALSE);
             break;
         }
@@ -214,12 +212,12 @@ int DoFileNew(HWND hWndEdit) {
     }
     else {
         unix_newline=FALSE;
-        ChangeCodePage(WINDOWS_1251);
+        ChangeCodePage(GetDefultCodePage());
         HideCaret(NULL);
         SetWindowText(hWndEdit, _T(""));
         ShowCaret(NULL);
         SetWindowText(GetParent(hWndEdit),APP_SHORT_TITLE);
-        ofn.lpstrFile[0]=_T('\0');
+        szCurrentFileName[0]=_T('\0');
         SetModify(FALSE);
         return -1;
     }
@@ -291,7 +289,7 @@ void DoFileOpenHistory(HWND hWndEdit,int number) {
 
     AddLastFilePosition(hWndEdit);
 
-    _tcscpy(ofn.lpstrFile,name_buf);
+    _tcscpy(szCurrentFileName,name_buf);
 
     need_autodetect=TRUE;
     OpenDocument(hWndEdit,FALSE);
@@ -299,14 +297,18 @@ void DoFileOpenHistory(HWND hWndEdit,int number) {
 }
 
 void DoFileReopen(HWND hWndEdit) {
-    if(!*ofn.lpstrFile) return;
-    else if(!GetModify()) OpenDocument(hWndEdit,FALSE);
-    else if(MessageBox(GetParent(hWndEdit),MSG_FILE_WILL_BE_REOPENED,APP_SHORT_TITLE,MB_OKCANCEL|MB_ICONEXCLAMATION)==IDOK) OpenDocument(hWndEdit,FALSE);
+    if(!*szCurrentFileName) {
+        return;
+    } else if (!GetModify()) {
+        OpenDocument(hWndEdit,FALSE);
+    } else if(MessageBox(GetParent(hWndEdit),MSG_FILE_WILL_BE_REOPENED,APP_SHORT_TITLE,MB_OKCANCEL|MB_ICONEXCLAMATION)==IDOK) {
+        OpenDocument(hWndEdit,FALSE);
+    }
 }
 
 int DoFileSave(HWND hWndEdit) {
-    if(!GetModify()&&ofn.lpstrFile[0]) return 0;
-    if(file_buffer[0]==0) return DoFileSaveAs(hWndEdit);
+    if(!GetModify()&&szCurrentFileName[0]) return 0;
+    if(szCurrentFileName[0]==0) return DoFileSaveAs(hWndEdit);
     SaveDocument(hWndEdit);
     return -1;
 }
@@ -344,7 +346,7 @@ void DoFilePrint(HWND hWndEdit) {
     ZeroMemory(&di,sizeof(DOCINFO));
 
     di.cbSize=sizeof(DOCINFO);
-    di.lpszDocName=(*ofn.lpstrFile)?ofn.lpstrFile:STR_DOCNAME;
+    di.lpszDocName=(*szCurrentFileName)?szCurrentFileName:STR_DOCNAME;
 
     if(!PrintDlg(&pd)) return;
 
@@ -673,7 +675,7 @@ void DoCodePageOpenAs(HWND hWndEdit) {
     HWND hWndParent;
     int choice;
 
-    if(*ofn.lpstrFile) {
+    if(*szCurrentFileName) {
         if(!GetModify()) OpenDocument(hWndEdit,FALSE);
         else if(MessageBox(GetParent(hWndEdit),MSG_FILE_WILL_BE_REOPENED,APP_SHORT_TITLE,MB_OKCANCEL|MB_ICONEXCLAMATION)==IDOK) OpenDocument(hWndEdit,FALSE);
     }
@@ -702,7 +704,7 @@ void DoCodePageOpenAs(HWND hWndEdit) {
 }
 
 int DoCodePageSaveIn(HWND hWndEdit) {
-    if(file_buffer[0]==0) return DoFileSaveAs(hWndEdit);
+    if(szCurrentFileName[0]==0) return DoFileSaveAs(hWndEdit);
     SaveDocument(hWndEdit);
     return -1;
 }
@@ -736,7 +738,7 @@ void DoNonMenuDelLine(HWND hWndEdit) {
 void DoNonMenuTab(HWND hWndEdit, BOOL istab, BOOL add) {
     CHARRANGE chrg;
     TEXTRANGE tr;
-    EDITSTREAM es;
+    EDITSTREAM es = { 0 };
     TCHAR szIndent[2]={_T('\t'),_T('\0')};
     TCHAR tmpbuf[16];
     int iFirstLine,iLastLine;
@@ -855,7 +857,7 @@ void DoNonMenuTab(HWND hWndEdit, BOOL istab, BOOL add) {
     }
 }
 
-DWORD CALLBACK BufferCallback(DWORD dwCookie,LPBYTE pbBuff,LONG cb,LONG FAR *pcb) {
+DWORD CALLBACK BufferCallback(DWORD_PTR dwCookie,LPBYTE pbBuff,LONG cb,LONG FAR *pcb) {
     int iToWrite;
     UNREFERENCED_PARAMETER(dwCookie);
     iToWrite=(iStreamInBufferSize<cb)?iStreamInBufferSize:cb;
@@ -866,7 +868,7 @@ DWORD CALLBACK BufferCallback(DWORD dwCookie,LPBYTE pbBuff,LONG cb,LONG FAR *pcb
     return 0;
 }
 
-DWORD CALLBACK ReadBufferCallback(DWORD dwCookie,LPBYTE pbBuff,LONG cb,LONG FAR *pcb) {
+DWORD CALLBACK ReadBufferCallback(DWORD_PTR dwCookie,LPBYTE pbBuff,LONG cb,LONG FAR *pcb) {
     int iToWrite;
     int written=0;
     int i;
@@ -896,7 +898,7 @@ DWORD CALLBACK ReadBufferCallback(DWORD dwCookie,LPBYTE pbBuff,LONG cb,LONG FAR 
 void SetChosenFont(HWND hWndEdit) {
     HFONT hNewFont;
     RECT rEdit;
-    CHARFORMAT cfmt;
+    CHARFORMAT cfmt = { sizeof(CHARFORMAT) };
 
     hNewFont=CreateFontIndirect(&logfont);
     SendMessage(hWndEdit,WM_SETFONT,(WPARAM)hNewFont,(LPARAM)TRUE);
@@ -908,7 +910,6 @@ void SetChosenFont(HWND hWndEdit) {
         UpdateWindow(hWndEdit);
     }
 
-    cfmt.cbSize=sizeof(CHARFORMAT);
     cfmt.dwMask=CFM_COLOR;
     cfmt.dwEffects=0;
     cfmt.crTextColor=cf.rgbColors;
@@ -917,7 +918,7 @@ void SetChosenFont(HWND hWndEdit) {
     SendMessage(hWndEdit,EM_SETCHARFORMAT,SCF_ALL,(LPARAM)&cfmt);
 }
 
-DWORD CALLBACK InputStreamCallback(DWORD dwCookie,LPBYTE pbBuff,LONG cb,LONG FAR *pcb) {
+DWORD CALLBACK InputStreamCallback(DWORD_PTR dwCookie,LPBYTE pbBuff,LONG cb,LONG FAR *pcb) {
     /*
     * Some unmaintainable code in this function
     */
@@ -1001,7 +1002,7 @@ DWORD CALLBACK InputStreamCallback(DWORD dwCookie,LPBYTE pbBuff,LONG cb,LONG FAR
     return 0;
 }
 
-DWORD CALLBACK OutputStreamCallback(DWORD dwCookie,LPBYTE pbBuff,LONG cb,LONG FAR *pcb) {
+DWORD CALLBACK OutputStreamCallback(DWORD_PTR dwCookie,LPBYTE pbBuff,LONG cb,LONG FAR *pcb) {
     /*
     * Some unmaintainable code in this function
     */
@@ -1050,7 +1051,7 @@ DWORD CALLBACK OutputStreamCallback(DWORD dwCookie,LPBYTE pbBuff,LONG cb,LONG FA
     return 0;
 }
 
-DWORD CALLBACK DummyOutputStreamCallback(DWORD dwCookie,LPBYTE pbBuff,LONG cb,LONG FAR *pcb) {
+DWORD CALLBACK DummyOutputStreamCallback(DWORD_PTR dwCookie,LPBYTE pbBuff,LONG cb,LONG FAR *pcb) {
     if(!WriteFile((HANDLE)dwCookie,pbBuff,(DWORD) cb,(DWORD *)pcb,NULL)) {
         MessageBox(NULL,MSG_ERROR_IO,APP_SHORT_TITLE,MB_OK|MB_ICONERROR);
         return 0xFFFFFFFF;
@@ -1058,7 +1059,7 @@ DWORD CALLBACK DummyOutputStreamCallback(DWORD dwCookie,LPBYTE pbBuff,LONG cb,LO
     return 0;
 }
 
-DWORD CALLBACK DummyInputStreamCallback(DWORD dwCookie,LPBYTE pbBuff,LONG cb,LONG FAR *pcb) {
+DWORD CALLBACK DummyInputStreamCallback(DWORD_PTR dwCookie,LPBYTE pbBuff,LONG cb,LONG FAR *pcb) {
     char *win_ptr, *unix_ptr;
 
     if(!ReadFile((HANDLE)dwCookie,pbBuff,(DWORD) cb,(DWORD *)pcb,NULL)) {
@@ -1087,7 +1088,7 @@ void OpenDocument(HWND hWndEdit, BOOL mustexist) {
     CHARRANGE chrg;
     HWND hWndParent;
     HANDLE hFile;
-    EDITSTREAM es;
+    EDITSTREAM es = { 0 };
     TCHAR szWindowTitle[MAX_PATH+STD_LANGPACK_STRING_LENGTH+5+1];
     WIN32_FIND_DATA w32fdInfo;
     int i,cp;
@@ -1104,7 +1105,7 @@ void OpenDocument(HWND hWndEdit, BOOL mustexist) {
 
     hWndParent=GetParent(hWndEdit);
 
-    hFile=CreateFile(ofn.lpstrFile,
+    hFile=CreateFile(szCurrentFileName,
         GENERIC_READ,
         FILE_SHARE_READ|FILE_SHARE_WRITE,
         NULL,
@@ -1113,7 +1114,7 @@ void OpenDocument(HWND hWndEdit, BOOL mustexist) {
         NULL);
 
     if(hFile==INVALID_HANDLE_VALUE) {
-        file_buffer[0]=_T('\0');
+        szCurrentFileName[0]=_T('\0');
         MessageBox(hWndParent,MSG_ERROR_CANNOT_OPEN_FILE,APP_SHORT_TITLE,MB_OK|MB_ICONERROR);
         return;
     }
@@ -1130,12 +1131,12 @@ void OpenDocument(HWND hWndEdit, BOOL mustexist) {
 
     cp=GetCodePage();
 
-    es.dwCookie=(DWORD)hFile;
-    es.pfnCallback=(cp==WINDOWS_1251)?DummyInputStreamCallback:InputStreamCallback;
+    es.dwCookie=(DWORD_PTR)hFile;
+    es.pfnCallback=(cp==GetDefultCodePage())?DummyInputStreamCallback:InputStreamCallback;
 
     HideCaret(NULL);
 
-    if(cp==WINDOWS_1251) SendMessage(hWndEdit,EM_STREAMIN,SF_TEXT,(LPARAM)&es);
+    if(cp==GetDefultCodePage()) SendMessage(hWndEdit,EM_STREAMIN,SF_TEXT,(LPARAM)&es);
     else SendMessage(hWndEdit,EM_STREAMIN,SF_TEXT|SF_UNICODE,(LPARAM)&es);
     SetModify(FALSE);
 
@@ -1144,23 +1145,23 @@ void OpenDocument(HWND hWndEdit, BOOL mustexist) {
     CloseHandle(hFile);
 
     //Set caption of synchronizing window
-    if(GetFullPathName(ofn.lpstrFile,MAX_PATH,szFullFileName,&p)) {
+    if(GetFullPathName(szCurrentFileName,MAX_PATH,szFullFileName,&p)) {
         SetWindowText(hSyncWindow,szFullFileName);
     }
 
-    hFile=FindFirstFile(ofn.lpstrFile,&w32fdInfo);
+    hFile=FindFirstFile(szCurrentFileName,&w32fdInfo);
     FindClose(hFile);
 
-    _stprintf(szWindowTitle,_T("%s - %s"),(hFile!=INVALID_HANDLE_VALUE)?w32fdInfo.cFileName:ofn.lpstrFile,APP_SHORT_TITLE);
+    _stprintf(szWindowTitle,_T("%s - %s"),(hFile!=INVALID_HANDLE_VALUE)?w32fdInfo.cFileName:szCurrentFileName,APP_SHORT_TITLE);
 
     if(hFile!=INVALID_HANDLE_VALUE) {
-        for(i=_tcslen(ofn.lpstrFile)-1;i>=0;i--) {
-            if(ofn.lpstrFile[i]==_T('\\')) break;
+        for(i=_tcslen(szCurrentFileName)-1;i>=0;i--) {
+            if(szCurrentFileName[i]==_T('\\')) break;
         }
-        if(ofn.lpstrFile[i]==_T('\\')) {
+        if(szCurrentFileName[i]==_T('\\')) {
             i++;
-            ofn.lpstrFile[i]=_T('\0');
-            _tcsncat(ofn.lpstrFile,w32fdInfo.cFileName,MAX_PATH-_tcslen(ofn.lpstrFile));
+            szCurrentFileName[i]=_T('\0');
+            _tcsncat(szCurrentFileName,w32fdInfo.cFileName,MAX_PATH-_tcslen(szCurrentFileName));
         }
     }
 
@@ -1172,7 +1173,7 @@ void OpenDocument(HWND hWndEdit, BOOL mustexist) {
     }
 
     for(i=0;i<=RECENTFILES-1;i++) {
-        if(!_tcscmp(ofn.lpstrFile,recent_names[i])) {
+        if(!_tcscmp(szCurrentFileName,recent_names[i])) {
             chrg.cpMin=recent_positions[i];
             chrg.cpMax=recent_positions[i];
             SendMessage(hWndEdit,EM_EXSETSEL,0,(LPARAM)&chrg);
@@ -1184,7 +1185,7 @@ void OpenDocument(HWND hWndEdit, BOOL mustexist) {
 void SaveDocument(HWND hWndEdit) {
     DWORD dwAttr;
     HWND hWndParent;
-    EDITSTREAM es;
+    EDITSTREAM es = { 0 };
     HANDLE hFile;
     WIN32_FIND_DATA w32fdInfo;
     TCHAR realname[MAX_PATH+1];
@@ -1203,10 +1204,10 @@ void SaveDocument(HWND hWndEdit) {
 
     hWndParent=GetParent(hWndEdit);
 
-    hFile=FindFirstFile(ofn.lpstrFile,&w32fdInfo);
+    hFile=FindFirstFile(szCurrentFileName,&w32fdInfo);
     FindClose(hFile);
 
-    _tcsncpy(realname,ofn.lpstrFile,MAX_PATH);
+    _tcsncpy(realname,szCurrentFileName,MAX_PATH);
 
     if(hFile!=INVALID_HANDLE_VALUE) {
         for(i=_tcslen(realname)-1;i>=0;i--) {
@@ -1240,19 +1241,19 @@ void SaveDocument(HWND hWndEdit) {
         return;
     }
 
-    es.dwCookie=(DWORD)hFile;
-    es.pfnCallback=(cp==WINDOWS_1251&&!unix_newline)?DummyOutputStreamCallback:OutputStreamCallback;
+    es.dwCookie=(DWORD_PTR)hFile;
+    es.pfnCallback=(cp==GetDefultCodePage()&&!unix_newline)?DummyOutputStreamCallback:OutputStreamCallback;
 
-    if(cp==WINDOWS_1251&&!unix_newline) SendMessage(hWndEdit,EM_STREAMOUT,SF_TEXT,(LPARAM)&es);
+    if(cp==GetDefultCodePage()&&!unix_newline) SendMessage(hWndEdit,EM_STREAMOUT,SF_TEXT,(LPARAM)&es);
     else SendMessage(hWndEdit,EM_STREAMOUT,SF_TEXT|SF_UNICODE,(LPARAM)&es);
     SetModify(FALSE);
 
     CloseHandle(hFile);
 
-    hFile=FindFirstFile(ofn.lpstrFile,&w32fdInfo);
+    hFile=FindFirstFile(szCurrentFileName,&w32fdInfo);
     FindClose(hFile);
 
-    _stprintf(szWindowTitle,_T("%s - %s"),(hFile!=INVALID_HANDLE_VALUE)?w32fdInfo.cFileName:ofn.lpstrFile,APP_SHORT_TITLE);
+    _stprintf(szWindowTitle,_T("%s - %s"),(hFile!=INVALID_HANDLE_VALUE)?w32fdInfo.cFileName:szCurrentFileName, APP_SHORT_TITLE);
     SetWindowText(hWndParent,szWindowTitle);
 
     if(dwAttr!=0xFFFFFFFF) SetFileAttributes(realname,dwAttr|FILE_ATTRIBUTE_ARCHIVE);
@@ -1979,11 +1980,11 @@ BOOL AddLastFilePosition(HWND hWndEdit) {
     TCHAR current_file_buf[MAX_PATH+2];
     TCHAR *p;
 
-    if(!GetFullPathName(ofn.lpstrFile,MAX_PATH,current_file_buf,&p)) {
-        lstrcpy(current_file_buf,ofn.lpstrFile);
+    if(!GetFullPathName(szCurrentFileName,MAX_PATH,current_file_buf,&p)) {
+        lstrcpy(current_file_buf,szCurrentFileName);
     }
 
-    if(!ofn.lpstrFile||!*ofn.lpstrFile) return FALSE;
+    if(!szCurrentFileName||!*szCurrentFileName) return FALSE;
 
     RestoreLastFilePosition(hWndEdit);
     SendMessage(hWndEdit,EM_EXGETSEL,0,(LPARAM)&chrg);
@@ -2064,8 +2065,8 @@ BOOL RestoreLastFilePosition(HWND hWndEdit) {
 
     UNREFERENCED_PARAMETER(hWndEdit);
 
-    ZeroMemory(recent_names,MAX_PATH*RECENTFILES);
-    ZeroMemory(recent_positions,RECENTFILES*sizeof(int));
+    ZeroMemory(recent_names, sizeof(recent_names));
+    ZeroMemory(recent_positions, sizeof(recent_positions));
 
     if(RegOpenKeyEx(HKEY_CURRENT_USER, _T("Software\\Akelsoft\\AkelPad\\Recent"),
         0, KEY_ALL_ACCESS, &hKey)!=ERROR_SUCCESS)
@@ -2073,7 +2074,7 @@ BOOL RestoreLastFilePosition(HWND hWndEdit) {
         return FALSE;
     }
 
-    for(i=0;i<=RECENTFILES-1;i++) {
+    for(i=0; i<RECENTFILES; i++) {
         _stprintf(namebuf, _T("name%d"), i);
         if(RegQueryValueEx(hKey, namebuf, NULL, &dwType,
             (LPBYTE)NULL, &dwSize)!=ERROR_SUCCESS) continue;

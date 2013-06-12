@@ -11,7 +11,7 @@
 #include "codepage.h"
 #include "langpack.h"
 
-extern OPENFILENAME ofn;
+extern TCHAR szCurrentFileName[MAX_PATH+1]; 
 extern BOOL keep_on;
 extern BOOL need_autodetect;
 extern BOOL open_in_new_window;
@@ -185,11 +185,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             }
             if(CmdLine[0]==_T('\"')) {
                 CmdLine[lstrlen(CmdLine)-1]=_T('\0');
-                lstrcpyn(ofn.lpstrFile,CmdLine+1,MAX_PATH);
+                lstrcpyn(szCurrentFileName,CmdLine+1,MAX_PATH);
             }
-            else lstrcpyn(ofn.lpstrFile,CmdLine,MAX_PATH);
+            else lstrcpyn(szCurrentFileName,CmdLine,MAX_PATH);
 
-            if(!open_in_new_window&&GetFullPathName(ofn.lpstrFile,MAX_PATH,szFullFileName,&p)) {
+            if(!open_in_new_window&&GetFullPathName(szCurrentFileName,MAX_PATH,szFullFileName,&p)) {
                 hWndFriend=FindWindow(STR_DUMMY_NAME,szFullFileName);
                 if(hWndFriend) {
                     hWndFriend=GetParent(hWndFriend);
@@ -236,7 +236,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         SendMessage(hStatus,SB_SETTEXT,0,(LPARAM)_T("1:1"));
         SendMessage(hStatus,SB_SETTEXT,1,(LPARAM)STR_MODE_INSERT);
         SendMessage(hStatus,SB_SETTEXT,2,(LPARAM)_T(""));
-        ChangeCodePage(WINDOWS_1251);
+
+        ChangeCodePage(GetDefultCodePage());
 
         hWndEdit=CreateWindow(RICHEDIT_CLASS,
             NULL,
@@ -270,9 +271,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_INITMENU:
     case WM_INITMENUPOPUP:
         //Check if any file is opened
-        EnableMenuItem(hMenu,IDM_FILE_REOPEN,(*ofn.lpstrFile)?MF_ENABLED:MF_GRAYED);
+        EnableMenuItem(hMenu,IDM_FILE_REOPEN,(*szCurrentFileName)?MF_ENABLED:MF_GRAYED);
         //Check if "Save" option should be enabled
-        EnableMenuItem(hMenu,IDM_FILE_SAVE,(GetModify()||!ofn.lpstrFile[0])?MF_ENABLED:MF_GRAYED);
+        EnableMenuItem(hMenu,IDM_FILE_SAVE,(GetModify()||!szCurrentFileName[0])?MF_ENABLED:MF_GRAYED);
         //Check if the selection is empty
         SendMessage(hWndEdit,EM_EXGETSEL,0,(LPARAM)&chrg);
         if(chrg.cpMin==chrg.cpMax) lMenuState=MF_GRAYED;
@@ -307,7 +308,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
     case WM_DROPFILES:
         if(DoFileNew(hWndEdit)) {
-            DragQueryFile((HDROP)wParam,0,ofn.lpstrFile,MAX_PATH);
+            DragQueryFile((HDROP)wParam,0,szCurrentFileName,MAX_PATH);
             need_autodetect=TRUE;
             OpenDocument(hWndEdit,FALSE);
             need_autodetect=FALSE;
@@ -430,7 +431,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             break;
 
         case IDM_CODEPAGE_OPENAS_ANSI:
-            ChangeCodePage(WINDOWS_1251);
+            ChangeCodePage(GetDefultCodePage());
             DoCodePageOpenAs(hWndEdit);
             break;
         case IDM_CODEPAGE_OPENAS_OEM:
@@ -457,7 +458,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             if(SelectCodePage(hWnd)) DoCodePageOpenAs(hWndEdit);
             break;
         case IDM_CODEPAGE_SAVEIN_ANSI:
-            ChangeCodePage(WINDOWS_1251);
+            ChangeCodePage(GetDefultCodePage());
             DoCodePageSaveIn(hWndEdit);
             break;
         case IDM_CODEPAGE_SAVEIN_OEM:
@@ -667,10 +668,10 @@ int RenewHistoryMenu() {
         }
     }
 
-    for(i=0;i<=RECENTFILES-1;i++) {
+    for(i=0; i<RECENTFILES; i++) {
         if(*recent_names[i]) {
-            if(*ofn.lpstrFile) {
-                if(!lstrcmp(ofn.lpstrFile,recent_names[i])) continue;
+            if(*szCurrentFileName) {
+                if(!lstrcmp(szCurrentFileName,recent_names[i])) continue;
             }
             if(lstrlen(recent_names[i])<=HISTORY_STRING_LENGTH) {
                 lstrcpy(buf,recent_names[i]);
