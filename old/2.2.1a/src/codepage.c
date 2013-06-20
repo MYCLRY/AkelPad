@@ -5,17 +5,18 @@
 #include <commctrl.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <assert.h>
 #include "codepage.h"
 #include "akelpad.h"
 #include "edit.h"
 #include "langpack.h"
 
-extern HWND hStatus;
+extern HWND g_hStatus;
 extern BOOL append_header;
 
 extern BOOL (WINAPI *GetCPInfoExPtr) (UINT,DWORD,LPCPINFOEX);
 
-int CodePage=CP_ACP;
+int g_codePage=CP_ACP;
 
 static BOOL codepages[65536];
 
@@ -33,7 +34,7 @@ void swap(unsigned char *c1, unsigned char *c2) {
 }
 
 int GetCodePage() {
-    return CodePage;
+    return g_codePage;
 }
 
 int GetDefultCodePage(void)
@@ -55,22 +56,22 @@ BOOL ChangeCodePage(int cp) {
         cp = GetDefultCodePage();
     }
 
-    CodePage=cp;
-    if(CodePage==GetDefultCodePage()) lstrcpy(cpbuf,STR_CP_WINDOWS);
-    else if(CodePage==DOS_866) lstrcpy(cpbuf,STR_CP_DOS);
-    else if(CodePage==KOI8_R) lstrcpy(cpbuf,STR_CP_KOI);
-    else if(CodePage==CP_UNICODE_UCS2_LE) lstrcpy(cpbuf,STR_CP_UNICODE_UCS2_LE);
-    else if(CodePage==CP_UNICODE_UCS2_BE) lstrcpy(cpbuf,STR_CP_UNICODE_UCS2_BE);
-    else if(CodePage==CP_UNICODE_UTF8) lstrcpy(cpbuf,STR_CP_UNICODE_UTF8);
+    g_codePage=cp;
+    if(g_codePage==GetDefultCodePage()) lstrcpy(cpbuf,STR_CP_WINDOWS);
+    else if(g_codePage==DOS_866) lstrcpy(cpbuf,STR_CP_DOS);
+    else if(g_codePage==KOI8_R) lstrcpy(cpbuf,STR_CP_KOI);
+    else if(g_codePage==CP_UNICODE_UCS2_LE) lstrcpy(cpbuf,STR_CP_UNICODE_UCS2_LE);
+    else if(g_codePage==CP_UNICODE_UCS2_BE) lstrcpy(cpbuf,STR_CP_UNICODE_UCS2_BE);
+    else if(g_codePage==CP_UNICODE_UTF8) lstrcpy(cpbuf,STR_CP_UNICODE_UTF8);
     else {
         if(GetCPInfoExPtr) {
-            if((*GetCPInfoExPtr)(CodePage,0,&CPInfoEx)) _stprintf(cpbuf, _T("CP-%s"), CPInfoEx.CodePageName);
-            else _stprintf(cpbuf, _T("CP-%u"), CodePage);
+            if((*GetCPInfoExPtr)(g_codePage,0,&CPInfoEx)) _stprintf(cpbuf, _T("CP-%s"), CPInfoEx.CodePageName);
+            else _stprintf(cpbuf, _T("CP-%u"), g_codePage);
         }
-        else _stprintf(cpbuf, _T("CP-%u"), CodePage);
+        else _stprintf(cpbuf, _T("CP-%u"), g_codePage);
     }
 
-    SendMessage(hStatus,SB_SETTEXT,3,(LPARAM)cpbuf);
+    SendMessage(g_hStatus,SB_SETTEXT,3,(LPARAM)cpbuf);
     return TRUE;
 }
 
@@ -287,7 +288,7 @@ BOOL CALLBACK SelectDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPara
         icurrent=0;
         for(i=0;i<=65535;i++) {
             if(codepages[i]) {
-                if(i==CodePage) iActiveCPIndex=icurrent;
+                if(i==g_codePage) iActiveCPIndex=icurrent;
                 icurrent++;
                 _stprintf(szCpString, _T("%d"), i);
                 if (GetCPInfoExPtr) {
@@ -338,6 +339,174 @@ BOOL CALLBACK SelectDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPara
     return FALSE;
 }
 
+// 
+// http://blogs.msdn.com/oldnewthing/archive/2004/03/24/95235.aspx 
+// http://codesnipers.com/?q=node/68 
+// http://www.codeguru.com/Cpp/misc/misc/multi-lingualsupport/article.php/c10451/ 
+// http://www.cl.cam.ac.uk/~mgk25/unicode.html 
+// 
+typedef enum SC_ENCODING { 
+    eEncodeACP = CP_ACP, 
+    eEncodeOEMCP = CP_OEMCP, 
+    eEncodeMACCP = CP_MACCP, 
+    eEncodeTHREAD_ACP = CP_THREAD_ACP, 
+    eEncodeSYMBOL = CP_SYMBOL, 
+    eEncodeUTF7 = CP_UTF7, 
+    eEncodeUTF8 = CP_UTF8, 
+
+    eEncodeUTF7_BOM = CP_UTF7,//eEncodeSYMBOL + 1, 
+    eEncodeUTF8_BOM = CP_UTF8, 
+    eEncodeUNI_BE_BOM = CP_UNICODE_UCS2_BE, 
+    eEncodeUNI_LE_BOM = CP_UNICODE_UCS2_LE, 
+    eEncodeUTF32_BE_BOM, 
+    eEncodeUTF32_LE_BOM, 
+    eEncodeDBCS, 
+} SC_ENCODING; 
+
+SC_ENCODING DetectTextEncoding(LPCBYTE pBuff, UINT cchLen, 
+                               OUT LPCBYTE * pPayload, OUT UINT * pnPayloadLen) 
+{ 
+    static const char szBomULE[] = {0xFF, 0xFE}; 
+    static const char szBomUBE[] = {0xFE, 0xFF}; 
+    static const char szBomUTF8[] = {0xEF, 0xBB, 0xBF}; 
+    static const char szBomUTF7[5] = {0x2B, 0x2F, 0x76, 0x38, 0x2D}; // "+/v8-" 
+    static const char szBomUTF32BE[] = {0x00, 0x00, 0xFE, 0xFF}; 
+    static const char szBomUTF32LE[] = {0xFF, 0xFE, 0x00, 0x00}; 
+
+    SC_ENCODING eReturn = eEncodeACP; 
+
+    if(0 == memcmp(pBuff, szBomULE, sizeof(szBomULE))) 
+    { 
+        if(pPayload) *pPayload = pBuff + sizeof(szBomULE); 
+        if(pnPayloadLen) *pnPayloadLen = cchLen - sizeof(szBomULE); 
+        eReturn = eEncodeUNI_LE_BOM; 
+    } 
+    else if (0 == memcmp(pBuff, szBomUBE, sizeof(szBomUBE))) 
+    { 
+        if(pPayload) *pPayload = pBuff + sizeof(szBomUBE); 
+        if(pnPayloadLen) *pnPayloadLen = cchLen - sizeof(szBomUBE); 
+        eReturn = eEncodeUNI_BE_BOM; 
+    } 
+    else if (0 == memcmp(pBuff, szBomUTF8, sizeof(szBomUTF8))) 
+    { 
+        if(pPayload) *pPayload = pBuff + sizeof(szBomUTF8); 
+        if(pnPayloadLen) *pnPayloadLen = cchLen - sizeof(szBomUTF8); 
+        eReturn = eEncodeUTF8_BOM; 
+    } 
+    else if (0 == memcmp(pBuff, szBomUTF7, sizeof(szBomUTF7))) 
+    { 
+        if(pPayload) *pPayload = pBuff + sizeof(szBomUTF7); 
+        if(pnPayloadLen) *pnPayloadLen = cchLen - sizeof(szBomUTF7); 
+        eReturn = eEncodeUTF7_BOM; 
+    } 
+    else if (0 == memcmp(pBuff, szBomUTF32BE, sizeof(szBomUTF32BE))) 
+    { 
+        if(pPayload) *pPayload = pBuff + sizeof(szBomUTF32BE); 
+        if(pnPayloadLen) *pnPayloadLen = cchLen - sizeof(szBomUTF32BE); 
+        eReturn = eEncodeUTF32_BE_BOM; 
+    } 
+    else if (0 == memcmp(pBuff, szBomUTF32LE, sizeof(szBomUTF32LE))) 
+    { 
+        if(pPayload) *pPayload = pBuff + sizeof(szBomUTF32LE); 
+        if(pnPayloadLen) *pnPayloadLen = cchLen - sizeof(szBomUTF32LE); 
+        eReturn = eEncodeUTF32_LE_BOM; 
+    } 
+    else 
+    { 
+        char *pTmp = NULL;
+        if(pPayload) *pPayload = pBuff; 
+        if(pnPayloadLen) *pnPayloadLen = cchLen; 
+
+        pTmp = (char *)calloc(cchLen+1, sizeof(char)); 
+        memset(pTmp, 0, sizeof(char)*(cchLen+1)); 
+        memcpy(pTmp, pBuff, cchLen); 
+        strlwr(pTmp); 
+
+        { 
+            const char * pIter = NULL; 
+            DWORD dwUTF8Count = 0; 
+            DWORD dwAntiUtf8 = 0; 
+            DWORD dwPlainChar = 0; 
+            for (pIter = pTmp; pIter < pTmp+cchLen; pIter++) 
+            { 
+                if ( (BYTE)(*pIter) > 0x7F ) 
+                { 
+                    eReturn = eEncodeDBCS; 
+
+                    if(      (((BYTE)(*pIter))>>1) == 0x7E) 
+                    { 
+                        if( (((BYTE)(*(pIter+1)))>>6) == 0x02 && 
+                            (((BYTE)(*(pIter+2)))>>6) == 0x02 && 
+                            (((BYTE)(*(pIter+3)))>>6) == 0x02 && 
+                            (((BYTE)(*(pIter+4)))>>6) == 0x02 && 
+                            (((BYTE)(*(pIter+5)))>>6) == 0x02 && 
+                            (TRUE)) 
+                        { 
+                            dwUTF8Count++; 
+                            pIter += 5; 
+                        } 
+                    } 
+                    else if ((((BYTE)(*pIter))>>2) == 0x3E) 
+                    { 
+                        if( (((BYTE)(*(pIter+1)))>>6) == 0x02 && 
+                            (((BYTE)(*(pIter+2)))>>6) == 0x02 && 
+                            (((BYTE)(*(pIter+3)))>>6) == 0x02 && 
+                            (((BYTE)(*(pIter+4)))>>6) == 0x02 && 
+                            (TRUE)) 
+                        { 
+                            dwUTF8Count++; 
+                            pIter += 4; 
+                        } 
+                    } 
+                    else if ((((BYTE)(*pIter))>>3) == 0x1E) 
+                    { 
+                        if( (((BYTE)(*(pIter+1)))>>6) == 0x02 && 
+                            (((BYTE)(*(pIter+2)))>>6) == 0x02 && 
+                            (((BYTE)(*(pIter+3)))>>6) == 0x02 && 
+                            (TRUE)) 
+                        { 
+                            dwUTF8Count++; 
+                            pIter += 3; 
+                        } 
+                    } 
+                    else if ((((BYTE)(*pIter))>>4) == 0x0E) 
+                    { 
+                        if( (((BYTE)(*(pIter+1)))>>6) == 0x02 && 
+                            (((BYTE)(*(pIter+2)))>>6) == 0x02 && 
+                            (TRUE)) 
+                        { 
+                            dwUTF8Count++; 
+                            pIter += 2; 
+                        } 
+                    } 
+                    else if ((((BYTE)(*pIter))>>5) == 0x06) 
+                    { 
+                        if( (((BYTE)(*(pIter+1)))>>6) == 0x02 && 
+                            (TRUE)) 
+                        { 
+                            dwUTF8Count++; 
+                            dwAntiUtf8++; 
+                            pIter += 1; 
+                        } 
+                    } 
+                    else 
+                    { 
+                        dwPlainChar++; 
+                    } 
+                } 
+            } 
+            if (dwUTF8Count > dwAntiUtf8 && dwUTF8Count>dwPlainChar) 
+            { 
+                eReturn = eEncodeUTF8; 
+            } 
+        } 
+        free(pTmp); 
+    } 
+
+    return eReturn; 
+} 
+
+
 BOOL AutodetectCodePage(unsigned char *pcBuffer, int iCount) {
 #ifndef FOREIGN_BUILD
     int counter[128];
@@ -370,7 +539,18 @@ BOOL AutodetectCodePage(unsigned char *pcBuffer, int iCount) {
     }
 
 #ifdef FOREIGN_BUILD
+#if 0
+    {
+        SC_ENCODING cpTest = DetectTextEncoding(pcBuffer, iCount, NULL, NULL);
+        if (eEncodeUTF32_BE_BOM <= cpTest && cpTest < 0) {
+            ChangeCodePage(GetDefultCodePage());
+        } else {
+            ChangeCodePage(cpTest);
+        }
+    }
+#else
     ChangeCodePage(GetDefultCodePage());
+#endif
     return TRUE;
 #else
 

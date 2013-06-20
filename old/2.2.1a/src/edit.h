@@ -24,7 +24,7 @@ BOOL RestoreOptionsFromRegistry(HWND hWndEdit);
 BOOL SaveOptionsInRegistry(HWND hWnd);
 
 int DoFileNew(HWND hWndEdit);
-void DoFileNewWindow(HWND hWndEdit);
+void DoFileNewWindow(void);
 void DoFileOpen(HWND hWndEdit);
 void DoFileOpenHistory(HWND hWndEdit,int number);
 void DoFileReopen(HWND hWndEdit);

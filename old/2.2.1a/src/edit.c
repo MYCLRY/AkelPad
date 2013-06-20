@@ -12,7 +12,6 @@
 #include "langpack.h"
 
 extern int g_iCmdShow;
-extern HWND hSyncWindow;
 
 extern RECT MainWindowRect;
 
@@ -21,29 +20,28 @@ extern BOOL GlobalPrint;
 BOOL append_header=TRUE; //whether header was in last translated text
 BOOL refresh_data=TRUE;
 
-BOOL unix_newline=FALSE; //Unix newline (0x0A) was detected when opening file
+BOOL g_unix_newline=FALSE; //Unix newline (0x0A) was detected when opening file
 BOOL newline_detected=FALSE;
 
 extern BOOL insertstate;
 
-TCHAR recent_names[RECENTFILES][MAX_PATH+1]; //names of recent files
-DWORD recent_positions[RECENTFILES]; //positions in recent files
+TCHAR g_recent_files[RECENTFILES][MAX_PATH+1]; //names of recent files
+DWORD g_recent_files_position[RECENTFILES]; //positions in recent files
 
-OPENFILENAME ofn;
-TCHAR szCurrentFileName[MAX_PATH+1] = { 0 }; //placeholder for ofn.lpstrFile
+OPENFILENAME g_ofn;
+TCHAR g_szCurrentFileName[MAX_PATH+1] = { 0 }; //placeholder for g_ofn.lpstrFile
 
 unsigned char pcReadBuffer[READBUFFERSIZE];
 unsigned char pcTranslateBuffer[TRANSLATEBUFFERSIZE];
 BOOL firsttime;
 
-CHOOSEFONT cf;
-CHOOSECOLOR cc;
-COLORREF crCustColors[16];
-LOGFONT logfont;
-LOGFONT logfont2;
+CHOOSEFONT g_cf;
+CHOOSECOLOR g_cc;
+COLORREF g_crCustColors[16];
+LOGFONT g_logFont;
 HFONT hCurrentFont=NULL;
 
-FINDTEXT ft;
+FINDTEXT g_ft;
 DWORD ftflags=FR_DOWN;
 
 HKL *hKl;
@@ -60,10 +58,10 @@ PRINTDLG pd;
 struct __replaceto {
     TCHAR *org_query;
     TCHAR *lpstrNewText;
-} replaceto;
+} g_replaceto;
 
 BOOL terror; //set if a syntax error was detected while translating escape-sequences in search string
-TCHAR *org_query; //original search template (entered by user)
+TCHAR *g_org_query = NULL; //original search template (entered by user)
 BOOL use_escape=FALSE;
 BOOL wrap_on=FALSE; //wrap strings
 BOOL keep_on=FALSE; //keep left space
@@ -72,7 +70,7 @@ BOOL replace_in_sel=FALSE; //if replacement should be done in selection instead 
 BOOL open_in_new_window=TRUE;
 BOOL support_asian=FALSE;
 
-LRESULT lang_settings;
+LRESULT g_lang_settings = 0;
 
 void _SetLayout();
 void _RestoreLayout();
@@ -85,9 +83,9 @@ TCHAR TranslateHexadecimalDigit(TCHAR ch);
 
 int TranslateNewlinesToUnix(wchar_t *buffer,int iBufSize);
 
-BOOL AddLastFilePosition(HWND); //adds file to list of recent files
-BOOL SaveLastFilePosition(HWND); //saves list of recent files
-BOOL RestoreLastFilePosition(HWND); //reads list of recent files
+BOOL StoreLastFilePosition(DWORD pos); //adds file to list of recent files
+BOOL SaveRecentFilesInfo(void); //saves list of recent files
+BOOL RestoreRecentFilesInfo(void); //reads list of recent files
 
 BOOL CALLBACK FindDlgProc(HWND hDlg,UINT msg,WPARAM wParam,LPARAM lParam);
 BOOL CALLBACK ReplaceDlgProc(HWND hDlg,UINT msg,WPARAM wParam,LPARAM lParam);
@@ -101,46 +99,46 @@ void InitEditor(HWND hWndEdit) {
     SendMessage(hWndEdit,EM_SETTEXTMODE,TM_PLAINTEXT|TM_MULTILEVELUNDO|TM_MULTICODEPAGE,0);
     SendMessage(hWndEdit,EM_SETEVENTMASK,0,ENM_SELCHANGE|ENM_CHANGE|ENM_MOUSEEVENTS|ENM_KEYEVENTS);
 
-    ZeroMemory(szCurrentFileName, sizeof(szCurrentFileName));
-    ofn.lpstrFile=szCurrentFileName;
+    ZeroMemory(g_szCurrentFileName, sizeof(g_szCurrentFileName));
+    g_ofn.lpstrFile=g_szCurrentFileName;
 
-    ofn.lStructSize       = sizeof (OPENFILENAME);
-    ofn.hwndOwner         = GetParent(hWndEdit);
-    ofn.hInstance         = NULL;
-    ofn.lpstrFilter       = STR_FILE_FILTER;
-    ofn.lpstrCustomFilter = NULL;
-    ofn.nMaxCustFilter    = 0;
-    ofn.nFilterIndex      = 0;
-    ofn.nMaxFile          = MAX_PATH;
-    ofn.lpstrFileTitle    = NULL;
-    ofn.nMaxFileTitle     = 0;
-    ofn.lpstrInitialDir   = NULL;
-    ofn.lpstrTitle        = NULL;
-    ofn.nFileOffset       = 0;
-    ofn.nFileExtension    = 0;
-    ofn.lCustData         = 0;
-    ofn.lpfnHook          = NULL;
-    ofn.lpTemplateName    = NULL;
+    g_ofn.lStructSize       = sizeof (OPENFILENAME);
+    g_ofn.hwndOwner         = GetParent(hWndEdit);
+    g_ofn.hInstance         = NULL;
+    g_ofn.lpstrFilter       = STR_FILE_FILTER;
+    g_ofn.lpstrCustomFilter = NULL;
+    g_ofn.nMaxCustFilter    = 0;
+    g_ofn.nFilterIndex      = 0;
+    g_ofn.nMaxFile          = MAX_PATH;
+    g_ofn.lpstrFileTitle    = NULL;
+    g_ofn.nMaxFileTitle     = 0;
+    g_ofn.lpstrInitialDir   = NULL;
+    g_ofn.lpstrTitle        = NULL;
+    g_ofn.nFileOffset       = 0;
+    g_ofn.nFileExtension    = 0;
+    g_ofn.lCustData         = 0;
+    g_ofn.lpfnHook          = NULL;
+    g_ofn.lpTemplateName    = NULL;
 
-    cc.lStructSize=sizeof(CHOOSECOLOR);
-    cc.hwndOwner=GetParent(hWndEdit);
-    cc.hInstance=0;
-    cc.rgbResult=RGB(0xFF,0xFF,0xFF);
-    cc.lpCustColors=crCustColors;
-    cc.Flags=CC_FULLOPEN|CC_RGBINIT;
-    cc.lCustData=0;
-    cc.lpfnHook=NULL;
-    cc.lpTemplateName=NULL;
-    ZeroMemory(crCustColors,16*sizeof(COLORREF));
+    g_cc.lStructSize=sizeof(CHOOSECOLOR);
+    g_cc.hwndOwner=GetParent(hWndEdit);
+    g_cc.hInstance=0;
+    g_cc.rgbResult=RGB(0xFF,0xFF,0xFF);
+    g_cc.lpCustColors=g_crCustColors;
+    g_cc.Flags=CC_FULLOPEN|CC_RGBINIT;
+    g_cc.lCustData=0;
+    g_cc.lpfnHook=NULL;
+    g_cc.lpTemplateName=NULL;
+    ZeroMemory(g_crCustColors,16*sizeof(COLORREF));
 
-    ft.lpstrText=NULL;
-    org_query=NULL;
-    replaceto.lpstrNewText=NULL;
-    replaceto.org_query=NULL;
+    g_ft.lpstrText=NULL;
+    g_org_query=NULL;
+    g_replaceto.lpstrNewText=NULL;
+    g_replaceto.org_query=NULL;
 
-    cf.lpLogFont=&logfont;
-    cf.rgbColors=0;
-    GetObject(GetStockObject(SYSTEM_FONT),sizeof(LOGFONT),&logfont);
+    g_cf.lpLogFont=&g_logFont;
+    g_cf.rgbColors=0;
+    GetObject(GetStockObject(SYSTEM_FONT),sizeof(g_logFont),&g_logFont);
     SetChosenFont(hWndEdit);
 
     layouts=GetKeyboardLayoutList(0,NULL);
@@ -153,7 +151,8 @@ void InitEditor(HWND hWndEdit) {
 
     GetKeyboardLayoutList(layouts,hKl);
 
-    RestoreLastFilePosition(hWndEdit);
+    RestoreRecentFilesInfo();
+    RenewHistoryMenu();
 
     hMenu=GetMenu(GetParent(hWndEdit));
 
@@ -182,14 +181,18 @@ void InitEditor(HWND hWndEdit) {
     pd.Flags=PD_ALLPAGES|PD_NOPAGENUMS|PD_RETURNDC|PD_USEDEVMODECOPIESANDCOLLATE;
     pd.nCopies=1;
 
-    lang_settings=SendMessage(hWndEdit,EM_GETLANGOPTIONS,(WPARAM)0,(LPARAM)0);
+    g_lang_settings=SendMessage(hWndEdit,EM_GETLANGOPTIONS,(WPARAM)0,(LPARAM)0);
     SendMessage(hWndEdit,EM_SETLANGOPTIONS,(WPARAM)0,(LPARAM)0);
 }
 
 int DoFileNew(HWND hWndEdit) {
     int choice;
 
-    AddLastFilePosition(hWndEdit);
+    if (*g_szCurrentFileName) {
+        CHARRANGE chrg = { 0 };
+        SendMessage(hWndEdit,EM_EXGETSEL,0,(LPARAM)&chrg);
+        StoreLastFilePosition(chrg.cpMax);
+    }
 
     if(GetModify()) {
         choice=MessageBox(GetParent(hWndEdit),MSG_DOCUMENT_CHANGED,APP_SHORT_TITLE,MB_YESNOCANCEL|MB_ICONEXCLAMATION);
@@ -197,13 +200,13 @@ int DoFileNew(HWND hWndEdit) {
         case IDYES:
             if(!DoFileSave(hWndEdit)) break;
         case IDNO:
-            unix_newline=FALSE;
+            g_unix_newline=FALSE;
             ChangeCodePage(GetDefultCodePage());
             HideCaret(NULL);
             SetWindowText(hWndEdit, _T(""));
             ShowCaret(NULL);
             SetWindowText(GetParent(hWndEdit),APP_SHORT_TITLE);
-            szCurrentFileName[0]=_T('\0');
+            g_szCurrentFileName[0]=_T('\0');
             SetModify(FALSE);
             break;
         }
@@ -211,27 +214,22 @@ int DoFileNew(HWND hWndEdit) {
         else return 0;
     }
     else {
-        unix_newline=FALSE;
+        g_unix_newline=FALSE;
         ChangeCodePage(GetDefultCodePage());
         HideCaret(NULL);
         SetWindowText(hWndEdit, _T(""));
         ShowCaret(NULL);
         SetWindowText(GetParent(hWndEdit),APP_SHORT_TITLE);
-        szCurrentFileName[0]=_T('\0');
+        g_szCurrentFileName[0]=_T('\0');
         SetModify(FALSE);
         return -1;
     }
 }
 
-void DoFileNewWindow(HWND hWndEdit) {
+void DoFileNewWindow(void) {
     TCHAR szModuleFileName[MAX_PATH];
-    STARTUPINFO si;
+    STARTUPINFO si = { sizeof(si) };
     PROCESS_INFORMATION pi;
-
-    UNREFERENCED_PARAMETER(hWndEdit);
-
-    ZeroMemory(&si,sizeof(STARTUPINFO));
-    si.cb=sizeof(STARTUPINFO);
 
     if(!GetModuleFileName(GetModuleHandle(NULL),szModuleFileName,MAX_PATH)) return;
 
@@ -246,8 +244,8 @@ void DoFileOpen(HWND hWndEdit) {
 
     hWndParent=GetParent(hWndEdit);
 
-    ofn.Flags=OFN_CREATEPROMPT|OFN_LONGNAMES|OFN_HIDEREADONLY;
-    ofn.lpstrDefExt=NULL;
+    g_ofn.Flags=OFN_CREATEPROMPT|OFN_LONGNAMES|OFN_HIDEREADONLY;
+    g_ofn.lpstrDefExt=NULL;
 
     if(GetModify()) {
         choice=MessageBox(hWndParent,MSG_DOCUMENT_CHANGED,APP_SHORT_TITLE,MB_YESNOCANCEL|MB_ICONEXCLAMATION);
@@ -259,9 +257,13 @@ void DoFileOpen(HWND hWndEdit) {
 
     if(choice==IDCANCEL) return;
 
-    AddLastFilePosition(hWndEdit);
+    if (*g_szCurrentFileName) {
+        CHARRANGE chrg = { 0 };
+        SendMessage(hWndEdit,EM_EXGETSEL,0,(LPARAM)&chrg);
+        StoreLastFilePosition(chrg.cpMax);
+    }
 
-    if(GetOpenFileName(&ofn)) {
+    if(GetOpenFileName(&g_ofn)) {
         need_autodetect=TRUE;
         OpenDocument(hWndEdit,FALSE);
         need_autodetect=FALSE;
@@ -285,11 +287,15 @@ void DoFileOpenHistory(HWND hWndEdit,int number) {
 
     if(choice==IDCANCEL) return;
 
-    _tcscpy(name_buf, recent_names[number]);
+    lstrcpy(name_buf, g_recent_files[number]);
 
-    AddLastFilePosition(hWndEdit);
+    if (*g_szCurrentFileName) {
+        CHARRANGE chrg = { 0 };
+        SendMessage(hWndEdit,EM_EXGETSEL,0,(LPARAM)&chrg);
+        StoreLastFilePosition(chrg.cpMax);
+    }
 
-    _tcscpy(szCurrentFileName,name_buf);
+    lstrcpy(g_szCurrentFileName,name_buf);
 
     need_autodetect=TRUE;
     OpenDocument(hWndEdit,FALSE);
@@ -297,7 +303,7 @@ void DoFileOpenHistory(HWND hWndEdit,int number) {
 }
 
 void DoFileReopen(HWND hWndEdit) {
-    if(!*szCurrentFileName) {
+    if(!*g_szCurrentFileName) {
         return;
     } else if (!GetModify()) {
         OpenDocument(hWndEdit,FALSE);
@@ -307,18 +313,18 @@ void DoFileReopen(HWND hWndEdit) {
 }
 
 int DoFileSave(HWND hWndEdit) {
-    if(!GetModify()&&szCurrentFileName[0]) return 0;
-    if(szCurrentFileName[0]==0) return DoFileSaveAs(hWndEdit);
+    if(!GetModify()&&g_szCurrentFileName[0]) return 0;
+    if(g_szCurrentFileName[0]==0) return DoFileSaveAs(hWndEdit);
     SaveDocument(hWndEdit);
     return -1;
 }
 
 int DoFileSaveAs(HWND hWndEdit) {
 
-    ofn.Flags=OFN_OVERWRITEPROMPT|OFN_LONGNAMES|OFN_HIDEREADONLY;
-    ofn.lpstrDefExt=_T("txt");
+    g_ofn.Flags=OFN_OVERWRITEPROMPT|OFN_LONGNAMES|OFN_HIDEREADONLY;
+    g_ofn.lpstrDefExt=_T("txt");
 
-    if(GetSaveFileName(&ofn)) {
+    if(GetSaveFileName(&g_ofn)) {
         SaveDocument(hWndEdit);
         return -1;
     }
@@ -346,7 +352,7 @@ void DoFilePrint(HWND hWndEdit) {
     ZeroMemory(&di,sizeof(DOCINFO));
 
     di.cbSize=sizeof(DOCINFO);
-    di.lpszDocName=(*szCurrentFileName)?szCurrentFileName:STR_DOCNAME;
+    di.lpszDocName=(*g_szCurrentFileName)?g_szCurrentFileName:STR_DOCNAME;
 
     if(!PrintDlg(&pd)) return;
 
@@ -409,7 +415,11 @@ void DoFileExit(HWND hWndEdit) {
     int choice;
     HWND hWndParent;
 
-    AddLastFilePosition(hWndEdit);
+    if (*g_szCurrentFileName) {
+        CHARRANGE chrg = { 0 };
+        SendMessage(hWndEdit,EM_EXGETSEL,0,(LPARAM)&chrg);
+        StoreLastFilePosition(chrg.cpMax);
+    }
 
     hWndParent=GetParent(hWndEdit);
 
@@ -541,7 +551,7 @@ void DoSearchFind(HWND hWndEdit) {
 
 void DoSearchFindNext(HWND hWndEdit) {
     int r;
-    if(ft.lpstrText) {
+    if(g_ft.lpstrText) {
         r=_FindText(hWndEdit);
         if(r==-1) DoSearchFind(hWndEdit);
     }
@@ -549,7 +559,7 @@ void DoSearchFindNext(HWND hWndEdit) {
 }
 
 void DoSearchFindOther(HWND hWndEdit) {
-    if(ft.lpstrText) {
+    if(g_ft.lpstrText) {
         ftflags^=FR_DOWN;
         _FindText(hWndEdit);
         ftflags^=FR_DOWN;
@@ -558,7 +568,7 @@ void DoSearchFindOther(HWND hWndEdit) {
 }
 
 void DoSearchReplace(HWND hWndEdit) {
-    int result;
+    INT_PTR result;
 
     result=DialogBoxParam(GetModuleHandle(NULL),MAKEINTRESOURCE(IDD_REPLACE),GetParent(hWndEdit),(DLGPROC)ReplaceDlgProc,(LPARAM)hWndEdit);
     if(result) _ReplaceText(hWndEdit,(result==-1)?FALSE:TRUE);
@@ -594,23 +604,23 @@ void DoSearchGoToLine(HWND hWndEdit) {
 }
 
 void DoSettingsFont(HWND hWndEdit) {
-    cf.lStructSize    = sizeof (CHOOSEFONT);
-    cf.hwndOwner      = GetParent(hWndEdit);
-    cf.hDC            = NULL;
-    cf.lpLogFont      = &logfont;
-    cf.iPointSize     = 0;
-    cf.Flags          = CF_INITTOLOGFONTSTRUCT|CF_SCREENFONTS|CF_EFFECTS|CF_FORCEFONTEXIST;
+    g_cf.lStructSize    = sizeof (CHOOSEFONT);
+    g_cf.hwndOwner      = GetParent(hWndEdit);
+    g_cf.hDC            = NULL;
+    g_cf.lpLogFont      = &g_logFont;
+    g_cf.iPointSize     = 0;
+    g_cf.Flags          = CF_INITTOLOGFONTSTRUCT|CF_SCREENFONTS|CF_EFFECTS|CF_FORCEFONTEXIST;
 #ifndef FOREIGN_BUILD
-    cf.Flags|=CF_SELECTSCRIPT;
+    g_cf.Flags|=CF_SELECTSCRIPT;
 #endif
-    cf.lCustData      = 0;
-    cf.lpfnHook       = NULL;
-    cf.lpTemplateName = NULL;
-    cf.hInstance      = NULL;
-    cf.lpszStyle      = NULL;
-    cf.nFontType      = 0;
-    cf.nSizeMin       = 0;
-    cf.nSizeMax       = 0;
+    g_cf.lCustData      = 0;
+    g_cf.lpfnHook       = NULL;
+    g_cf.lpTemplateName = NULL;
+    g_cf.hInstance      = NULL;
+    g_cf.lpszStyle      = NULL;
+    g_cf.nFontType      = 0;
+    g_cf.nSizeMin       = 0;
+    g_cf.nSizeMax       = 0;
 
     /*
     Allow user to select only Cyrillic fonts
@@ -621,26 +631,29 @@ void DoSettingsFont(HWND hWndEdit) {
     */
 
 #ifndef FOREIGN_BUILD
-    logfont.lfCharSet=RUSSIAN_CHARSET;
+    g_logFont.lfCharSet=RUSSIAN_CHARSET;
 #endif
 
-    memcpy(&logfont2,&logfont,sizeof(LOGFONT));
-    if(ChooseFont(&cf)) {
-        SetChosenFont(hWndEdit);
-    }
-    else {
-        memcpy(&logfont,&logfont2,sizeof(LOGFONT));
+    {
+        LOGFONT logfont2;
+        memcpy(&logfont2, &g_logFont, sizeof(logfont2));
+        if(ChooseFont(&g_cf)) {
+            SetChosenFont(hWndEdit);
+        }
+        else {
+            memcpy(&g_logFont, &logfont2, sizeof(g_logFont));
+        }
     }
 }
 
 void DoSettingsBG(HWND hWndEdit) {
     COLORREF temp;
-    temp=cc.rgbResult;
-    if(ChooseColor(&cc)) {
-        SendMessage(hWndEdit,EM_SETBKGNDCOLOR,0,cc.rgbResult);
+    temp=g_cc.rgbResult;
+    if(ChooseColor(&g_cc)) {
+        SendMessage(hWndEdit,EM_SETBKGNDCOLOR,0,g_cc.rgbResult);
         usesystembckgcolor=FALSE;
     }
-    else cc.rgbResult=temp;
+    else g_cc.rgbResult=temp;
 }
 
 void DoSettingsNoMultiOpen(HWND hWndEdit) {
@@ -667,7 +680,7 @@ void DoSettingsAsian(HWND hWndEdit) {
     }
     else {
         CheckMenuItem(hMenu,IDM_SETTINGS_ASIAN,MF_CHECKED);
-        SendMessage(hWndEdit,EM_SETLANGOPTIONS,(WPARAM)0,(LPARAM)lang_settings);
+        SendMessage(hWndEdit,EM_SETLANGOPTIONS,(WPARAM)0,(LPARAM)g_lang_settings);
     }
 }
 
@@ -675,7 +688,7 @@ void DoCodePageOpenAs(HWND hWndEdit) {
     HWND hWndParent;
     int choice;
 
-    if(*szCurrentFileName) {
+    if(*g_szCurrentFileName) {
         if(!GetModify()) OpenDocument(hWndEdit,FALSE);
         else if(MessageBox(GetParent(hWndEdit),MSG_FILE_WILL_BE_REOPENED,APP_SHORT_TITLE,MB_OKCANCEL|MB_ICONEXCLAMATION)==IDOK) OpenDocument(hWndEdit,FALSE);
     }
@@ -683,8 +696,8 @@ void DoCodePageOpenAs(HWND hWndEdit) {
 
         hWndParent=GetParent(hWndEdit);
 
-        ofn.Flags=OFN_CREATEPROMPT|OFN_LONGNAMES|OFN_HIDEREADONLY;
-        ofn.lpstrDefExt=NULL;
+        g_ofn.Flags=OFN_CREATEPROMPT|OFN_LONGNAMES|OFN_HIDEREADONLY;
+        g_ofn.lpstrDefExt=NULL;
 
         if(GetModify()) {
             choice=MessageBox(hWndParent,MSG_DOCUMENT_CHANGED,APP_SHORT_TITLE,MB_YESNOCANCEL|MB_ICONEXCLAMATION);
@@ -696,7 +709,7 @@ void DoCodePageOpenAs(HWND hWndEdit) {
 
         if(choice==IDCANCEL) return;
 
-        if(GetOpenFileName(&ofn)) {
+        if(GetOpenFileName(&g_ofn)) {
             OpenDocument(hWndEdit,FALSE);
         }
 
@@ -704,7 +717,7 @@ void DoCodePageOpenAs(HWND hWndEdit) {
 }
 
 int DoCodePageSaveIn(HWND hWndEdit) {
-    if(szCurrentFileName[0]==0) return DoFileSaveAs(hWndEdit);
+    if(g_szCurrentFileName[0]==0) return DoFileSaveAs(hWndEdit);
     SaveDocument(hWndEdit);
     return -1;
 }
@@ -900,7 +913,7 @@ void SetChosenFont(HWND hWndEdit) {
     RECT rEdit;
     CHARFORMAT cfmt = { sizeof(CHARFORMAT) };
 
-    hNewFont=CreateFontIndirect(&logfont);
+    hNewFont=CreateFontIndirect(&g_logFont);
     SendMessage(hWndEdit,WM_SETFONT,(WPARAM)hNewFont,(LPARAM)TRUE);
     if(hCurrentFont) DeleteObject(hCurrentFont);
     hCurrentFont=hNewFont;
@@ -912,8 +925,9 @@ void SetChosenFont(HWND hWndEdit) {
 
     cfmt.dwMask=CFM_COLOR;
     cfmt.dwEffects=0;
-    cfmt.crTextColor=cf.rgbColors;
-    cfmt.bPitchAndFamily=logfont.lfPitchAndFamily;
+    cfmt.crTextColor=g_cf.rgbColors;
+    cfmt.bPitchAndFamily=g_logFont.lfPitchAndFamily;
+    lstrcpy(cfmt.szFaceName, g_logFont.lfFaceName);
 
     SendMessage(hWndEdit,EM_SETCHARFORMAT,SCF_ALL,(LPARAM)&cfmt);
 }
@@ -978,10 +992,10 @@ DWORD CALLBACK InputStreamCallback(DWORD_PTR dwCookie,LPBYTE pbBuff,LONG cb,LONG
             }
             else if(!win_ptr&&unix_ptr) {
                 newline_detected=TRUE;
-                unix_newline=TRUE;
+                g_unix_newline=TRUE;
             }
             else if(win_ptr&&unix_ptr) {
-                if(unix_ptr<win_ptr) unix_newline=TRUE;
+                if(unix_ptr<win_ptr) g_unix_newline=TRUE;
                 newline_detected=TRUE;
             }
         }
@@ -1013,7 +1027,7 @@ DWORD CALLBACK OutputStreamCallback(DWORD_PTR dwCookie,LPBYTE pbBuff,LONG cb,LON
     int iTemp;
     int iRealBytes;
 
-    if(unix_newline) iRealBytes=TranslateNewlinesToUnix((wchar_t *)pbBuff,cb);
+    if(g_unix_newline) iRealBytes=TranslateNewlinesToUnix((wchar_t *)pbBuff,cb);
     else iRealBytes=cb;
 
     pcReadingFrom=(char *)pbBuff;
@@ -1074,10 +1088,10 @@ DWORD CALLBACK DummyInputStreamCallback(DWORD_PTR dwCookie,LPBYTE pbBuff,LONG cb
         }
         else if(!win_ptr&&unix_ptr) {
             newline_detected=TRUE;
-            unix_newline=TRUE;
+            g_unix_newline=TRUE;
         }
         else if(win_ptr&&unix_ptr) {
-            if(unix_ptr<win_ptr) unix_newline=TRUE;
+            if(unix_ptr<win_ptr) g_unix_newline=TRUE;
             newline_detected=TRUE;
         }
     }
@@ -1091,21 +1105,22 @@ void OpenDocument(HWND hWndEdit, BOOL mustexist) {
     EDITSTREAM es = { 0 };
     TCHAR szWindowTitle[MAX_PATH+STD_LANGPACK_STRING_LENGTH+5+1];
     WIN32_FIND_DATA w32fdInfo;
-    int i,cp;
+    int i;
     DWORD dwBytesRead;
-    TCHAR szFullFileName[MAX_PATH];
     TCHAR *p;
+    BOOL bIsDefaultCP;
+    DWORD flags;
 
     RenewHistoryMenu();
 
-    unix_newline=FALSE;
+    g_unix_newline=FALSE;
     newline_detected=FALSE;
 
     firsttime=TRUE;
 
     hWndParent=GetParent(hWndEdit);
 
-    hFile=CreateFile(szCurrentFileName,
+    hFile=CreateFile(g_szCurrentFileName,
         GENERIC_READ,
         FILE_SHARE_READ|FILE_SHARE_WRITE,
         NULL,
@@ -1114,7 +1129,7 @@ void OpenDocument(HWND hWndEdit, BOOL mustexist) {
         NULL);
 
     if(hFile==INVALID_HANDLE_VALUE) {
-        szCurrentFileName[0]=_T('\0');
+        g_szCurrentFileName[0]=_T('\0');
         MessageBox(hWndParent,MSG_ERROR_CANNOT_OPEN_FILE,APP_SHORT_TITLE,MB_OK|MB_ICONERROR);
         return;
     }
@@ -1129,39 +1144,39 @@ void OpenDocument(HWND hWndEdit, BOOL mustexist) {
         need_autodetect=FALSE;
     }
 
-    cp=GetCodePage();
-
-    es.dwCookie=(DWORD_PTR)hFile;
-    es.pfnCallback=(cp==GetDefultCodePage())?DummyInputStreamCallback:InputStreamCallback;
+    bIsDefaultCP = (GetCodePage() == GetDefultCodePage());
 
     HideCaret(NULL);
 
-    if(cp==GetDefultCodePage()) SendMessage(hWndEdit,EM_STREAMIN,SF_TEXT,(LPARAM)&es);
-    else SendMessage(hWndEdit,EM_STREAMIN,SF_TEXT|SF_UNICODE,(LPARAM)&es);
+    es.dwCookie=(DWORD_PTR)hFile;
+    if (GetCodePage() == GetDefultCodePage()) {
+        es.pfnCallback = DummyInputStreamCallback;
+        flags = SF_TEXT;
+    } else {
+        es.pfnCallback = InputStreamCallback;
+        flags = SF_TEXT|SF_UNICODE;
+    }
+    SendMessage(hWndEdit,EM_STREAMIN, flags,(LPARAM)&es);
+
     SetModify(FALSE);
 
     ShowCaret(NULL);
 
     CloseHandle(hFile);
 
-    //Set caption of synchronizing window
-    if(GetFullPathName(szCurrentFileName,MAX_PATH,szFullFileName,&p)) {
-        SetWindowText(hSyncWindow,szFullFileName);
-    }
-
-    hFile=FindFirstFile(szCurrentFileName,&w32fdInfo);
+    hFile=FindFirstFile(g_szCurrentFileName,&w32fdInfo);
     FindClose(hFile);
 
-    _stprintf(szWindowTitle,_T("%s - %s"),(hFile!=INVALID_HANDLE_VALUE)?w32fdInfo.cFileName:szCurrentFileName,APP_SHORT_TITLE);
+    _stprintf(szWindowTitle,_T("%s - %s"),(hFile!=INVALID_HANDLE_VALUE)?w32fdInfo.cFileName:g_szCurrentFileName,APP_SHORT_TITLE);
 
     if(hFile!=INVALID_HANDLE_VALUE) {
-        for(i=_tcslen(szCurrentFileName)-1;i>=0;i--) {
-            if(szCurrentFileName[i]==_T('\\')) break;
+        for(i=lstrlen(g_szCurrentFileName)-1;i>=0;i--) {
+            if(g_szCurrentFileName[i]==_T('\\')) break;
         }
-        if(szCurrentFileName[i]==_T('\\')) {
+        if(g_szCurrentFileName[i]==_T('\\')) {
             i++;
-            szCurrentFileName[i]=_T('\0');
-            _tcsncat(szCurrentFileName,w32fdInfo.cFileName,MAX_PATH-_tcslen(szCurrentFileName));
+            g_szCurrentFileName[i]=_T('\0');
+            _tcsncat(g_szCurrentFileName,w32fdInfo.cFileName,MAX_PATH-lstrlen(g_szCurrentFileName));
         }
     }
 
@@ -1173,9 +1188,9 @@ void OpenDocument(HWND hWndEdit, BOOL mustexist) {
     }
 
     for(i=0;i<=RECENTFILES-1;i++) {
-        if(!_tcscmp(szCurrentFileName,recent_names[i])) {
-            chrg.cpMin=recent_positions[i];
-            chrg.cpMax=recent_positions[i];
+        if(!_tcscmp(g_szCurrentFileName,g_recent_files[i])) {
+            chrg.cpMin=g_recent_files_position[i];
+            chrg.cpMax=g_recent_files_position[i];
             SendMessage(hWndEdit,EM_EXSETSEL,0,(LPARAM)&chrg);
             break;
         }
@@ -1192,6 +1207,7 @@ void SaveDocument(HWND hWndEdit) {
     TCHAR szWindowTitle[MAX_PATH+STD_LANGPACK_STRING_LENGTH+5+1];
     int i;
     int cp,choice;
+    DWORD flags = 0;
 
     cp=GetCodePage();
     if((cp==CP_UNICODE_UCS2_LE||cp==CP_UNICODE_UCS2_BE||cp==CP_UNICODE_UTF8)&&!append_header) {
@@ -1204,19 +1220,19 @@ void SaveDocument(HWND hWndEdit) {
 
     hWndParent=GetParent(hWndEdit);
 
-    hFile=FindFirstFile(szCurrentFileName,&w32fdInfo);
+    hFile=FindFirstFile(g_szCurrentFileName,&w32fdInfo);
     FindClose(hFile);
 
-    _tcsncpy(realname,szCurrentFileName,MAX_PATH);
+    _tcsncpy(realname,g_szCurrentFileName,MAX_PATH);
 
     if(hFile!=INVALID_HANDLE_VALUE) {
-        for(i=_tcslen(realname)-1;i>=0;i--) {
+        for(i=lstrlen(realname)-1;i>=0;i--) {
             if(realname[i]==_T('\\')) break;
         }
         if(realname[i]==_T('\\')) {
             i++;
             realname[i]=_T('\0');
-            _tcsncat(realname,w32fdInfo.cFileName,MAX_PATH-_tcslen(realname));
+            _tcsncat(realname,w32fdInfo.cFileName,MAX_PATH-lstrlen(realname));
         }
         else _tcsncpy(realname,w32fdInfo.cFileName,MAX_PATH);
     }
@@ -1242,18 +1258,22 @@ void SaveDocument(HWND hWndEdit) {
     }
 
     es.dwCookie=(DWORD_PTR)hFile;
-    es.pfnCallback=(cp==GetDefultCodePage()&&!unix_newline)?DummyOutputStreamCallback:OutputStreamCallback;
-
-    if(cp==GetDefultCodePage()&&!unix_newline) SendMessage(hWndEdit,EM_STREAMOUT,SF_TEXT,(LPARAM)&es);
-    else SendMessage(hWndEdit,EM_STREAMOUT,SF_TEXT|SF_UNICODE,(LPARAM)&es);
+    if (cp==GetDefultCodePage()&&!g_unix_newline) {
+        flags = SF_TEXT;
+        es.pfnCallback = DummyOutputStreamCallback;
+    } else {
+        es.pfnCallback = OutputStreamCallback;
+        flags = SF_TEXT|SF_UNICODE;
+    }
+    SendMessage(hWndEdit,EM_STREAMOUT, flags, (LPARAM)&es);
     SetModify(FALSE);
 
     CloseHandle(hFile);
 
-    hFile=FindFirstFile(szCurrentFileName,&w32fdInfo);
+    hFile=FindFirstFile(g_szCurrentFileName,&w32fdInfo);
     FindClose(hFile);
 
-    _stprintf(szWindowTitle,_T("%s - %s"),(hFile!=INVALID_HANDLE_VALUE)?w32fdInfo.cFileName:szCurrentFileName, APP_SHORT_TITLE);
+    _stprintf(szWindowTitle,_T("%s - %s"),(hFile!=INVALID_HANDLE_VALUE)?w32fdInfo.cFileName:g_szCurrentFileName, APP_SHORT_TITLE);
     SetWindowText(hWndParent,szWindowTitle);
 
     if(dwAttr!=0xFFFFFFFF) SetFileAttributes(realname,dwAttr|FILE_ATTRIBUTE_ARCHIVE);
@@ -1269,9 +1289,9 @@ BOOL CALLBACK FindDlgProc(HWND hDlg,UINT msg,WPARAM wParam,LPARAM lParam) {
     case WM_INITDIALOG:
         SendMessage(hDlg,WM_SETICON,(WPARAM)ICON_BIG,(LPARAM)LoadIcon(GetModuleHandle(NULL),MAKEINTRESOURCE(IDI_ICON1)));
         hWndText=GetDlgItem(hDlg,IDC_TEXT);
-        if(org_query) {
-            SetWindowText(hWndText,org_query);
-            SendMessage(hWndText,EM_SETSEL,0,_tcslen(org_query));
+        if(g_org_query) {
+            SetWindowText(hWndText,g_org_query);
+            SendMessage(hWndText,EM_SETSEL,0,lstrlen(g_org_query));
         }
         SendMessage(GetDlgItem(hDlg,IDC_BACKWARD),BM_SETCHECK,(int)(!(BOOL)(ftflags&FR_DOWN)),0);
         SendMessage(GetDlgItem(hDlg,IDC_MATCHCASE),BM_SETCHECK,(int)(BOOL)(ftflags&FR_MATCHCASE),0);
@@ -1292,22 +1312,22 @@ BOOL CALLBACK FindDlgProc(HWND hDlg,UINT msg,WPARAM wParam,LPARAM lParam) {
             return TRUE;
         case IDOK:
             characters=GetWindowTextLength(hWndText);
-            if(ft.lpstrText) HeapFree(GetProcessHeap(),0,(LPVOID)ft.lpstrText);
-            if(org_query) HeapFree(GetProcessHeap(),0,(LPVOID)org_query);
+            if(g_ft.lpstrText) HeapFree(GetProcessHeap(),0,(LPVOID)g_ft.lpstrText);
+            if(g_org_query) HeapFree(GetProcessHeap(),0,(LPVOID)g_org_query);
 
-            ft.lpstrText=(TCHAR *)HeapAlloc(GetProcessHeap(),0, (2*(characters+1))*sizeof(TCHAR));
-            if(!ft.lpstrText) {
+            g_ft.lpstrText=(TCHAR *)HeapAlloc(GetProcessHeap(),0, (2*(characters+1))*sizeof(TCHAR));
+            if(!g_ft.lpstrText) {
                 MessageBox(NULL,MSG_ERROR_NOT_ENOUGH_MEMORY,NULL,MB_OK|MB_ICONERROR);
                 ExitProcess(1);
             }
 
-            org_query=(TCHAR *)HeapAlloc(GetProcessHeap(),0,(characters+1)*sizeof(TCHAR));
-            if(!org_query) {
+            g_org_query=(TCHAR *)HeapAlloc(GetProcessHeap(),0,(characters+1)*sizeof(TCHAR));
+            if(!g_org_query) {
                 MessageBox(NULL,MSG_ERROR_NOT_ENOUGH_MEMORY,NULL,MB_OK|MB_ICONERROR);
                 ExitProcess(1);
             }
 
-            GetWindowText(hWndText,org_query,characters+1);
+            GetWindowText(hWndText,g_org_query,characters+1);
 
             ftflags=0;
             if(!SendMessage(GetDlgItem(hDlg,IDC_BACKWARD),BM_GETCHECK,0,0)) ftflags|=FR_DOWN;
@@ -1315,14 +1335,14 @@ BOOL CALLBACK FindDlgProc(HWND hDlg,UINT msg,WPARAM wParam,LPARAM lParam) {
             if(SendMessage(GetDlgItem(hDlg,IDC_WHOLEWORD),BM_GETCHECK,0,0)) ftflags|=FR_WHOLEWORD;
             if(SendMessage(GetDlgItem(hDlg,IDC_ESCAPESEQ),BM_GETCHECK,0,0)) {
                 use_escape=TRUE;
-                if(!TranslateBackslashes((TCHAR*)ft.lpstrText,org_query)) {
+                if(!TranslateBackslashes((TCHAR*)g_ft.lpstrText,g_org_query)) {
                     MessageBox(hDlg,MSG_ERROR_SYNTAX,APP_SHORT_TITLE,MB_OK|MB_ICONERROR);
                     return TRUE;
                 }
             }
             else {
                 use_escape=FALSE;
-                _tcscpy((TCHAR*)ft.lpstrText,org_query);
+                _tcscpy((TCHAR*)g_ft.lpstrText,g_org_query);
             }
             EndDialog(hDlg,-1);
             return TRUE;
@@ -1343,13 +1363,13 @@ BOOL CALLBACK ReplaceDlgProc(HWND hDlg,UINT msg,WPARAM wParam,LPARAM lParam) {
         SendMessage(hDlg,WM_SETICON,(WPARAM)ICON_BIG,(LPARAM)LoadIcon(GetModuleHandle(NULL),MAKEINTRESOURCE(IDI_ICON1)));
         hWndText=GetDlgItem(hDlg,IDC_TEXT);
         hWndNewText=GetDlgItem(hDlg,IDC_NEWTEXT);
-        if(org_query) {
-            SetWindowText(hWndText,org_query);
-            SendMessage(hWndText,EM_SETSEL,0,_tcslen(org_query));
+        if(g_org_query) {
+            SetWindowText(hWndText,g_org_query);
+            SendMessage(hWndText,EM_SETSEL,0,lstrlen(g_org_query));
         }
 
-        if(replaceto.org_query) {
-            SetWindowText(hWndNewText,replaceto.org_query);
+        if(g_replaceto.org_query) {
+            SetWindowText(hWndNewText,g_replaceto.org_query);
         }
 
         SendMessage(hWndEdit,EM_EXGETSEL,0,(LPARAM)&cr);
@@ -1387,41 +1407,41 @@ BOOL CALLBACK ReplaceDlgProc(HWND hDlg,UINT msg,WPARAM wParam,LPARAM lParam) {
         case IDOK:
             if(replace_in_sel) return TRUE;
         case IDC_ALL:
-            if(ft.lpstrText) HeapFree(GetProcessHeap(),0,(LPVOID)ft.lpstrText);
-            if(org_query) HeapFree(GetProcessHeap(),0,(LPVOID)org_query);
+            if(g_ft.lpstrText) HeapFree(GetProcessHeap(),0,(LPVOID)g_ft.lpstrText);
+            if(g_org_query) HeapFree(GetProcessHeap(),0,(LPVOID)g_org_query);
 
-            if(replaceto.lpstrNewText) HeapFree(GetProcessHeap(),0,(LPVOID)replaceto.lpstrNewText);
-            if(replaceto.org_query) HeapFree(GetProcessHeap(),0,(LPVOID)replaceto.org_query);
+            if(g_replaceto.lpstrNewText) HeapFree(GetProcessHeap(),0,(LPVOID)g_replaceto.lpstrNewText);
+            if(g_replaceto.org_query) HeapFree(GetProcessHeap(),0,(LPVOID)g_replaceto.org_query);
 
             characters=GetWindowTextLength(hWndText);
-            ft.lpstrText=(TCHAR *)HeapAlloc(GetProcessHeap(),0,(2*(characters+1))*sizeof(TCHAR));
-            if(!ft.lpstrText) {
+            g_ft.lpstrText=(TCHAR *)HeapAlloc(GetProcessHeap(),0,(2*(characters+1))*sizeof(TCHAR));
+            if(!g_ft.lpstrText) {
                 MessageBox(NULL,MSG_ERROR_NOT_ENOUGH_MEMORY,NULL,MB_OK|MB_ICONERROR);
                 ExitProcess(1);
             }
 
-            org_query=(TCHAR *)HeapAlloc(GetProcessHeap(),0,(characters+1)*sizeof(TCHAR));
-            if(!org_query) {
+            g_org_query=(TCHAR *)HeapAlloc(GetProcessHeap(),0,(characters+1)*sizeof(TCHAR));
+            if(!g_org_query) {
                 MessageBox(NULL,MSG_ERROR_NOT_ENOUGH_MEMORY,NULL,MB_OK|MB_ICONERROR);
                 ExitProcess(1);
             }
 
-            GetWindowText(hWndText,org_query,characters+1);
+            GetWindowText(hWndText,g_org_query,characters+1);
 
             characters=GetWindowTextLength(hWndNewText);
-            replaceto.lpstrNewText=(TCHAR *)HeapAlloc(GetProcessHeap(),0,(2*(characters+1))*sizeof(TCHAR));
-            if(!replaceto.lpstrNewText) {
+            g_replaceto.lpstrNewText=(TCHAR *)HeapAlloc(GetProcessHeap(),0,(2*(characters+1))*sizeof(TCHAR));
+            if(!g_replaceto.lpstrNewText) {
                 MessageBox(NULL,MSG_ERROR_NOT_ENOUGH_MEMORY,NULL,MB_OK|MB_ICONERROR);
                 ExitProcess(1);
             }
 
-            replaceto.org_query=(TCHAR *)HeapAlloc(GetProcessHeap(),0,(characters+1)*sizeof(TCHAR));
-            if(!replaceto.org_query) {
+            g_replaceto.org_query=(TCHAR *)HeapAlloc(GetProcessHeap(),0,(characters+1)*sizeof(TCHAR));
+            if(!g_replaceto.org_query) {
                 MessageBox(NULL,MSG_ERROR_NOT_ENOUGH_MEMORY,NULL,MB_OK|MB_ICONERROR);
                 ExitProcess(1);
             }
 
-            GetWindowText(hWndNewText,replaceto.org_query,characters+1);
+            GetWindowText(hWndNewText,g_replaceto.org_query,characters+1);
 
 
             ftflags=0;
@@ -1430,16 +1450,16 @@ BOOL CALLBACK ReplaceDlgProc(HWND hDlg,UINT msg,WPARAM wParam,LPARAM lParam) {
             if(SendMessage(GetDlgItem(hDlg,IDC_WHOLEWORD),BM_GETCHECK,0,0)) ftflags|=FR_WHOLEWORD;
             if(SendMessage(GetDlgItem(hDlg,IDC_ESCAPESEQ),BM_GETCHECK,0,0)) {
                 use_escape=TRUE;
-                if(!TranslateBackslashes((TCHAR *)ft.lpstrText,org_query)||
-                    !TranslateBackslashes(replaceto.lpstrNewText,replaceto.org_query))
+                if(!TranslateBackslashes((TCHAR *)g_ft.lpstrText,g_org_query)||
+                    !TranslateBackslashes(g_replaceto.lpstrNewText,g_replaceto.org_query))
                 {
                     MessageBox(hDlg,MSG_ERROR_SYNTAX,APP_SHORT_TITLE,MB_OK|MB_ICONERROR);
                     return TRUE;
                 }
             } else {
                 use_escape=FALSE;
-                _tcscpy((TCHAR *)ft.lpstrText,org_query);
-                _tcscpy(replaceto.lpstrNewText,replaceto.org_query);
+                _tcscpy((TCHAR *)g_ft.lpstrText,g_org_query);
+                _tcscpy(g_replaceto.lpstrNewText,g_replaceto.org_query);
             }
             EndDialog(hDlg,LOWORD(wParam)==IDOK?-1:-2);
             return TRUE;
@@ -1500,25 +1520,25 @@ BOOL CALLBACK ConfirmDlgProc(HWND hDlg,UINT msg,WPARAM wParam,LPARAM lParam) {
 }
 
 int _FindText(HWND hWndEdit) {
-    SendMessage(hWndEdit,EM_EXGETSEL,0,(LPARAM)&ft.chrg);
+    SendMessage(hWndEdit,EM_EXGETSEL,0,(LPARAM)&g_ft.chrg);
 
     _SetLayout();
     if(ftflags&FR_DOWN) {
-        ft.chrg.cpMin=ft.chrg.cpMax;
-        ft.chrg.cpMax=-1;
+        g_ft.chrg.cpMin=g_ft.chrg.cpMax;
+        g_ft.chrg.cpMax=-1;
     }
-    else ft.chrg.cpMax=0;
+    else g_ft.chrg.cpMax=0;
 
-    ft.chrg.cpMin=SendMessage(hWndEdit,EM_FINDTEXT,ftflags,(LPARAM)&ft);
+    g_ft.chrg.cpMin=SendMessage(hWndEdit,EM_FINDTEXT,ftflags,(LPARAM)&g_ft);
 
-    if(ft.chrg.cpMin==-1);
+    if(g_ft.chrg.cpMin==-1);
     else {
-        ft.chrg.cpMax=ft.chrg.cpMin+_tcslen(ft.lpstrText);
-        SendMessage(hWndEdit,EM_EXSETSEL,0,(LPARAM)&ft.chrg);
+        g_ft.chrg.cpMax=g_ft.chrg.cpMin+lstrlen(g_ft.lpstrText);
+        SendMessage(hWndEdit,EM_EXSETSEL,0,(LPARAM)&g_ft.chrg);
     }
     _RestoreLayout();
 
-    return ft.chrg.cpMin;
+    return g_ft.chrg.cpMin;
 }
 
 void _ReplaceText(HWND hWndEdit,BOOL all)
@@ -1532,48 +1552,48 @@ void _ReplaceText(HWND hWndEdit,BOOL all)
     if(replace_in_sel) SendMessage(hWndEdit,EM_EXGETSEL,0,(LPARAM)&crInitial);
 
     while(TRUE) {
-        SendMessage(hWndEdit,EM_EXGETSEL,0,(LPARAM)&ft.chrg);
+        SendMessage(hWndEdit,EM_EXGETSEL,0,(LPARAM)&g_ft.chrg);
 
         if(replace_in_sel) {
             if(ftflags&FR_DOWN) {
-                if(!firstpass) ft.chrg.cpMin=ft.chrg.cpMax;
-                ft.chrg.cpMax=crInitial.cpMax;
+                if(!firstpass) g_ft.chrg.cpMin=g_ft.chrg.cpMax;
+                g_ft.chrg.cpMax=crInitial.cpMax;
             }
             else {
-                if(firstpass) ft.chrg.cpMin=ft.chrg.cpMax;
-                ft.chrg.cpMax=crInitial.cpMin;
+                if(firstpass) g_ft.chrg.cpMin=g_ft.chrg.cpMax;
+                g_ft.chrg.cpMax=crInitial.cpMin;
             }
         }
         else {
             if(ftflags&FR_DOWN) {
-                ft.chrg.cpMin=ft.chrg.cpMax;
-                ft.chrg.cpMax=-1;
+                g_ft.chrg.cpMin=g_ft.chrg.cpMax;
+                g_ft.chrg.cpMax=-1;
             }
             else {
-                ft.chrg.cpMax=0;
+                g_ft.chrg.cpMax=0;
             }
         }
 
         firstpass=FALSE;
 
-        ft.chrg.cpMin=SendMessage(hWndEdit,EM_FINDTEXT,ftflags,(LPARAM)&ft);
+        g_ft.chrg.cpMin=SendMessage(hWndEdit,EM_FINDTEXT,ftflags,(LPARAM)&g_ft);
 
-        if(ft.chrg.cpMin==-1) break;
+        if(g_ft.chrg.cpMin==-1) break;
         else {
-            ft.chrg.cpMax=ft.chrg.cpMin+_tcslen(ft.lpstrText);
-            SendMessage(hWndEdit,EM_EXSETSEL,0,(LPARAM)&ft.chrg);
+            g_ft.chrg.cpMax=g_ft.chrg.cpMin+lstrlen(g_ft.lpstrText);
+            SendMessage(hWndEdit,EM_EXSETSEL,0,(LPARAM)&g_ft.chrg);
             if(!all) result=DialogBox(GetModuleHandle(NULL),MAKEINTRESOURCE(IDD_CONFIRM),GetParent(hWndEdit),(DLGPROC)ConfirmDlgProc);
             else result=IDOK;
             switch(result) {
             case IDC_ALL:
                 all=TRUE;
             case IDOK:
-                if((ft.lpstrText[lstrlen(ft.lpstrText)-1]==_T('\x0D'))&&(lstrlen(replaceto.lpstrNewText)==1)) {
+                if((g_ft.lpstrText[lstrlen(g_ft.lpstrText)-1]==_T('\x0D'))&&(lstrlen(g_replaceto.lpstrNewText)==1)) {
                     SendMessage(hWndEdit,EM_REPLACESEL,TRUE,(LPARAM)_T(""));
                 }
-                SendMessage(hWndEdit,EM_REPLACESEL,TRUE,(LPARAM)replaceto.lpstrNewText);
-                ft.chrg.cpMax=ft.chrg.cpMin-_tcslen(ft.lpstrText)+_tcslen(replaceto.lpstrNewText);
-                crInitial.cpMax=crInitial.cpMax-_tcslen(ft.lpstrText)+_tcslen(replaceto.lpstrNewText);
+                SendMessage(hWndEdit,EM_REPLACESEL,TRUE,(LPARAM)g_replaceto.lpstrNewText);
+                g_ft.chrg.cpMax=g_ft.chrg.cpMin-lstrlen(g_ft.lpstrText)+lstrlen(g_replaceto.lpstrNewText);
+                crInitial.cpMax=crInitial.cpMax-lstrlen(g_ft.lpstrText)+lstrlen(g_replaceto.lpstrNewText);
                 break;
             case IDCANCEL:
                 return;
@@ -1693,17 +1713,17 @@ BOOL RestoreOptionsFromRegistry(HWND hWndEdit) {
         (LPBYTE)NULL, &dwSize)==ERROR_SUCCESS)
     {
         if(dwType==REG_SZ&&dwSize>1) {
-            org_query=(TCHAR *)HeapAlloc(GetProcessHeap(),0,dwSize*sizeof(TCHAR));
-            if(!org_query) {
+            g_org_query=(TCHAR *)HeapAlloc(GetProcessHeap(),0,dwSize*sizeof(TCHAR));
+            if(!g_org_query) {
                 MessageBox(NULL,MSG_ERROR_NOT_ENOUGH_MEMORY,NULL,MB_OK|MB_ICONERROR);
                 ExitProcess(1);
             }
 
             if(RegQueryValueEx(hKey, _T("Search_query"), NULL, &dwType,
-                (LPBYTE)org_query, &dwSize)!=ERROR_SUCCESS)
+                (LPBYTE)g_org_query, &dwSize)!=ERROR_SUCCESS)
             {
-                HeapFree(GetProcessHeap(),0,(LPVOID)org_query);
-                org_query=NULL;
+                HeapFree(GetProcessHeap(),0,(LPVOID)g_org_query);
+                g_org_query=NULL;
             }
         }
     }
@@ -1712,17 +1732,17 @@ BOOL RestoreOptionsFromRegistry(HWND hWndEdit) {
         (LPBYTE)NULL, &dwSize)==ERROR_SUCCESS)
     {
         if(dwType==REG_SZ&&dwSize>1) {
-            replaceto.org_query=(TCHAR *)HeapAlloc(GetProcessHeap(),0,dwSize*sizeof(TCHAR));
-            if(!replaceto.org_query) {
+            g_replaceto.org_query=(TCHAR *)HeapAlloc(GetProcessHeap(),0,dwSize*sizeof(TCHAR));
+            if(!g_replaceto.org_query) {
                 MessageBox(NULL,MSG_ERROR_NOT_ENOUGH_MEMORY,NULL,MB_OK|MB_ICONERROR);
                 ExitProcess(1);
             }
 
             if(RegQueryValueEx(hKey, _T("Replace_string"), NULL, &dwType,
-                (LPBYTE)replaceto.org_query, &dwSize)!=ERROR_SUCCESS)
+                (LPBYTE)g_replaceto.org_query, &dwSize)!=ERROR_SUCCESS)
             {
-                HeapFree(GetProcessHeap(),0,(LPVOID)replaceto.org_query);
-                replaceto.org_query=NULL;
+                HeapFree(GetProcessHeap(),0,(LPVOID)g_replaceto.org_query);
+                g_replaceto.org_query=NULL;
             }
         }
     }
@@ -1736,13 +1756,13 @@ BOOL RestoreOptionsFromRegistry(HWND hWndEdit) {
     }
 
     RegQueryValueEx(hKey, _T("Textcolor"), NULL, &dwType,
-        (LPBYTE)&cf.rgbColors, &dwSize);
+        (LPBYTE)&g_cf.rgbColors, &dwSize);
 
     if(RegQueryValueEx(hKey, _T("Background"), NULL, &dwType,
-        (LPBYTE)&cc.rgbResult, &dwSize)==ERROR_SUCCESS)
+        (LPBYTE)&g_cc.rgbResult, &dwSize)==ERROR_SUCCESS)
     {
         if(dwType==REG_DWORD) {
-            SendMessage(hWndEdit,EM_SETBKGNDCOLOR,0,cc.rgbResult);
+            SendMessage(hWndEdit,EM_SETBKGNDCOLOR,0,g_cc.rgbResult);
             usesystembckgcolor=FALSE;
         }
     }
@@ -1750,7 +1770,7 @@ BOOL RestoreOptionsFromRegistry(HWND hWndEdit) {
     dwSize=sizeof(LOGFONT);
 
     if(RegQueryValueEx(hKey, _T("Font"), NULL, &dwType,
-        (LPBYTE)&logfont, &dwSize)==ERROR_SUCCESS)
+        (LPBYTE)&g_logFont, &dwSize)==ERROR_SUCCESS)
     {
         if(dwType==REG_BINARY&&dwSize==sizeof(LOGFONT)) {
             SetChosenFont(hWndEdit);
@@ -1804,15 +1824,15 @@ BOOL SaveOptionsInRegistry(HWND hWnd) {
     }
 
     if(RegSetValueEx(hKey, _T("Search_query"), 0, REG_SZ,
-        (LPBYTE)(org_query?org_query:_T("")), org_query?(( _tcslen(org_query)+1) *sizeof(TCHAR) ):1)!=ERROR_SUCCESS)
+        (LPBYTE)(g_org_query?g_org_query:_T("")), g_org_query?(( lstrlen(g_org_query)+1) *sizeof(TCHAR) ):1)!=ERROR_SUCCESS)
     {
         RegCloseKey(hKey);
         return FALSE;
     }
 
     if(RegSetValueEx(hKey, _T("Replace_string"), 0, REG_SZ,
-        (LPBYTE)(replaceto.org_query?replaceto.org_query:_T("")),
-        replaceto.org_query?((_tcslen(replaceto.org_query)+1)*sizeof(TCHAR)):1)!=ERROR_SUCCESS)
+        (LPBYTE)(g_replaceto.org_query?g_replaceto.org_query:_T("")),
+        g_replaceto.org_query?((lstrlen(g_replaceto.org_query)+1)*sizeof(TCHAR)):1)!=ERROR_SUCCESS)
     {
         RegCloseKey(hKey);
         return FALSE;
@@ -1868,30 +1888,30 @@ BOOL SaveOptionsInRegistry(HWND hWnd) {
     }
 
     if(RegSetValueEx(hKey, _T("Font"), 0, REG_BINARY,
-        (LPBYTE)&logfont, sizeof(LOGFONT))!=ERROR_SUCCESS)
+        (LPBYTE)&g_logFont, sizeof(g_logFont))!=ERROR_SUCCESS)
     {
         RegCloseKey(hKey);
         return FALSE;
     }
 
     if (RegSetValueEx(hKey, _T("Textcolor"), 0, REG_DWORD, 
-        (LPBYTE)&cf.rgbColors, sizeof(DWORD))!=ERROR_SUCCESS)
+        (LPBYTE)&g_cf.rgbColors, sizeof(DWORD))!=ERROR_SUCCESS)
     {
         RegCloseKey(hKey);
         return FALSE;
     }
 
     if(RegSetValueEx(hKey, _T("Style"), 0, REG_DWORD,
-        (LPBYTE)((GetWindowLong(hWnd,GWL_STYLE)&WS_MAXIMIZE)?&dwOne:&dwZero),
+        (LPBYTE)((GetWindowLongPtr(hWnd,GWL_STYLE)&WS_MAXIMIZE)?&dwOne:&dwZero),
         sizeof(DWORD))!=ERROR_SUCCESS)
     {
         RegCloseKey(hKey);
         return FALSE;
     }
 
-    if(!(GetWindowLong(hWnd,GWL_STYLE)&WS_MINIMIZE)) {
+    if(!(GetWindowLongPtr(hWnd,GWL_STYLE)&WS_MINIMIZE)) {
 
-        if(!(GetWindowLong(hWnd,GWL_STYLE)&WS_MAXIMIZE)) {
+        if(!(GetWindowLongPtr(hWnd,GWL_STYLE)&WS_MAXIMIZE)) {
             if(RegSetValueEx(hKey, _T("window_left"), 0, REG_DWORD,
                 (LPBYTE)&MainWindowRect.left, sizeof(DWORD))!=ERROR_SUCCESS)
             {
@@ -1921,7 +1941,7 @@ BOOL SaveOptionsInRegistry(HWND hWnd) {
 
     if(!usesystembckgcolor) {
         if(RegSetValueEx(hKey, _T("Background"), 0, REG_DWORD,
-            (LPBYTE)&cc.rgbResult, sizeof(DWORD))!=ERROR_SUCCESS)
+            (LPBYTE)&g_cc.rgbResult, sizeof(DWORD))!=ERROR_SUCCESS)
         {
             RegCloseKey(hKey);
             return FALSE;
@@ -1957,7 +1977,7 @@ void _SetLayout() {
     switched=FALSE;
     //Switch keyboard layout if it is English
     GetKeyboardLayoutName(name);
-    if(!memcmp(name+_tcslen(name)-2, _T("09"), 2*sizeof(TCHAR))) {
+    if(!memcmp(name+lstrlen(name)-2, _T("09"), 2*sizeof(TCHAR))) {
         ActivateKeyboardLayout((HKL)HKL_NEXT,0);
         switched=TRUE;
     }
@@ -1970,65 +1990,62 @@ void _RestoreLayout() {
     }
 }
 
-BOOL AddLastFilePosition(HWND hWndEdit) {
-    CHARRANGE chrg;
+BOOL StoreLastFilePosition(DWORD pos) {
     int i,j;
 
     TCHAR name_buf[MAX_PATH+2];
     int pos_buf;
 
-    TCHAR current_file_buf[MAX_PATH+2];
+    TCHAR current_file_buf[MAX_PATH+2] = { 0 };
     TCHAR *p;
 
-    if(!GetFullPathName(szCurrentFileName,MAX_PATH,current_file_buf,&p)) {
-        lstrcpy(current_file_buf,szCurrentFileName);
+    if(!GetFullPathName(g_szCurrentFileName,MAX_PATH,current_file_buf,&p)) {
+        lstrcpy(current_file_buf,g_szCurrentFileName);
     }
 
-    if(!szCurrentFileName||!*szCurrentFileName) return FALSE;
+    if(!*g_szCurrentFileName) return FALSE;
 
-    RestoreLastFilePosition(hWndEdit);
-    SendMessage(hWndEdit,EM_EXGETSEL,0,(LPARAM)&chrg);
+    RestoreRecentFilesInfo();
 
-    for(i=0;i<=RECENTFILES-1;i++) {
-        if(!lstrcmp(current_file_buf,recent_names[i])) {
-            recent_positions[i]=chrg.cpMin;
+    for(i=0; i<RECENTFILES; i++) {
+        if(0 == lstrcmp(current_file_buf,g_recent_files[i])) {
+            g_recent_files_position[i]=pos;
             break;
         }
     }
 
     if(i==RECENTFILES) {
         for(i=RECENTFILES-1;i>=1;i--) {
-            memcpy(recent_names[i],recent_names[i-1],MAX_PATH);
-            recent_positions[i]=recent_positions[i-1];
+            lstrcpyn(g_recent_files[i],g_recent_files[i-1], _countof(g_recent_files[i]));
+            g_recent_files_position[i]=g_recent_files_position[i-1];
         }
 
-        _tcscpy(recent_names[0],current_file_buf);
+        lstrcpyn(g_recent_files[0],current_file_buf, _countof(g_recent_files[0]));
 
-        recent_positions[0]=chrg.cpMin;
+        g_recent_files_position[0]=pos;
     }
     else {
-        memcpy(name_buf,recent_names[i],MAX_PATH);
-        pos_buf=recent_positions[i];
+        lstrcpyn(name_buf, g_recent_files[i], _countof(name_buf));
+        pos_buf=g_recent_files_position[i];
         for(j=i;j>=1;j--) {
-            memcpy(recent_names[j],recent_names[j-1],MAX_PATH);
-            recent_positions[j]=recent_positions[j-1];
+            lstrcpyn(g_recent_files[j], g_recent_files[j-1], _countof(g_recent_files[j]));
+            g_recent_files_position[j]=g_recent_files_position[j-1];
         }
-        memcpy(recent_names[0],name_buf,MAX_PATH);
-        recent_positions[0]=pos_buf;
+        lstrcpyn(g_recent_files[0], name_buf, _countof(g_recent_files[0]));
+        g_recent_files_position[0]=pos_buf;
     }
 
-    SaveLastFilePosition(hWndEdit);
+    RenewHistoryMenu();
+    SaveRecentFilesInfo();
 
     return TRUE;
 }
 
-BOOL SaveLastFilePosition(HWND hWndEdit) {
+BOOL SaveRecentFilesInfo(void) {
     HKEY hKey;
     DWORD dwDisp;
     int i;
     TCHAR namebuf[256];
-
-    UNREFERENCED_PARAMETER(hWndEdit);
 
     if(RegCreateKeyEx(HKEY_CURRENT_USER, _T("Software\\Akelsoft\\AkelPad\\Recent"),
         0, NULL, REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS, NULL,
@@ -2037,8 +2054,8 @@ BOOL SaveLastFilePosition(HWND hWndEdit) {
     for(i=0;i<=RECENTFILES-1;i++) {
         _stprintf(namebuf, _T("name%d"), i);
         if(RegSetValueEx(hKey, namebuf, 0, REG_SZ,
-            (LPBYTE)(recent_names[i]?recent_names[i]:_T("")),
-            recent_names[i]?((_tcslen(recent_names[i])+1)*sizeof(TCHAR)):1)!=ERROR_SUCCESS)
+            (LPBYTE)(g_recent_files[i]?g_recent_files[i]:_T("")),
+            g_recent_files[i]?((lstrlen(g_recent_files[i])+1)*sizeof(TCHAR)):1)!=ERROR_SUCCESS)
         {
             RegCloseKey(hKey);
             return FALSE;
@@ -2046,7 +2063,7 @@ BOOL SaveLastFilePosition(HWND hWndEdit) {
 
         _stprintf(namebuf, _T("pos%d"), i);
         if(RegSetValueEx(hKey, namebuf, 0, REG_DWORD,
-            (LPBYTE)&recent_positions[i], sizeof(DWORD))!=ERROR_SUCCESS)
+            (LPBYTE)&g_recent_files_position[i], sizeof(DWORD))!=ERROR_SUCCESS)
         {
             RegCloseKey(hKey);
             return FALSE;
@@ -2057,16 +2074,14 @@ BOOL SaveLastFilePosition(HWND hWndEdit) {
     return TRUE;
 }
 
-BOOL RestoreLastFilePosition(HWND hWndEdit) {
+BOOL RestoreRecentFilesInfo(void) {
     HKEY hKey;
     DWORD dwType, dwSize=sizeof(DWORD);
     int i;
     TCHAR namebuf[256];
 
-    UNREFERENCED_PARAMETER(hWndEdit);
-
-    ZeroMemory(recent_names, sizeof(recent_names));
-    ZeroMemory(recent_positions, sizeof(recent_positions));
+    ZeroMemory(g_recent_files, sizeof(g_recent_files));
+    ZeroMemory(g_recent_files_position, sizeof(g_recent_files_position));
 
     if(RegOpenKeyEx(HKEY_CURRENT_USER, _T("Software\\Akelsoft\\AkelPad\\Recent"),
         0, KEY_ALL_ACCESS, &hKey)!=ERROR_SUCCESS)
@@ -2082,17 +2097,15 @@ BOOL RestoreLastFilePosition(HWND hWndEdit) {
         if(dwType!=REG_SZ||dwSize<=1) break;
 
         RegQueryValueEx(hKey, namebuf, NULL, &dwType,
-            (LPBYTE)recent_names[i], &dwSize);
+            (LPBYTE)g_recent_files[i], &dwSize);
 
         dwSize=sizeof(DWORD);
         _stprintf(namebuf, _T("pos%d"), i);
 
         RegQueryValueEx(hKey, namebuf, NULL, &dwType,
-            (LPBYTE)&recent_positions[i], &dwSize);
+            (LPBYTE)&g_recent_files_position[i], &dwSize);
     }
     RegCloseKey(hKey);
-
-    RenewHistoryMenu();
 
     return TRUE;
 }

@@ -11,43 +11,41 @@
 #include "codepage.h"
 #include "langpack.h"
 
-extern TCHAR szCurrentFileName[MAX_PATH+1]; 
+extern TCHAR g_szCurrentFileName[MAX_PATH+1]; 
 extern BOOL keep_on;
 extern BOOL need_autodetect;
 extern BOOL open_in_new_window;
-extern BOOL unix_newline;
+extern BOOL g_unix_newline;
 extern BOOL support_asian;
 
-extern TCHAR recent_names[RECENTFILES][MAX_PATH+1];
-extern DWORD recent_positions[RECENTFILES];
+extern TCHAR g_recent_files[RECENTFILES][MAX_PATH+1];
+extern DWORD g_recent_files_position[RECENTFILES];
 
 TCHAR *CmdLine;
 UINT uiOpenOnStartMessage;
-HWND hStatus,hSyncWindow;
-BOOL modified=FALSE;
+HWND g_hStatus;
+BOOL g_modified=FALSE;
 BOOL insertstate=TRUE;
 BOOL GlobalPrint=FALSE;
 int g_iCmdShow;
-int maxchars=0x0FFFFFFF;
+int g_max_chars=0x0FFFFFFF;
 int mcstep=0x0FFFFFFF;
 
-HMENU hHistoryMenu,hFileMenu;
+HMENU g_hFileMenu;
 
 RECT MainWindowRect;
 
 BOOL (WINAPI *GetCPInfoExPtr) (UINT,DWORD,LPCPINFOEX);
 
 LRESULT CALLBACK WndProc(HWND,UINT,WPARAM,LPARAM);
-LRESULT CALLBACK DummyWndProc(HWND,UINT,WPARAM,LPARAM);
 
 int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE hPrev, PTSTR szCmdLine, int iCmdShow)
 {
     TCHAR *szAppName = APP_FULL_TITLE;
-    TCHAR *szDummyClassName=STR_DUMMY_NAME;
     HACCEL hAccel;
     HWND         hWnd;
     MSG          msg;
-    WNDCLASS     wndclass,dummyclass;
+    WNDCLASS     wndclass;
     HINSTANCE hRTFLib;
     BOOL msgstatus;
     HMODULE hKernel32;
@@ -69,7 +67,7 @@ int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE hPrev, PTSTR szCmdLine, int 
     MainWindowRect.right=CW_USEDEFAULT;
     MainWindowRect.bottom=CW_USEDEFAULT;
 
-    hRTFLib=LoadLibrary(_T("RICHED20.DLL"));
+    hRTFLib=LoadLibrary(_T("RICHED32.DLL"));
     if(!hRTFLib) {
         MessageBox(NULL,MSG_ERROR_LOADING_DLL,APP_SHORT_TITLE,MB_OK|MB_ICONERROR);
         return 0;
@@ -92,22 +90,6 @@ int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE hPrev, PTSTR szCmdLine, int 
 
     RegisterClass(&wndclass);
 
-    dummyclass.style         = 0;
-    dummyclass.lpfnWndProc   = DummyWndProc;
-    dummyclass.cbClsExtra    = 0;
-    dummyclass.cbWndExtra    = 0;
-    dummyclass.hInstance     = hInstance;
-    dummyclass.hIcon         = LoadIcon(NULL,IDI_APPLICATION);
-    dummyclass.hCursor       = LoadCursor(NULL, IDC_ARROW);
-    dummyclass.hbrBackground =(HBRUSH) GetStockObject(HOLLOW_BRUSH);
-    dummyclass.lpszMenuName  = NULL;
-    dummyclass.lpszClassName = szDummyClassName;
-
-    if(!RegisterClass(&dummyclass)) {
-        int err=GetLastError();
-        printf("%d",err);
-    }
-
     RestorePreOptionsFromRegistry();
 
     hWnd = CreateWindow(szAppName,                    // window class name
@@ -118,18 +100,6 @@ int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE hPrev, PTSTR szCmdLine, int 
         MainWindowRect.right,                // initial x size
         MainWindowRect.bottom,                // initial y size
         NULL,                         // parent window handle
-        NULL,                         // window menu handle
-        hInstance,                    // program instance handle
-        NULL);                        // creation parameters
-
-    hSyncWindow = CreateWindow(szDummyClassName,                    // window class name
-        _T(""),              // window caption
-        WS_POPUP,          // window style
-        CW_USEDEFAULT,                // initial x position
-        CW_USEDEFAULT,                // initial y position
-        CW_USEDEFAULT,                // initial x size
-        CW_USEDEFAULT,                // initial y size
-        hWnd,                         // parent window handle
         NULL,                         // window menu handle
         hInstance,                    // program instance handle
         NULL);                        // creation parameters
@@ -185,11 +155,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             }
             if(CmdLine[0]==_T('\"')) {
                 CmdLine[lstrlen(CmdLine)-1]=_T('\0');
-                lstrcpyn(szCurrentFileName,CmdLine+1,MAX_PATH);
+                lstrcpyn(g_szCurrentFileName,CmdLine+1,MAX_PATH);
             }
-            else lstrcpyn(szCurrentFileName,CmdLine,MAX_PATH);
+            else lstrcpyn(g_szCurrentFileName,CmdLine,MAX_PATH);
 
-            if(!open_in_new_window&&GetFullPathName(szCurrentFileName,MAX_PATH,szFullFileName,&p)) {
+            if(!open_in_new_window&&GetFullPathName(g_szCurrentFileName,MAX_PATH,szFullFileName,&p)) {
                 hWndFriend=FindWindow(STR_DUMMY_NAME,szFullFileName);
                 if(hWndFriend) {
                     hWndFriend=GetParent(hWndFriend);
@@ -216,14 +186,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     {
     case WM_CREATE:
         hMenu=GetMenu(hWnd);
-        hFileMenu=GetSubMenu(hMenu,0);
-        hHistoryMenu=GetSubMenu(hFileMenu,HISTORY_MENU_POSITION);
+        g_hFileMenu=GetSubMenu(hMenu,0);
         hPopup=LoadMenu(((LPCREATESTRUCT)lParam)->hInstance,MAKEINTRESOURCE(IDM_POPUP));
         hPopup=GetSubMenu(hPopup,0);
 
         GetClientRect(hWnd, &ClientRect);
 
-        hStatus=CreateWindow(STATUSCLASSNAME,
+        g_hStatus=CreateWindow(STATUSCLASSNAME,
             _T(""),
             WS_CHILD|WS_VISIBLE|SBARS_SIZEGRIP,
             0,0,0,0,
@@ -231,11 +200,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             (HMENU)ID_STATUS,
             ((LPCREATESTRUCT)lParam)->hInstance,NULL);
 
-        SendMessage(hStatus,SB_SIMPLE,FALSE,0);
-        SendMessage(hStatus,SB_SETPARTS,4,(LPARAM)&iSBParts);
-        SendMessage(hStatus,SB_SETTEXT,0,(LPARAM)_T("1:1"));
-        SendMessage(hStatus,SB_SETTEXT,1,(LPARAM)STR_MODE_INSERT);
-        SendMessage(hStatus,SB_SETTEXT,2,(LPARAM)_T(""));
+        SendMessage(g_hStatus,SB_SIMPLE,FALSE,0);
+        SendMessage(g_hStatus,SB_SETPARTS,4,(LPARAM)&iSBParts);
+        SendMessage(g_hStatus,SB_SETTEXT,0,(LPARAM)_T("1:1"));
+        SendMessage(g_hStatus,SB_SETTEXT,1,(LPARAM)STR_MODE_INSERT);
+        SendMessage(g_hStatus,SB_SETTEXT,2,(LPARAM)_T(""));
 
         ChangeCodePage(GetDefultCodePage());
 
@@ -254,7 +223,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             (HMENU)ID_EDIT,
             ((LPCREATESTRUCT)lParam)->hInstance,NULL);
 
-        SendMessage(hWndEdit,EM_EXLIMITTEXT,0,maxchars);
+        SendMessage(hWndEdit,EM_EXLIMITTEXT,0,g_max_chars);
 
         InitEditor(hWndEdit);
 
@@ -271,9 +240,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_INITMENU:
     case WM_INITMENUPOPUP:
         //Check if any file is opened
-        EnableMenuItem(hMenu,IDM_FILE_REOPEN,(*szCurrentFileName)?MF_ENABLED:MF_GRAYED);
+        EnableMenuItem(hMenu,IDM_FILE_REOPEN,(*g_szCurrentFileName)?MF_ENABLED:MF_GRAYED);
         //Check if "Save" option should be enabled
-        EnableMenuItem(hMenu,IDM_FILE_SAVE,(GetModify()||!szCurrentFileName[0])?MF_ENABLED:MF_GRAYED);
+        EnableMenuItem(hMenu,IDM_FILE_SAVE,(GetModify()||!g_szCurrentFileName[0])?MF_ENABLED:MF_GRAYED);
         //Check if the selection is empty
         SendMessage(hWndEdit,EM_EXGETSEL,0,(LPARAM)&chrg);
         if(chrg.cpMin==chrg.cpMax) lMenuState=MF_GRAYED;
@@ -286,7 +255,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         EnableMenuItem(hMenu,IDM_EDIT_REDO,(SendMessage(hWndEdit,EM_CANREDO,0,0))?MF_ENABLED:MF_GRAYED);
         EnableMenuItem(hMenu,IDM_EDIT_PASTE,SendMessage(hWndEdit,EM_CANPASTE,0,0)?MF_ENABLED:MF_GRAYED);
         //Set up Windows/Unix newline format selection
-        if (unix_newline) {
+        if (g_unix_newline) {
             CheckMenuItem(hMenu,IDM_CODEPAGE_NEWLINE_UNIX,MF_CHECKED);
             CheckMenuItem(hMenu,IDM_CODEPAGE_NEWLINE_WIN,MF_UNCHECKED);
         } else { 
@@ -300,15 +269,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         return 0;
 
     case WM_SIZE:
-        SendMessage(hStatus,WM_SIZE,wParam,lParam);
-        GetWindowRect(hStatus, &StatusRect);
+        SendMessage(g_hStatus,WM_SIZE,wParam,lParam);
+        GetWindowRect(g_hStatus, &StatusRect);
 
         MoveWindow(hWndEdit,0,0,LOWORD(lParam),HIWORD(lParam)-(StatusRect.bottom-StatusRect.top),TRUE);
         return 0;
 
     case WM_DROPFILES:
         if(DoFileNew(hWndEdit)) {
-            DragQueryFile((HDROP)wParam,0,szCurrentFileName,MAX_PATH);
+            DragQueryFile((HDROP)wParam,0,g_szCurrentFileName,MAX_PATH);
             need_autodetect=TRUE;
             OpenDocument(hWndEdit,FALSE);
             need_autodetect=FALSE;
@@ -331,8 +300,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             case EN_MAXTEXT:
                 //trying to reallocate
                 MessageBox(hWnd,MSG_ERROR_LIMIT_REACHED,APP_SHORT_TITLE,MB_OK|MB_ICONERROR);
-                maxchars+=mcstep;
-                SendMessage(hWndEdit,EM_EXLIMITTEXT,0,maxchars);
+                g_max_chars+=mcstep;
+                SendMessage(hWndEdit,EM_EXLIMITTEXT,0,g_max_chars);
                 break;
             case EN_ERRSPACE:
                 MessageBox(hWnd,MSG_ERROR_NOT_ENOUGH_MEMORY_FOR_RICHEDIT,APP_SHORT_TITLE,MB_OK|MB_ICONERROR);
@@ -345,7 +314,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             break;
         case IDM_FILE_CREATENEW:
             SaveOptionsInRegistry(hWnd);
-            DoFileNewWindow(hWndEdit);
+            DoFileNewWindow();
             break;
         case IDM_FILE_OPEN:
             DoFileOpen(hWndEdit);
@@ -485,12 +454,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             if(SelectCodePage(hWnd)) DoCodePageSaveIn(hWndEdit);
             break;
         case IDM_CODEPAGE_NEWLINE_UNIX:
-            if(!unix_newline) SetModify(TRUE);
-            unix_newline=TRUE;
+            if(!g_unix_newline) SetModify(TRUE);
+            g_unix_newline=TRUE;
             break;
         case IDM_CODEPAGE_NEWLINE_WIN:
-            if(unix_newline) SetModify(TRUE);
-            unix_newline=FALSE;
+            if(g_unix_newline) SetModify(TRUE);
+            g_unix_newline=FALSE;
             break;
 
         case IDM_HELP_ABOUT:
@@ -498,7 +467,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             break;
 
         case IDM_NONMENU_CHANGESIZE:
-            dwLong=GetWindowLong(hWnd,GWL_STYLE);
+            dwLong=GetWindowLongPtr(hWnd,GWL_STYLE);
             if(dwLong&WS_MAXIMIZE) ShowWindow(hWnd,SW_RESTORE);
             else ShowWindow(hWnd,SW_MAXIMIZE);
             break;
@@ -550,7 +519,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 }
 
                 _stprintf(tmpbuf,_T("%u:%u"),line,column);
-                SendMessage(hStatus,SB_SETTEXT,0,(LPARAM)tmpbuf);
+                SendMessage(g_hStatus,SB_SETTEXT,0,(LPARAM)tmpbuf);
             }
             else if(((LPNMHDR)lParam)->code==EN_MSGFILTER) { //Space-keeping mode and other related stuff
                 if(((MSGFILTER *)lParam)->msg==WM_KEYUP&&((MSGFILTER *)lParam)->wParam==VK_RETURN&&keep_on) {
@@ -589,7 +558,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 else if(((MSGFILTER *)lParam)->msg==WM_KEYDOWN&&((MSGFILTER *)lParam)->wParam==VK_INSERT) {
                     if(GetKeyState(VK_SHIFT)>=0&&GetKeyState(VK_CONTROL)>=0) {
                         insertstate=!insertstate;
-                        SendMessage(hStatus,SB_SETTEXT,1,(LPARAM)(insertstate?STR_MODE_INSERT:STR_MODE_OVERLAP));
+                        SendMessage(g_hStatus,SB_SETTEXT,1,(LPARAM)(insertstate?STR_MODE_INSERT:STR_MODE_OVERLAP));
                     }
                 }
                 else if(((MSGFILTER *)lParam)->msg==WM_RBUTTONUP) {
@@ -637,22 +606,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     return DefWindowProc(hWnd,message,wParam,lParam);
 }
 
-LRESULT CALLBACK DummyWndProc(HWND hWnd,UINT message,WPARAM wParam,LPARAM lParam) {
-    if(message==WM_CREATE) {
-        ShowWindow(hWnd,SW_HIDE);
-        ShowWindow(hWnd,SW_HIDE);
-        return 0;
-    }
-    return DefWindowProc(hWnd,message,wParam,lParam);
-}
-
 BOOL GetModify() {
-    return modified;
+    return g_modified;
 }
 
 void SetModify(BOOL state) {
-    modified=state;
-    SendMessage(hStatus,SB_SETTEXT,2,(LPARAM)(modified?STR_MODIFIED:_T("")));
+    g_modified=state;
+    SendMessage(g_hStatus,SB_SETTEXT,2,(LPARAM)(g_modified?STR_MODIFIED:_T("")));
 }
 
 int RenewHistoryMenu() {
@@ -660,6 +620,9 @@ int RenewHistoryMenu() {
     int added=0;
     int res;
     TCHAR buf[HISTORY_STRING_LENGTH+1];
+    HMENU hHistoryMenu;
+    
+    hHistoryMenu=GetSubMenu(g_hFileMenu, HISTORY_MENU_POSITION);
 
     while(TRUE) {
         res=DeleteMenu(hHistoryMenu,i,MF_BYPOSITION);
@@ -669,15 +632,15 @@ int RenewHistoryMenu() {
     }
 
     for(i=0; i<RECENTFILES; i++) {
-        if(*recent_names[i]) {
-            if(*szCurrentFileName) {
-                if(!lstrcmp(szCurrentFileName,recent_names[i])) continue;
-            }
-            if(lstrlen(recent_names[i])<=HISTORY_STRING_LENGTH) {
-                lstrcpy(buf,recent_names[i]);
+        if(*g_recent_files[i]) {
+            //if(*g_szCurrentFileName) {
+            //    if(!lstrcmp(g_szCurrentFileName, g_recent_files[i])) continue;
+            //}
+            if(lstrlen(g_recent_files[i])<=HISTORY_STRING_LENGTH) {
+                lstrcpy(buf, g_recent_files[i]);
             } else {
                 lstrcpy(buf,_T("..."));
-                lstrcpy(buf+3,recent_names[i]+lstrlen(recent_names[i])-HISTORY_STRING_LENGTH+3);
+                lstrcpy(buf+3, g_recent_files[i]+lstrlen(g_recent_files[i])-HISTORY_STRING_LENGTH+3);
             }
             AppendMenu(hHistoryMenu,MF_STRING|MF_ENABLED,IDM_HISTORY_BASE+i,buf);
             added++;
@@ -685,9 +648,9 @@ int RenewHistoryMenu() {
     }
 
     if(!added) {
-        EnableMenuItem(hFileMenu,HISTORY_MENU_POSITION,MF_BYPOSITION|MF_GRAYED);
+        EnableMenuItem(g_hFileMenu,HISTORY_MENU_POSITION,MF_BYPOSITION|MF_GRAYED);
     } else {
-        EnableMenuItem(hFileMenu,HISTORY_MENU_POSITION,MF_BYPOSITION|MF_ENABLED);
+        EnableMenuItem(g_hFileMenu,HISTORY_MENU_POSITION,MF_BYPOSITION|MF_ENABLED);
     }
 
     return 0;
