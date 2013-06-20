@@ -23,6 +23,8 @@
 #ifndef _STRFUNC_H_
 #define _STRFUNC_H_
 
+#define ALLSTRFUNC 1
+
 wchar_t WideCharLower(wchar_t c);
 wchar_t WideCharUpper(wchar_t c);
 void* xmemcpy(void *dest, const void *src, UINT_PTR count);
@@ -75,7 +77,6 @@ UINT_PTR UTF8toUTF16(const unsigned char *pSource, UINT_PTR nSourceLen, UINT_PTR
 UINT_PTR UTF32toUTF16(const unsigned long *pSource, UINT_PTR nSourceLen, UINT_PTR *nSourceDone, unsigned short *szTarget, UINT_PTR nTargetMax);
 UINT_PTR UTF16toUTF32(const unsigned short *pSource, UINT_PTR nSourceLen, UINT_PTR *nSourceDone, unsigned long *szTarget, UINT_PTR nTargetMax);
 
-#endif
 
 //Make sure max and min macros defined
 #ifndef max
@@ -100,7 +101,7 @@ UINT_PTR UTF16toUTF32(const unsigned short *pSource, UINT_PTR nSourceLen, UINT_P
 #if defined WideCharLower || defined ALLSTRFUNC
 #define WideCharLower_INCLUDED
 #undef WideCharLower
-wchar_t WideCharLower(wchar_t c)
+__inline wchar_t WideCharLower(wchar_t c)
 {
   if (c < 0x100)
   {
@@ -498,7 +499,7 @@ wchar_t WideCharLower(wchar_t c)
 #if defined WideCharUpper || defined ALLSTRFUNC
 #define WideCharUpper_INCLUDED
 #undef WideCharUpper
-wchar_t WideCharUpper(wchar_t c)
+__inline wchar_t WideCharUpper(wchar_t c)
 {
   if (c < 0x100)
   {
@@ -923,7 +924,7 @@ wchar_t WideCharUpper(wchar_t c)
 #if defined xmemcpy || defined ALLSTRFUNC
 #define xmemcpy_INCLUDED
 #undef xmemcpy
-void* xmemcpy(void *dest, const void *src, UINT_PTR count)
+__inline void* xmemcpy(void *dest, const void *src, UINT_PTR count)
 {
   unsigned char *byte_dest=(unsigned char *)dest;
   unsigned char *byte_src=(unsigned char *)src;
@@ -964,7 +965,7 @@ void* xmemcpy(void *dest, const void *src, UINT_PTR count)
 #if defined xmemcmp || defined ALLSTRFUNC
 #define xmemcmp_INCLUDED
 #undef xmemcmp
-int xmemcmp(const void *buf1, const void *buf2, UINT_PTR count)
+__inline int xmemcmp(const void *buf1, const void *buf2, UINT_PTR count)
 {
   unsigned char *byte_buf1=(unsigned char *)buf1;
   unsigned char *byte_buf2=(unsigned char *)buf2;
@@ -1004,7 +1005,7 @@ int xmemcmp(const void *buf1, const void *buf2, UINT_PTR count)
 #if defined xmemset || defined ALLSTRFUNC
 #define xmemset_INCLUDED
 #undef xmemset
-void* xmemset(void *dest, int c, UINT_PTR count)
+__inline void* xmemset(void *dest, int c, UINT_PTR count)
 {
   unsigned char *byte_dest=(unsigned char *)dest;
 
@@ -1037,7 +1038,7 @@ void* xmemset(void *dest, int c, UINT_PTR count)
 #if defined xarraysizeA || defined ALLSTRFUNC
 #define xarraysizeA_INCLUDED
 #undef xarraysizeA
-INT_PTR xarraysizeA(const char *pString, int *nElements)
+__inline INT_PTR xarraysizeA(const char *pString, int *nElements)
 {
   const char *pCount=pString;
   int nCount=1;
@@ -1073,7 +1074,7 @@ INT_PTR xarraysizeA(const char *pString, int *nElements)
 #if defined xarraysizeW || defined ALLSTRFUNC
 #define xarraysizeW_INCLUDED
 #undef xarraysizeW
-INT_PTR xarraysizeW(const wchar_t *wpString, int *nElements)
+__inline INT_PTR xarraysizeW(const wchar_t *wpString, int *nElements)
 {
   const wchar_t *wpCount=wpString;
   int nCount=1;
@@ -1108,7 +1109,7 @@ INT_PTR xarraysizeW(const wchar_t *wpString, int *nElements)
 #if defined xstrlenA || defined ALLSTRFUNC
 #define xstrlenA_INCLUDED
 #undef xstrlenA
-INT_PTR xstrlenA(const char *pString)
+__inline INT_PTR xstrlenA(const char *pString)
 {
   const char *pCount;
 
@@ -1131,7 +1132,7 @@ INT_PTR xstrlenA(const char *pString)
 #if defined xstrlenW || defined ALLSTRFUNC
 #define xstrlenW_INCLUDED
 #undef xstrlenW
-INT_PTR xstrlenW(const wchar_t *wpString)
+__inline INT_PTR xstrlenW(const wchar_t *wpString)
 {
   const wchar_t *wpCount;
 
@@ -1157,7 +1158,7 @@ INT_PTR xstrlenW(const wchar_t *wpString)
 #if defined xstrcmpA || defined ALLSTRFUNC
 #define xstrcmpA_INCLUDED
 #undef xstrcmpA
-int xstrcmpA(const char *pString1, const char *pString2)
+__inline int xstrcmpA(const char *pString1, const char *pString2)
 {
   while (*pString1)
   {
@@ -1190,7 +1191,7 @@ int xstrcmpA(const char *pString1, const char *pString2)
 #if defined xstrcmpW || defined ALLSTRFUNC
 #define xstrcmpW_INCLUDED
 #undef xstrcmpW
-int xstrcmpW(const wchar_t *wpString1, const wchar_t *wpString2)
+__inline int xstrcmpW(const wchar_t *wpString1, const wchar_t *wpString2)
 {
   while (*wpString1)
   {
@@ -1223,7 +1224,7 @@ int xstrcmpW(const wchar_t *wpString1, const wchar_t *wpString2)
 #if defined xstrcmpiA || defined ALLSTRFUNC
 #define xstrcmpiA_INCLUDED
 #undef xstrcmpiA
-int xstrcmpiA(const char *pString1, const char *pString2)
+__inline int xstrcmpiA(const char *pString1, const char *pString2)
 {
   INT_PTR nCompare;
 
@@ -1261,7 +1262,7 @@ int xstrcmpiA(const char *pString1, const char *pString2)
 #if defined xstrcmpiW || defined ALLSTRFUNC
 #define xstrcmpiW_INCLUDED
 #undef xstrcmpiW
-int xstrcmpiW(const wchar_t *wpString1, const wchar_t *wpString2)
+__inline int xstrcmpiW(const wchar_t *wpString1, const wchar_t *wpString2)
 {
   INT_PTR nCompare;
 
@@ -1307,7 +1308,7 @@ int xstrcmpiW(const wchar_t *wpString1, const wchar_t *wpString2)
 #if defined xstrcmpnA || defined ALLSTRFUNC
 #define xstrcmpnA_INCLUDED
 #undef xstrcmpnA
-int xstrcmpnA(const char *pString1, const char *pString2, UINT_PTR dwMaxLength)
+__inline int xstrcmpnA(const char *pString1, const char *pString2, UINT_PTR dwMaxLength)
 {
   UINT_PTR dwCount=dwMaxLength;
 
@@ -1343,7 +1344,7 @@ int xstrcmpnA(const char *pString1, const char *pString2, UINT_PTR dwMaxLength)
 #if defined xstrcmpnW || defined ALLSTRFUNC
 #define xstrcmpnW_INCLUDED
 #undef xstrcmpnW
-int xstrcmpnW(const wchar_t *wpString1, const wchar_t *wpString2, UINT_PTR dwMaxLength)
+__inline int xstrcmpnW(const wchar_t *wpString1, const wchar_t *wpString2, UINT_PTR dwMaxLength)
 {
   UINT_PTR dwCount=dwMaxLength;
 
@@ -1380,7 +1381,7 @@ int xstrcmpnW(const wchar_t *wpString1, const wchar_t *wpString2, UINT_PTR dwMax
 #if defined xstrcmpinA || defined ALLSTRFUNC
 #define xstrcmpinA_INCLUDED
 #undef xstrcmpinA
-int xstrcmpinA(const char *pString1, const char *pString2, UINT_PTR dwMaxLength)
+__inline int xstrcmpinA(const char *pString1, const char *pString2, UINT_PTR dwMaxLength)
 {
   UINT_PTR dwCount=dwMaxLength;
   INT_PTR nCompare;
@@ -1421,7 +1422,7 @@ int xstrcmpinA(const char *pString1, const char *pString2, UINT_PTR dwMaxLength)
 #if defined xstrcmpinW || defined ALLSTRFUNC
 #define xstrcmpinW_INCLUDED
 #undef xstrcmpinW
-int xstrcmpinW(const wchar_t *wpString1, const wchar_t *wpString2, UINT_PTR dwMaxLength)
+__inline int xstrcmpinW(const wchar_t *wpString1, const wchar_t *wpString2, UINT_PTR dwMaxLength)
 {
   UINT_PTR dwCount=dwMaxLength;
   INT_PTR nCompare;
@@ -1469,7 +1470,7 @@ int xstrcmpinW(const wchar_t *wpString1, const wchar_t *wpString2, UINT_PTR dwMa
 #if defined xstrcpyA || defined ALLSTRFUNC
 #define xstrcpyA_INCLUDED
 #undef xstrcpyA
-INT_PTR xstrcpyA(char *pString1, const char *pString2)
+__inline INT_PTR xstrcpyA(char *pString1, const char *pString2)
 {
   char *pDest=pString1;
   char *pSrc=(char *)pString2;
@@ -1505,7 +1506,7 @@ INT_PTR xstrcpyA(char *pString1, const char *pString2)
 #if defined xstrcpyW || defined ALLSTRFUNC
 #define xstrcpyW_INCLUDED
 #undef xstrcpyW
-INT_PTR xstrcpyW(wchar_t *wpString1, const wchar_t *wpString2)
+__inline INT_PTR xstrcpyW(wchar_t *wpString1, const wchar_t *wpString2)
 {
   wchar_t *wpDest=wpString1;
   wchar_t *wpSrc=(wchar_t *)wpString2;
@@ -1543,7 +1544,7 @@ INT_PTR xstrcpyW(wchar_t *wpString1, const wchar_t *wpString2)
 #if defined xstrcpynA || defined ALLSTRFUNC
 #define xstrcpynA_INCLUDED
 #undef xstrcpynA
-INT_PTR xstrcpynA(char *pString1, const char *pString2, UINT_PTR dwMaxLength)
+__inline INT_PTR xstrcpynA(char *pString1, const char *pString2, UINT_PTR dwMaxLength)
 {
   char *pDest=pString1;
   char *pSrc=(char *)pString2;
@@ -1581,7 +1582,7 @@ INT_PTR xstrcpynA(char *pString1, const char *pString2, UINT_PTR dwMaxLength)
 #if defined xstrcpynW || defined ALLSTRFUNC
 #define xstrcpynW_INCLUDED
 #undef xstrcpynW
-INT_PTR xstrcpynW(wchar_t *wpString1, const wchar_t *wpString2, UINT_PTR dwMaxLength)
+__inline INT_PTR xstrcpynW(wchar_t *wpString1, const wchar_t *wpString2, UINT_PTR dwMaxLength)
 {
   wchar_t *wpDest=wpString1;
   wchar_t *wpSrc=(wchar_t *)wpString2;
@@ -1626,7 +1627,7 @@ INT_PTR xstrcpynW(wchar_t *wpString1, const wchar_t *wpString2, UINT_PTR dwMaxLe
 #if defined xstrstrA || defined ALLSTRFUNC
 #define xstrstrA_INCLUDED
 #undef xstrstrA
-BOOL xstrstrA(const char *pText, INT_PTR nTextLen, const char *pStr, int nStrLen, BOOL bSensitive, char **pStrBegin, char **pStrEnd)
+__inline BOOL xstrstrA(const char *pText, INT_PTR nTextLen, const char *pStr, int nStrLen, BOOL bSensitive, char **pStrBegin, char **pStrEnd)
 {
   const char *pTextMax;
   const char *pTextCount;
@@ -1692,7 +1693,7 @@ BOOL xstrstrA(const char *pText, INT_PTR nTextLen, const char *pStr, int nStrLen
 #if defined xstrstrW || defined ALLSTRFUNC
 #define xstrstrW_INCLUDED
 #undef xstrstrW
-BOOL xstrstrW(const wchar_t *wpText, INT_PTR nTextLen, const wchar_t *wpStr, int nStrLen, BOOL bSensitive, wchar_t **wpStrBegin, wchar_t **wpStrEnd)
+__inline BOOL xstrstrW(const wchar_t *wpText, INT_PTR nTextLen, const wchar_t *wpStr, int nStrLen, BOOL bSensitive, wchar_t **wpStrBegin, wchar_t **wpStrEnd)
 {
   const wchar_t *wpTextMax;
   const wchar_t *wpTextCount;
@@ -1769,7 +1770,7 @@ BOOL xstrstrW(const wchar_t *wpText, INT_PTR nTextLen, const wchar_t *wpStr, int
 #if defined xstrrepA || defined ALLSTRFUNC
 #define xstrrepA_INCLUDED
 #undef xstrrepA
-int xstrrepA(const char *pText, INT_PTR nTextLen, const char *pIt, int nItLen, const char *pWith, int nWithLen, BOOL bSensitive, char *szResult, INT_PTR *nResultLen)
+__inline int xstrrepA(const char *pText, INT_PTR nTextLen, const char *pIt, int nItLen, const char *pWith, int nWithLen, BOOL bSensitive, char *szResult, INT_PTR *nResultLen)
 {
   const char *pTextMax;
   const char *pTextCount;
@@ -1860,7 +1861,7 @@ int xstrrepA(const char *pText, INT_PTR nTextLen, const char *pIt, int nItLen, c
 #if defined xstrrepW || defined ALLSTRFUNC
 #define xstrrepW_INCLUDED
 #undef xstrrepW
-int xstrrepW(const wchar_t *wpText, INT_PTR nTextLen, const wchar_t *wpIt, int nItLen, const wchar_t *wpWith, int nWithLen, BOOL bSensitive, wchar_t *wszResult, INT_PTR *nResultLen)
+__inline int xstrrepW(const wchar_t *wpText, INT_PTR nTextLen, const wchar_t *wpIt, int nItLen, const wchar_t *wpWith, int nWithLen, BOOL bSensitive, wchar_t *wszResult, INT_PTR *nResultLen)
 {
   const wchar_t *wpTextMax;
   const wchar_t *wpTextCount;
@@ -1942,7 +1943,7 @@ int xstrrepW(const wchar_t *wpText, INT_PTR nTextLen, const wchar_t *wpIt, int n
 #if defined xatoiA || defined ALLSTRFUNC
 #define xatoiA_INCLUDED
 #undef xatoiA
-INT_PTR xatoiA(const char *pStr, const char **pNext)
+__inline INT_PTR xatoiA(const char *pStr, const char **pNext)
 {
   INT_PTR nNumber=0;
   BOOL bMinus=FALSE;
@@ -1986,7 +1987,7 @@ INT_PTR xatoiA(const char *pStr, const char **pNext)
 #if defined xatoiW || defined ALLSTRFUNC
 #define xatoiW_INCLUDED
 #undef xatoiW
-INT_PTR xatoiW(const wchar_t *wpStr, const wchar_t **wpNext)
+__inline INT_PTR xatoiW(const wchar_t *wpStr, const wchar_t **wpNext)
 {
   INT_PTR nNumber=0;
   BOOL bMinus=FALSE;
@@ -2030,7 +2031,7 @@ INT_PTR xatoiW(const wchar_t *wpStr, const wchar_t **wpNext)
 #if defined xatoi64A || defined ALLSTRFUNC
 #define xatoi64A_INCLUDED
 #undef xatoi64A
-__int64 xatoi64A(const char *pStr, const char **pNext)
+__inline __int64 xatoi64A(const char *pStr, const char **pNext)
 {
   __int64 nNumber=0;
   BOOL bMinus=FALSE;
@@ -2074,7 +2075,7 @@ __int64 xatoi64A(const char *pStr, const char **pNext)
 #if defined xatoi64W || defined ALLSTRFUNC
 #define xatoi64W_INCLUDED
 #undef xatoi64W
-__int64 xatoi64W(const wchar_t *wpStr, const wchar_t **wpNext)
+__inline __int64 xatoi64W(const wchar_t *wpStr, const wchar_t **wpNext)
 {
   __int64 nNumber=0;
   BOOL bMinus=FALSE;
@@ -2118,7 +2119,7 @@ __int64 xatoi64W(const wchar_t *wpStr, const wchar_t **wpNext)
 #if defined xitoaA || defined ALLSTRFUNC
 #define xitoaA_INCLUDED
 #undef xitoaA
-int xitoaA(INT_PTR nNumber, char *szStr)
+__inline int xitoaA(INT_PTR nNumber, char *szStr)
 {
   char szReverse[128];
   int a;
@@ -2166,7 +2167,7 @@ int xitoaA(INT_PTR nNumber, char *szStr)
 #if defined xitoaW || defined ALLSTRFUNC
 #define xitoaW_INCLUDED
 #undef xitoaW
-int xitoaW(INT_PTR nNumber, wchar_t *wszStr)
+__inline int xitoaW(INT_PTR nNumber, wchar_t *wszStr)
 {
   wchar_t wszReverse[128];
   int a;
@@ -2214,7 +2215,7 @@ int xitoaW(INT_PTR nNumber, wchar_t *wszStr)
 #if defined xuitoaA || defined ALLSTRFUNC
 #define xuitoaA_INCLUDED
 #undef xuitoaA
-int xuitoaA(UINT_PTR nNumber, char *szStr)
+__inline int xuitoaA(UINT_PTR nNumber, char *szStr)
 {
   char szReverse[128];
   int a;
@@ -2256,7 +2257,7 @@ int xuitoaA(UINT_PTR nNumber, char *szStr)
 #if defined xuitoaW || defined ALLSTRFUNC
 #define xuitoaW_INCLUDED
 #undef xuitoaW
-int xuitoaW(UINT_PTR nNumber, wchar_t *wszStr)
+__inline int xuitoaW(UINT_PTR nNumber, wchar_t *wszStr)
 {
   wchar_t wszReverse[128];
   int a;
@@ -2298,7 +2299,7 @@ int xuitoaW(UINT_PTR nNumber, wchar_t *wszStr)
 #if defined xi64toaA || defined ALLSTRFUNC
 #define xi64toaA_INCLUDED
 #undef xi64toaA
-int xi64toaA(__int64 nNumber, char *szStr)
+__inline int xi64toaA(__int64 nNumber, char *szStr)
 {
   char szReverse[128];
   int a;
@@ -2346,7 +2347,7 @@ int xi64toaA(__int64 nNumber, char *szStr)
 #if defined xi64toaW || defined ALLSTRFUNC
 #define xi64toaW_INCLUDED
 #undef xi64toaW
-int xi64toaW(__int64 nNumber, wchar_t *wszStr)
+__inline int xi64toaW(__int64 nNumber, wchar_t *wszStr)
 {
   wchar_t wszReverse[128];
   int a;
@@ -2395,7 +2396,7 @@ int xi64toaW(__int64 nNumber, wchar_t *wszStr)
 #if defined hex2decA || defined ALLSTRFUNC
 #define hex2decA_INCLUDED
 #undef hex2decA
-INT_PTR hex2decA(const char *pStrHex, INT_PTR nStrHexLen)
+__inline INT_PTR hex2decA(const char *pStrHex, INT_PTR nStrHexLen)
 {
   const char *pStrHexMax;
   INT_PTR a;
@@ -2453,7 +2454,7 @@ INT_PTR hex2decA(const char *pStrHex, INT_PTR nStrHexLen)
 #if defined hex2decW || defined ALLSTRFUNC
 #define hex2decW_INCLUDED
 #undef hex2decW
-INT_PTR hex2decW(const wchar_t *wpStrHex, INT_PTR nStrHexLen)
+__inline INT_PTR hex2decW(const wchar_t *wpStrHex, INT_PTR nStrHexLen)
 {
   const wchar_t *wpStrHexMax;
   INT_PTR a;
@@ -2513,7 +2514,7 @@ INT_PTR hex2decW(const wchar_t *wpStrHex, INT_PTR nStrHexLen)
 #if defined dec2hexA || defined ALLSTRFUNC
 #define dec2hexA_INCLUDED
 #undef dec2hexA
-int dec2hexA(UINT_PTR nDec, char *szStrHex, unsigned int nWidth, BOOL bLowerCase)
+__inline int dec2hexA(UINT_PTR nDec, char *szStrHex, unsigned int nWidth, BOOL bLowerCase)
 {
   UINT_PTR a=nDec;
   DWORD b=0;
@@ -2582,7 +2583,7 @@ int dec2hexA(UINT_PTR nDec, char *szStrHex, unsigned int nWidth, BOOL bLowerCase
 #if defined dec2hexW || defined ALLSTRFUNC
 #define dec2hexW_INCLUDED
 #undef dec2hexW
-int dec2hexW(UINT_PTR nDec, wchar_t *wszStrHex, unsigned int nWidth, BOOL bLowerCase)
+__inline int dec2hexW(UINT_PTR nDec, wchar_t *wszStrHex, unsigned int nWidth, BOOL bLowerCase)
 {
   UINT_PTR a=nDec;
   DWORD b=0;
@@ -2654,7 +2655,7 @@ int dec2hexW(UINT_PTR nDec, wchar_t *wszStrHex, unsigned int nWidth, BOOL bLower
 #if defined bin2hexA || defined ALLSTRFUNC
 #define bin2hexA_INCLUDED
 #undef bin2hexA
-INT_PTR bin2hexA(const unsigned char *pData, INT_PTR nBytes, char *szStrHex, INT_PTR nStrHexMax, BOOL bLowerCase)
+__inline INT_PTR bin2hexA(const unsigned char *pData, INT_PTR nBytes, char *szStrHex, INT_PTR nStrHexMax, BOOL bLowerCase)
 {
   INT_PTR a;
   INT_PTR b;
@@ -2694,7 +2695,7 @@ INT_PTR bin2hexA(const unsigned char *pData, INT_PTR nBytes, char *szStrHex, INT
 #if defined bin2hexW || defined ALLSTRFUNC
 #define bin2hexW_INCLUDED
 #undef bin2hexW
-INT_PTR bin2hexW(const unsigned char *pData, INT_PTR nBytes, wchar_t *wszStrHex, INT_PTR nStrHexMax, BOOL bLowerCase)
+__inline INT_PTR bin2hexW(const unsigned char *pData, INT_PTR nBytes, wchar_t *wszStrHex, INT_PTR nStrHexMax, BOOL bLowerCase)
 {
   INT_PTR a;
   INT_PTR b;
@@ -2731,7 +2732,7 @@ INT_PTR bin2hexW(const unsigned char *pData, INT_PTR nBytes, wchar_t *wszStrHex,
 #if defined hex2binA || defined ALLSTRFUNC
 #define hex2binA_INCLUDED
 #undef hex2binA
-INT_PTR hex2binA(const char *pStrHex, unsigned char *pData, INT_PTR nDataMax)
+__inline INT_PTR hex2binA(const char *pStrHex, unsigned char *pData, INT_PTR nDataMax)
 {
   char szHexChar[2];
   INT_PTR nHexChar;
@@ -2777,7 +2778,7 @@ INT_PTR hex2binA(const char *pStrHex, unsigned char *pData, INT_PTR nDataMax)
 #if defined hex2binW || defined ALLSTRFUNC
 #define hex2binW_INCLUDED
 #undef hex2binW
-INT_PTR hex2binW(const wchar_t *wpStrHex, unsigned char *pData, INT_PTR nDataMax)
+__inline INT_PTR hex2binW(const wchar_t *wpStrHex, unsigned char *pData, INT_PTR nDataMax)
 {
   wchar_t wszHexChar[2];
   INT_PTR nHexChar;
@@ -2843,7 +2844,7 @@ INT_PTR hex2binW(const wchar_t *wpStrHex, unsigned char *pData, INT_PTR nDataMax
 #if defined xprintfA || defined ALLSTRFUNC
 #define xprintfA_INCLUDED
 #undef xprintfA
-INT_PTR xprintfA(char *szOutput, const char *pFormat, ...)
+__inline INT_PTR xprintfA(char *szOutput, const char *pFormat, ...)
 {
   const char *pFmt=pFormat;
   char *pOut=szOutput;
@@ -3105,7 +3106,7 @@ INT_PTR xprintfA(char *szOutput, const char *pFormat, ...)
 #if defined xprintfW || defined ALLSTRFUNC
 #define xprintfW_INCLUDED
 #undef xprintfW
-INT_PTR xprintfW(wchar_t *wszOutput, const wchar_t *wpFormat, ...)
+__inline INT_PTR xprintfW(wchar_t *wszOutput, const wchar_t *wpFormat, ...)
 {
   const wchar_t *wpFmt=wpFormat;
   wchar_t *wpOut=wszOutput;
@@ -3343,7 +3344,7 @@ INT_PTR xprintfW(wchar_t *wszOutput, const wchar_t *wpFormat, ...)
 #if defined UTF16toUTF8 || defined ALLSTRFUNC
 #define UTF16toUTF8_INCLUDED
 #undef UTF16toUTF8
-UINT_PTR UTF16toUTF8(const unsigned short *pSource, UINT_PTR nSourceLen, UINT_PTR *nSourceDone, unsigned char *szTarget, UINT_PTR nTargetMax)
+__inline UINT_PTR UTF16toUTF8(const unsigned short *pSource, UINT_PTR nSourceLen, UINT_PTR *nSourceDone, unsigned char *szTarget, UINT_PTR nTargetMax)
 {
   static const unsigned int lpFirstByteMark[7]={0x00, 0x00, 0xC0, 0xE0, 0xF0, 0xF8, 0xFC};
   const unsigned short *pSrc=pSource;
@@ -3463,7 +3464,7 @@ UINT_PTR UTF16toUTF8(const unsigned short *pSource, UINT_PTR nSourceLen, UINT_PT
 #if defined UTF8toUTF16 || defined ALLSTRFUNC
 #define UTF8toUTF16_INCLUDED
 #undef UTF8toUTF16
-UINT_PTR UTF8toUTF16(const unsigned char *pSource, UINT_PTR nSourceLen, UINT_PTR *nSourceDone, unsigned short *szTarget, UINT_PTR nTargetMax)
+__inline UINT_PTR UTF8toUTF16(const unsigned char *pSource, UINT_PTR nSourceLen, UINT_PTR *nSourceDone, unsigned short *szTarget, UINT_PTR nTargetMax)
 {
   static const unsigned int lpOffsetsFromUTF8[6]={0x00000000, 0x00003080, 0x000E2080, 0x03C82080, 0xFA082080, 0x82082080};
   const unsigned char *pSrc=pSource;
@@ -3592,7 +3593,7 @@ UINT_PTR UTF8toUTF16(const unsigned char *pSource, UINT_PTR nSourceLen, UINT_PTR
 #if defined UTF32toUTF16 || defined ALLSTRFUNC
 #define UTF32toUTF16_INCLUDED
 #undef UTF32toUTF16
-UINT_PTR UTF32toUTF16(const unsigned long *pSource, UINT_PTR nSourceLen, UINT_PTR *nSourceDone, unsigned short *szTarget, UINT_PTR nTargetMax)
+__inline UINT_PTR UTF32toUTF16(const unsigned long *pSource, UINT_PTR nSourceLen, UINT_PTR *nSourceDone, unsigned short *szTarget, UINT_PTR nTargetMax)
 {
   const unsigned long *pSrc=pSource;
   const unsigned long *pSrcEnd=pSource + nSourceLen;
@@ -3677,7 +3678,7 @@ UINT_PTR UTF32toUTF16(const unsigned long *pSource, UINT_PTR nSourceLen, UINT_PT
 #if defined UTF16toUTF32 || defined ALLSTRFUNC
 #define UTF16toUTF32_INCLUDED
 #undef UTF16toUTF32
-UINT_PTR UTF16toUTF32(const unsigned short *pSource, UINT_PTR nSourceLen, UINT_PTR *nSourceDone, unsigned long *szTarget, UINT_PTR nTargetMax)
+__inline UINT_PTR UTF16toUTF32(const unsigned short *pSource, UINT_PTR nSourceLen, UINT_PTR *nSourceDone, unsigned long *szTarget, UINT_PTR nTargetMax)
 {
   const unsigned short *pSrc=pSource;
   const unsigned short *pSrcEnd=pSource + nSourceLen;
@@ -3776,3 +3777,6 @@ void main()
 }
 
 */
+
+#endif  // _STRFUNC_H_
+

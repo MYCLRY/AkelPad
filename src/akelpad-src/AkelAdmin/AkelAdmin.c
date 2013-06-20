@@ -17,11 +17,12 @@
 #include <aclapi.h>
 #include "..\AkelEdit\StrFunc.h"
 
+/*
 //Include string functions
 #define xstrlenW
 #define xatoiW
 #include "..\AkelEdit\StrFunc.h"
-
+//*/
 
 //Defines
 #define STRID_ERRORWIN              1

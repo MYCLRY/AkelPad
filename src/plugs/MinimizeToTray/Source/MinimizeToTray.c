@@ -6,6 +6,7 @@
 #include "WideFunc.h"
 #include "Resources\resource.h"
 
+/*
 //Include string functions
 #define xmemcpy
 #define xstrcpynW
@@ -20,6 +21,7 @@
 //Include wide functions
 #define AppendMenuWide
 #include "WideFunc.h"
+//*/
 
 //Defines
 #define STRID_MENU_RESTORE  1

@@ -7,6 +7,7 @@
 #include "Resources\Resource.h"
 
 
+/*
 //Include string functions
 #define xmemcpy
 #define xstrlenW
@@ -24,6 +25,7 @@
 #define SetDlgItemTextWide
 #define SetWindowTextWide
 #include "WideFunc.h"
+//*/
 
 //Defines
 #define STRID_EXIT_MSG                         1

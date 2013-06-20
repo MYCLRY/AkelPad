@@ -8,9 +8,12 @@
 
 
 //Include AEC functions
-#define AEC_FUNCTIONS
 #include "AkelEdit.h"
+#include "StackFunc.h"
+#include "StrFunc.h"
+#include "WideFunc.h"
 
+/*
 //Include stack functions
 #define StackInsertAfter
 #define StackInsertBefore
@@ -71,6 +74,7 @@
 #define TranslateAcceleratorWide
 #define UnregisterClassWide
 #include "WideFunc.h"
+//*/
 
 //Global variables
 char szBuffer[BUFFER_SIZE];

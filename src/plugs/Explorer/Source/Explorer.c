@@ -12,6 +12,7 @@
 #include "Resources\Resource.h"
 
 
+/*
 //Include stack functions
 #define StackGetElement
 #define StackInsertAfter
@@ -62,6 +63,7 @@
 #define TreeView_GetItemWide
 #define TreeView_InsertItemWide
 #include "WideFunc.h"
+//*/
 
 //Defines
 #define STRID_SETUP                1

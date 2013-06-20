@@ -3,12 +3,12 @@
 #include "StrFunc.h"
 
 //Include AEC functions
-#define AEC_FUNCTIONS
 #include "AkelEdit.h"
 
 #include "AkelDLL.h"
 
 
+/*
 //Include string functions
 #define xstrlenW
 #define xstrcpynW
@@ -22,6 +22,7 @@
 //Include AEC functions
 #define AEC_FUNCTIONS
 #include "AkelEdit.h"
+//*/
 
 //Defines
 #define STRID_INFO   1

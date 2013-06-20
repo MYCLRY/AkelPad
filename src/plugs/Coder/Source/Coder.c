@@ -3,14 +3,12 @@
 #include <windows.h>
 #include <richedit.h>
 #include <commctrl.h>
-#define ALLSTACKFUNC 1
 #include "StackFunc.h"
 #include "StrFunc.h"
 #include "x64Func.h"
 #include "WideFunc.h"
 
 //Include AEC functions
-#define AEC_FUNCTIONS
 #include "AkelEdit.h"
 
 #include "AkelDLL.h"
@@ -21,6 +19,7 @@
 #include "Resources\Resource.h"
 
 
+/*
 //Include stack functions
 #define StackGetElement
 #define StackGetIndex
@@ -112,6 +111,7 @@
 //Include AEC functions
 #define AEC_FUNCTIONS
 #include "AkelEdit.h"
+//*/
 
 
 //// Global variables

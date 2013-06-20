@@ -56,6 +56,8 @@ typedef struct _stackS {
 #ifndef _STACKFUNC_H_
 #define _STACKFUNC_H_
 
+#define ALLSTACKFUNC 1
+
 int StackGetIndexL(stackL *first, stackL *last, stackL *element);
 int StackGetElementL(stackL *first, stackL *last, stackL **element, int nIndex);
 int StackPushFrontL(stackL **first, stackL **last, stackL **element, int nBytes);

@@ -14,6 +14,7 @@
 #include "Resources\Resource.h"
 
 
+/*
 //Include stack functions
 #define StackInsertAfter
 #define StackInsertBefore
@@ -31,6 +32,7 @@
 #define xatoiA
 #define xitoaA
 #include "StrFunc.h"
+//*/
 
 /* Defines */
 #define NSIS_MAX_STRLEN 1024

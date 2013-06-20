@@ -10,7 +10,7 @@
 #include "AkelDLL.h"
 #include "Resources\Resource.h"
 
-
+/*
 //Include stack functions
 #define StackGetElement
 #define StackInsertAfter
@@ -53,6 +53,7 @@
 #define SetWindowLongPtrWide
 #define SetWindowTextWide
 #include "WideFunc.h"
+//*/
 
 //Include icon menu functions
 #define ICONMENU_INCLUDE

@@ -7,6 +7,7 @@
 #include "AkelDLL.h"
 
 
+/*
 //Include stack functions
 #define StackInsertAfter
 #define StackInsertBefore
@@ -23,6 +24,7 @@
 #define GetWindowLongPtrWide
 #define SetWindowLongPtrWide
 #include "WideFunc.h"
+//*/
 
 //Defines
 #ifndef EM_SHOWSCROLLBAR

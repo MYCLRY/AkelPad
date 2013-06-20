@@ -7,6 +7,7 @@
 #include "Resources\Resource.h"
 
 
+/*
 //Include string functions
 #define xmemcpy
 #define xmemset
@@ -25,6 +26,7 @@
 #define SetDlgItemTextWide
 #define SetWindowTextWide
 #include "WideFunc.h"
+//*/
 
 //Defines
 #define DLLA_SCROLL_HSCROLL      1

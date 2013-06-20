@@ -37,17 +37,15 @@
 #include <windows.h>
 #include <stddef.h>
 #include <imm.h>
-#define ALLSTACKFUNC 1
 #include "StackFunc.h"
 #include "StrFunc.h"
-#define ALLX64FUNC 1
 #include "x64Func.h"
 #include "AkelBuild.h"
 #include "RegExpFunc.h"
 #include "Resources\resource.h"
 #include "Resources\version.h"
 
-
+/*
 //Include RegExp functions
 #define RE_FUNCTIONS
 #include "RegExpFunc.h"
@@ -86,6 +84,7 @@
 #define MultiByteToWideChar64
 #define WideCharToMultiByte64
 #include "x64Func.h"
+//*/
 
 
 //// Global variables
@@ -4281,7 +4280,7 @@ LRESULT CALLBACK AE_EditProc(AKELEDIT *ae, UINT uMsg, WPARAM wParam, LPARAM lPar
     }
     else if (uMsg == WM_MBUTTONDOWN)
     {
-      if (!ae->bMButtonDown)
+      if (!(ae->popt->dwOptions & AECO_MBUTTONDOWNNOSCROLL) && !ae->bMButtonDown)
       {
         if (ae->ptxt->nHScrollMax > ae->rcDraw.right - ae->rcDraw.left ||
             ae->ptxt->nVScrollMax > ae->rcDraw.bottom - ae->rcDraw.top)
@@ -9172,7 +9171,7 @@ void AE_SetSelectionPos(AKELEDIT *ae, const AECHARINDEX *ciSelStart, const AECHA
   POINT64 ptSelEnd;
   BOOL bColumnSelOld;
 
-  if (ae->popt->dwOptions & AECO_LOCKSELECTION)
+  if (ae->popt->dwOptionsEx & AECOE_LOCKSELECTION)
     return;
   if (ae->popt->dwOptions & AECO_NOSCROLLSELECTALL)
   {

@@ -7,17 +7,12 @@
 #include "RegExpFunc.h"
 
 //Include AEC functions
-#define AEC_FUNCTIONS
 #include "AkelEdit.h"
 
 #include "AkelDLL.h"
 #include "Resources\Resource.h"
 
-
-//Include AEC functions
-#define AEC_FUNCTIONS
-#include "AkelEdit.h"
-
+/*
 //Include string functions
 #define WideCharLower
 #define xmemcpy
@@ -63,6 +58,7 @@
 #define SetWindowLongPtrWide
 #define SetWindowTextWide
 #include "WideFunc.h"
+//*/
 
 //Defines
 #define STRID_MSG_MODIFIED_ONSTART      1

@@ -84,6 +84,8 @@ const IDocumentVtbl MyIDocumentVtbl={
   Document_GetArgValue,
   Document_WindowRegisterClass,
   Document_WindowUnregisterClass,
+  Document_WindowRegisterDialog,
+  Document_WindowUnregisterDialog,
   Document_WindowGetMessage,
   Document_WindowSubClass,
   Document_WindowNextProc,
@@ -1669,6 +1671,42 @@ HRESULT STDMETHODCALLTYPE Document_WindowUnregisterClass(IDocument *this, BSTR w
   return NOERROR;
 }
 
+HRESULT STDMETHODCALLTYPE Document_WindowRegisterDialog(IDocument *this, HWND hDlg, BOOL *bResult)
+{
+  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)this)->lpScriptThread;
+  CALLBACKITEM *lpCallback;
+
+  *bResult=FALSE;
+
+  if (!StackGetCallbackByHandle(&lpScriptThread->hDialogCallbackStack, hDlg))
+  {
+    if (lpCallback=StackInsertCallback(&lpScriptThread->hDialogCallbackStack))
+    {
+      lpCallback->hHandle=(HANDLE)hDlg;
+      lpCallback->objFunction=NULL;
+      lpCallback->lpScriptThread=(void *)lpScriptThread;
+      lpCallback->nCallbackType=CIT_DIALOG;
+      *bResult=TRUE;
+    }
+  }
+  return NOERROR;
+}
+
+HRESULT STDMETHODCALLTYPE Document_WindowUnregisterDialog(IDocument *this, HWND hDlg, BOOL *bResult)
+{
+  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)this)->lpScriptThread;
+  CALLBACKITEM *lpCallback;
+
+  *bResult=FALSE;
+
+  if (lpCallback=StackGetCallbackByHandle(&lpScriptThread->hDialogCallbackStack, hDlg))
+  {
+    StackDeleteCallback(&lpScriptThread->hDialogCallbackStack, lpCallback);
+    *bResult=TRUE;
+  }
+  return NOERROR;
+}
+
 HRESULT STDMETHODCALLTYPE Document_WindowGetMessage(IDocument *this)
 {
   SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)this)->lpScriptThread;
@@ -2381,11 +2419,13 @@ LRESULT CALLBACK DialogCallbackProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
 
   if (lpCallback)
   {
-    //Message procedure in script
-    lpScriptThread->bBusy=TRUE;
-    CallScriptProc(lpCallback->objFunction, hWnd, uMsg, wParam, lParam, &lResult);
-    lpScriptThread->bBusy=FALSE;
-
+    if (lpCallback->objFunction)
+    {
+      //Message procedure in script
+      lpScriptThread->bBusy=TRUE;
+      CallScriptProc(lpCallback->objFunction, hWnd, uMsg, wParam, lParam, &lResult);
+      lpScriptThread->bBusy=FALSE;
+    }
     if (uMsg == WM_DESTROY)
       StackDeleteCallback(&lpScriptThread->hDialogCallbackStack, lpCallback);
     if (lResult)

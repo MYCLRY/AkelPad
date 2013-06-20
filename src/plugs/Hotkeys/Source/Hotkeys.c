@@ -11,6 +11,7 @@
 #include "Resources\Resource.h"
 
 
+/*
 //Include stack functions
 #define StackGetIndex
 #define StackGetElement
@@ -62,6 +63,7 @@
 #define SetWindowLongPtrWide
 #define SetWindowTextWide
 #include "WideFunc.h"
+//*/
 
 //Defines
 #define DLLA_HOTKEYS_CHECKHOTKEY   1

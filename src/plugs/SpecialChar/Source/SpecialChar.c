@@ -6,12 +6,12 @@
 #include "WideFunc.h"
 
 //Include AEC functions
-#define AEC_FUNCTIONS
 #include "AkelEdit.h"
 
 #include "AkelDLL.h"
 #include "Resources\Resource.h"
 
+/*
 //Include string functions
 #define xmemcpy
 #define xmemset
@@ -35,6 +35,7 @@
 #define SetDlgItemTextWide
 #define SetWindowTextWide
 #include "WideFunc.h"
+//*/
 
 //Defines
 #define STRID_SPACE       1

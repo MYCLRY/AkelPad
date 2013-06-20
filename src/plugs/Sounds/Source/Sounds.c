@@ -11,6 +11,7 @@
 #include "Resources\Resource.h"
 
 
+/*
 //Include stack functions
 #define StackGetElement
 #define StackGetIndex
@@ -63,6 +64,7 @@
 #define SetDlgItemTextWide
 #define SetWindowTextWide
 #include "WideFunc.h"
+//*/
 
 
 //// Defines
@@ -1590,6 +1592,7 @@ int TranslateFileString(const wchar_t *wpString, wchar_t *wszBuffer, int nBuffer
   wchar_t *wpTarget=wszBuffer;
   wchar_t *wpTargetMax=wszBuffer + (wszBuffer?nBufferSize:0x7FFFFFFF);
   int nStringLen;
+  BOOL bStringStart=TRUE;
 
   //Expand environment strings
   nStringLen=ExpandEnvironmentStringsWide(wpString, NULL, 0);
@@ -1601,15 +1604,15 @@ int TranslateFileString(const wchar_t *wpString, wchar_t *wszBuffer, int nBuffer
     //Expand plugin variables
     for (wpSource=wszSource; *wpSource && wpTarget < wpTargetMax;)
     {
-      if (*wpSource == '%')
+      if (bStringStart && *wpSource == L'%')
       {
-        if (*++wpSource == '%')
+        if (*++wpSource == L'%')
         {
           ++wpSource;
-          if (wszBuffer) *wpTarget='%';
+          if (wszBuffer) *wpTarget=L'%';
           ++wpTarget;
         }
-        else if (*wpSource == 'a' || *wpSource == 'A')
+        else if (*wpSource == L'a' || *wpSource == L'A')
         {
           ++wpSource;
           wpTarget+=xstrcpynW(wszBuffer?wpTarget:NULL, wpExeDir, wpTargetMax - wpTarget) - !wszBuffer;
@@ -1617,6 +1620,8 @@ int TranslateFileString(const wchar_t *wpString, wchar_t *wszBuffer, int nBuffer
       }
       else
       {
+        if (*wpSource != L'\"' && *wpSource != L'\'' && *wpSource != L'`')
+          bStringStart=FALSE;
         if (wszBuffer) *wpTarget=*wpSource;
         ++wpTarget;
         ++wpSource;
@@ -1625,7 +1630,7 @@ int TranslateFileString(const wchar_t *wpString, wchar_t *wszBuffer, int nBuffer
     if (wpTarget < wpTargetMax)
     {
       if (wszBuffer)
-        *wpTarget='\0';
+        *wpTarget=L'\0';
       else
         ++wpTarget;
     }

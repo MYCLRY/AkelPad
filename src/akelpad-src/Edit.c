@@ -10,12 +10,10 @@
 #include <olectl.h>
 #include <aclapi.h>
 #include <richedit.h>
-#include "WideFunc.h"
-#define ALLSTACKFUNC 1
 #include "AkelEdit\StackFunc.h"
 #include "AkelEdit\StrFunc.h"
-#define ALLX64FUNC 1
 #include "AkelEdit\x64Func.h"
+#include "WideFunc.h"
 #include "AkelEdit\AkelBuild.h"
 #include "AkelEdit\RegExpFunc.h"
 #include "AkelFiles\Langs\Resources\resource.h"
@@ -436,6 +434,8 @@ void SetEditWindowSettings(FRAMEDATA *lpFrame)
     dwOptions|=AECO_NONEWLINEMOUSESELECT;
   if (lpFrame->dwMouseOptions & MO_MARGINSELUNWRAPLINE)
     dwOptions|=AECO_MARGINSELUNWRAPLINE;
+  if (lpFrame->dwMouseOptions & MO_MBUTTONDOWNNOSCROLL)
+    dwOptions|=AECO_MBUTTONDOWNNOSCROLL;
   if (moCur.dwPaintOptions & PAINT_PAINTGROUP)
     dwOptions|=AECO_PAINTGROUP;
   if (moCur.dwPaintOptions & PAINT_NONEWLINEDRAW)

@@ -1,5 +1,5 @@
 *****************************************************************
-***                 Scripts AkelPad plugin v12.7              ***
+***                 Scripts AkelPad plugin v12.8              ***
 *****************************************************************
 
 2013 Шенгальц Александр aka Instructor (Shengalts@mail.ru)
@@ -141,6 +141,8 @@ AkelPad.ScriptSettings().Delete
 AkelPad.ScriptSettings().End
 AkelPad.WindowRegisterClass                  +ActiveX
 AkelPad.WindowUnregisterClass                +ActiveX
+AkelPad.WindowRegisterDialog                 +ActiveX
+AkelPad.WindowUnregisterDialog               +ActiveX
 AkelPad.WindowGetMessage                     +ActiveX
 AkelPad.WindowSubClass                       +ActiveX
 AkelPad.WindowNextProc                       +ActiveX
@@ -2028,6 +2030,120 @@ _____________________________
 
 Пример:
   См. пример WindowRegisterClass.
+
+
+AkelPad.WindowRegisterDialog
+____________________________
+
+Зарегистрировать диалог для обработки в цикле сообщений. Используется в случае, если диалог создан без WindowRegisterClass.
+
+  WindowRegisterDialog(hWnd);
+
+Аргументы
+  hWnd
+    Дескриптор диалога.
+
+Возвращаемое значение
+  true   успешно.
+  false  диалог уже зарегистрирован.
+
+Пример:
+  var hMainWnd=AkelPad.GetMainWnd();
+  var oSys=AkelPad.SystemFunction();
+  var hInstanceDLL=AkelPad.GetInstanceDll();
+  var hGuiFont=oSys.Call("gdi32::GetStockObject", 17 /*DEFAULT_GUI_FONT*/);
+  var hWndModeless;
+  var hWndTestButton;
+  var IDC_TEST_BUTTON=10001;
+  
+  //Open "Find" dialog
+  if (hWndModeless=AkelPad.SendMessage(hMainWnd, 1275 /*AKD_GETMODELESS*/, 0, 0))
+    AkelPad.SendMessage(hWndModeless, 273 /*WM_COMMAND*/, 2 /*IDCANCEL*/, 0);
+  AkelPad.Command(4158 /*IDM_EDIT_FIND*/);
+  hWndModeless=AkelPad.SendMessage(hMainWnd, 1275 /*AKD_GETMODELESS*/, 0, 0);
+  
+  //Create test button
+  hWndTestButton=oSys.Call("user32::CreateWindowEx" + _TCHAR,
+                         0,               //dwExStyle
+                         "BUTTON",        //lpClassName
+                         0,               //lpWindowName
+                         0x50010000,      //WS_VISIBLE|WS_CHILD|WS_TABSTOP
+                         294,             //x
+                         80,              //y
+                         81,              //nWidth
+                         23,              //nHeight
+                         hWndModeless,    //hWndParent
+                         IDC_TEST_BUTTON, //ID
+                         hInstanceDLL,    //hInstance
+                         0);              //lpParam
+  //Set font and text
+  SetWindowFontAndText(hWndTestButton, hGuiFont, "Test");
+  
+  //Subclass dialog
+  if (AkelPad.WindowSubClass(hWndModeless, DialogCallback, 273 /*WM_COMMAND*/, 2 /*WM_DESTROY*/))
+  {
+    //Register dialog for message loop
+    AkelPad.WindowRegisterDialog(hWndModeless);
+  
+    //Message loop
+    AkelPad.WindowGetMessage();
+  
+    //Unregister and unsubclass
+    AkelPad.WindowUnregisterDialog(hWndModeless);
+    AkelPad.WindowUnsubClass(hWndModeless);
+  }
+  
+  function DialogCallback(hWnd, uMsg, wParam, lParam)
+  {
+    if (uMsg == 273) //WM_COMMAND
+    {
+      if (LOWORD(wParam) == IDC_TEST_BUTTON)
+      {
+        oSys.Call("user32::SetWindowText" + _TCHAR, hWnd, "Test " + oSys.Call("kernel32::GetTickCount"));
+      }
+    }
+    else if (uMsg == 2) //WM_DESTROY
+    {
+      //Exit message loop
+      oSys.Call("user32::PostQuitMessage", 0);
+    }
+    return 0;
+  }
+  
+  function SetWindowFontAndText(hWnd, hFont, pText)
+  {
+    AkelPad.SendMessage(hWnd, 48 /*WM_SETFONT*/, hFont, 1);
+    oSys.Call("user32::SetWindowText" + _TCHAR, hWnd, pText);
+  }
+  
+  function LOWORD(dwNumber)
+  {
+    return (dwNumber & 0xffff);
+  }
+  
+  function HIWORD(dwNumber)
+  {
+    return (dwNumber >> 16);
+  }
+
+
+AkelPad.WindowUnregisterDialog
+______________________________
+
+Отменить регистрацию диалога.
+
+  WindowUnregisterDialog(hWnd);
+
+Аргументы
+  hWnd
+    Дескриптор диалога.
+
+Возвращаемое значение
+  true   успешно.
+  false  диалог не зарегистрирован.
+
+Пример:
+  См. пример WindowRegisterDialog.
 
 
 AkelPad.WindowGetMessage

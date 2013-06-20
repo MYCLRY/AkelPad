@@ -1,4 +1,3 @@
-#define AEC_FUNCTIONS
 #include "AutoBrackets.h"
 #include "Plugin.h"
 

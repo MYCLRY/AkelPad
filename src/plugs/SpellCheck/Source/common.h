@@ -65,7 +65,6 @@
 #include <commdlg.h>
 
 //Include AEC functions
-#define AEC_FUNCTIONS
 //! Akelpad's will
 #include "AkelEdit.h"
 

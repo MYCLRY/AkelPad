@@ -6,7 +6,6 @@
 #include <windows.h>
 #include <richedit.h>
 
-#define AEC_FUNCTIONS
 #include "AkelEdit.h"
 #include "AkelDLL.h"
 

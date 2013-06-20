@@ -109,6 +109,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "AkelUpdaterHelp", "akelupda
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "updater", "updater", "{B48A8035-6DC3-4616-B5AB-61D3D4719E51}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "akeledit", "akelpad-src\akeledit.vcxproj", "{9F64C8CD-239B-4609-B657-853C1B188FE4}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -453,6 +455,14 @@ Global
 		{9BE44DAE-90A9-44F7-8422-D68264E02175}.Release|Win32.Build.0 = Release|Win32
 		{9BE44DAE-90A9-44F7-8422-D68264E02175}.Release|x64.ActiveCfg = Release|x64
 		{9BE44DAE-90A9-44F7-8422-D68264E02175}.Release|x64.Build.0 = Release|x64
+		{9F64C8CD-239B-4609-B657-853C1B188FE4}.Debug|Win32.ActiveCfg = Debug|Win32
+		{9F64C8CD-239B-4609-B657-853C1B188FE4}.Debug|Win32.Build.0 = Debug|Win32
+		{9F64C8CD-239B-4609-B657-853C1B188FE4}.Debug|x64.ActiveCfg = Debug|x64
+		{9F64C8CD-239B-4609-B657-853C1B188FE4}.Debug|x64.Build.0 = Debug|x64
+		{9F64C8CD-239B-4609-B657-853C1B188FE4}.Release|Win32.ActiveCfg = Release|Win32
+		{9F64C8CD-239B-4609-B657-853C1B188FE4}.Release|Win32.Build.0 = Release|Win32
+		{9F64C8CD-239B-4609-B657-853C1B188FE4}.Release|x64.ActiveCfg = Release|x64
+		{9F64C8CD-239B-4609-B657-853C1B188FE4}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

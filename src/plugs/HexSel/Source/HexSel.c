@@ -1,14 +1,15 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <richedit.h>
-#include "x64Func.h"
 #include "StrFunc.h"
+#include "x64Func.h"
 #include "WideFunc.h"
 #include "AkelEdit.h"
 #include "AkelDLL.h"
 #include "Resources\Resource.h"
 
 
+/*
 //Include string functions
 #define xmemcpy
 #define xmemset
@@ -42,6 +43,7 @@
 #define SetDlgItemTextWide
 #define SetWindowTextWide
 #include "WideFunc.h"
+//*/
 
 //Defines
 #define STRID_DIRECTION  1

@@ -6,6 +6,7 @@
 #include "AkelDLL.h"
 
 
+/*
 //Include stack functions
 #define StackInsertAfter
 #define StackInsertBefore
@@ -33,6 +34,7 @@
 #define FindNextFileWide
 #define RemoveFontResourceWide
 #include "WideFunc.h"
+//*/
 
 //Defines
 #define BUFFER_SIZE      1024

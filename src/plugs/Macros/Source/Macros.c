@@ -8,13 +8,12 @@
 #include "WideFunc.h"
 
 //Include AEC functions
-#define AEC_FUNCTIONS
 #include "AkelEdit.h"
 
 #include "AkelDLL.h"
 #include "Resources\Resource.h"
 
-
+/*
 //Include stack functions
 #define StackInsertAfter
 #define StackInsertBefore
@@ -67,6 +66,7 @@
 //Include AEC functions
 #define AEC_FUNCTIONS
 #include "AkelEdit.h"
+//*/
 
 
 //Defines

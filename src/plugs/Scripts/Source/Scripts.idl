@@ -254,6 +254,12 @@ library Scripts
     //Unregister window class.
     HRESULT WindowUnregisterClass([in] BSTR wpClassName, [out, retval] BOOL *bResult);
 
+    //Register dialog.
+    HRESULT WindowRegisterDialog([in] MYHANDLE hDlg, [out, retval] BOOL *bResult);
+
+    //Unregister dialog.
+    HRESULT WindowUnregisterDialog([in] MYHANDLE hDlg, [out, retval] BOOL *bResult);
+
     //Process thread messages (message loop).
     HRESULT WindowGetMessage();
 

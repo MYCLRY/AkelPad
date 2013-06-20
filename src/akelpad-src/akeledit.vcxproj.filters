@@ -15,10 +15,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="AkelPad.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Edit.c">
+    <ClCompile Include="AkelEdit\AkelEdit.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -45,34 +42,5 @@
     <CustomBuild Include="AkelFiles\Langs\Resources\HandOpen.cur">
       <Filter>Resource Files</Filter>
     </CustomBuild>
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="AkelPad.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Edit.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="WideFunc.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="AkelEdit\AkelBuild.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="AkelEdit\AkelEdit.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="AkelEdit\RegExpFunc.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="AkelEdit\StackFunc.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="AkelEdit\StrFunc.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="AkelEdit\x64Func.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
   </ItemGroup>
 </Project>

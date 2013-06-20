@@ -12,6 +12,8 @@
 #ifndef _X64FUNC_H_
 #define _X64FUNC_H_
 
+#define ALLX64FUNC 1
+
 INT_PTR MultiByteToWideChar64(UINT dwCodePage, DWORD dwFlags, const char *lpMultiByteStr, INT_PTR cbMultiByte, wchar_t *lpWideCharStr, INT_PTR cchWideChar);
 INT_PTR WideCharToMultiByte64(UINT dwCodePage, DWORD dwFlags, const wchar_t *lpWideCharStr, INT_PTR cchWideChar, char *lpMultiByteStr, INT_PTR cbMultiByte, const char *lpDefaultChar, BOOL *lpUsedDefaultChar);
 UINT_PTR GetFileSize64(HANDLE hFile);

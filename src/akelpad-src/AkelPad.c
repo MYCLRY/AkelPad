@@ -9,10 +9,10 @@
 #include <shlobj.h>
 #include <aclapi.h>
 #include <richedit.h>
-#include "WideFunc.h"
 #include "AkelEdit\StackFunc.h"
 #include "AkelEdit\StrFunc.h"
 #include "AkelEdit\x64Func.h"
+#include "WideFunc.h"
 #include "AkelEdit\AkelBuild.h"
 #include "AkelEdit\RegExpFunc.h"
 #include "AkelFiles\Langs\Resources\resource.h"
@@ -22,6 +22,7 @@
 #include "Edit.h"
 
 
+/*
 //Include stack functions
 #ifndef AKELEDIT_STATICBUILD
   #define StackInsertBefore
@@ -209,6 +210,7 @@
 #define TabCtrl_SetItemWide
 #define TranslateAcceleratorWide
 #include "WideFunc.h"
+//*/
 
 //Process
 HANDLE hHeap;
