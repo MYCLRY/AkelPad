@@ -2286,7 +2286,7 @@ int StructMethodParameters(STACKEXTPARAM *hParamStack, unsigned char *lpStruct)
 
 EXTPARAM* GetMethodParameter(STACKEXTPARAM *hParamStack, int nIndex)
 {
-  EXTPARAM *lpParameter;
+  EXTPARAM *lpParameter = NULL;
 
   if (!StackGetElement((stack *)hParamStack->first, (stack *)hParamStack->last, (stack **)&lpParameter, nIndex))
     return lpParameter;

@@ -1036,7 +1036,7 @@ SOUNDITEM* StackInsertSound(SOUNDSTACK *hStack)
 
 SOUNDITEM* StackGetSoundItemByIndex(SOUNDSTACK *hStack, int nIndex)
 {
-  SOUNDITEM *siElement;
+  SOUNDITEM *siElement = NULL;
 
   if (!StackGetElement((stack *)hStack->first, (stack *)hStack->last, (stack **)&siElement, nIndex))
     return siElement;
@@ -1349,7 +1349,7 @@ void ExpandMethodParameters(STACKEXTPARAM *hParamStack, const wchar_t *wpFile, c
 
 EXTPARAM* GetMethodParameter(STACKEXTPARAM *hParamStack, int nIndex)
 {
-  EXTPARAM *lpParameter;
+  EXTPARAM *lpParameter = NULL;
 
   if (!StackGetElement((stack *)hParamStack->first, (stack *)hParamStack->last, (stack **)&lpParameter, nIndex))
     return lpParameter;

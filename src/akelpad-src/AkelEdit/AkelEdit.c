@@ -37,8 +37,10 @@
 #include <windows.h>
 #include <stddef.h>
 #include <imm.h>
+#define ALLSTACKFUNC 1
 #include "StackFunc.h"
 #include "StrFunc.h"
+#define ALLX64FUNC 1
 #include "x64Func.h"
 #include "AkelBuild.h"
 #include "RegExpFunc.h"
@@ -125,7 +127,7 @@ AKELEDIT *lpAkelEditPrev=NULL;
 AKELEDIT *lpAkelEditDrag=NULL;
 UINT cfAkelEditColumnSel=0;
 UINT cfAkelEditText=0;
-HANDLE hAkelEditMsimg32=NULL;
+HMODULE hAkelEditMsimg32=NULL;
 BOOL bAkelEditMsimg32Free=FALSE;
 BOOL (WINAPI *AkelEditAlphaBlendPtr)(HDC, int, int, int, int, HDC, int, int, int, int, BLENDFUNCTION)=NULL;
 

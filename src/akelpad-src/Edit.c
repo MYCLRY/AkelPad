@@ -11,8 +11,10 @@
 #include <aclapi.h>
 #include <richedit.h>
 #include "WideFunc.h"
+#define ALLSTACKFUNC 1
 #include "AkelEdit\StackFunc.h"
 #include "AkelEdit\StrFunc.h"
+#define ALLX64FUNC 1
 #include "AkelEdit\x64Func.h"
 #include "AkelEdit\AkelBuild.h"
 #include "AkelEdit\RegExpFunc.h"
@@ -15990,7 +15992,7 @@ BOOL CALLBACK MessageBoxDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
     HFONT hGuiFont;
     HICON hIcon;
     wchar_t wszString[MAX_PATH];
-    char *pIconIndex;
+    TCHAR *pIconIndex;
     DWORD dwIconType;
     DWORD dwStyle;
     int nButtonWidth=0;
@@ -16056,7 +16058,7 @@ BOOL CALLBACK MessageBoxDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
         else if (dwIconType == MB_ICONHAND)
           pIconIndex=IDI_HAND;
         if (pIconIndex)
-          hIcon=LoadIconA(NULL, pIconIndex);
+          hIcon=LoadIcon(NULL, pIconIndex);
       }
       if (hIcon)
       {

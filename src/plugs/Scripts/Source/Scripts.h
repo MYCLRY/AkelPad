@@ -3,6 +3,7 @@
 
 
 //Includes
+#define ALLSTACKFUNC 1
 #include "StackFunc.h"
 #include "StrFunc.h"
 #include "WideFunc.h"

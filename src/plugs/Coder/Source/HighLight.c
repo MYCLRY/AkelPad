@@ -2,6 +2,7 @@
 #include <windows.h>
 #include <commctrl.h>
 #include <richedit.h>
+#define ALLSTACKFUNC 1
 #include "StackFunc.h"
 #include "StrFunc.h"
 #include "WideFunc.h"

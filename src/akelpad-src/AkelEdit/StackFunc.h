@@ -86,8 +86,6 @@ int StackCopy(stack *first, stack *last, stack **copyfirst, stack **copylast, in
 int StackPushSortA(stackS **first, stackS **last, stackS **element, char *pString, int nUpDown, int nBytes);
 int StackSortA(stackS **first, stackS **last, int nUpDown);
 
-#endif
-
 
 /********************************************************************
  ********************************************************************
@@ -115,7 +113,7 @@ int StackSortA(stackS **first, stackS **last, int nUpDown);
 #if defined StackGetIndexL || defined ALLSTACKFUNC
 #define StackGetIndexL_INCLUDED
 #undef StackGetIndexL
-int StackGetIndexL(stackL *first, stackL *last, stackL *element)
+__inline int StackGetIndexL(stackL *first, stackL *last, stackL *element)
 {
   stackL *tmp=first;
   int nCount;
@@ -150,7 +148,7 @@ int StackGetIndexL(stackL *first, stackL *last, stackL *element)
 #if defined StackGetElementL || defined ALLSTACKFUNC
 #define StackGetElementL_INCLUDED
 #undef StackGetElementL
-int StackGetElementL(stackL *first, stackL *last, stackL **element, int nIndex)
+__inline int StackGetElementL(stackL *first, stackL *last, stackL **element, int nIndex)
 {
   stackL *tmp=first;
   int nCount;
@@ -189,7 +187,7 @@ int StackGetElementL(stackL *first, stackL *last, stackL **element, int nIndex)
 #if defined StackPushFrontL || defined ALLSTACKFUNC
 #define StackPushFrontL_INCLUDED
 #undef StackPushFrontL
-int StackPushFrontL(stackL **first, stackL **last, stackL **element, int nBytes)
+__inline int StackPushFrontL(stackL **first, stackL **last, stackL **element, int nBytes)
 {
   if (*element=(stackL *)GlobalAlloc(GPTR, nBytes))
   {
@@ -222,7 +220,7 @@ int StackPushFrontL(stackL **first, stackL **last, stackL **element, int nBytes)
 #if defined StackPopFrontL || defined ALLSTACKFUNC
 #define StackPopFrontL_INCLUDED
 #undef StackPopFrontL
-int StackPopFrontL(stackL **first, stackL **last)
+__inline int StackPopFrontL(stackL **first, stackL **last)
 {
   stackL *tmp=*first;
 
@@ -253,7 +251,7 @@ int StackPopFrontL(stackL **first, stackL **last)
 #if defined StackPushBackL || defined ALLSTACKFUNC
 #define StackPushBackL_INCLUDED
 #undef StackPushBackL
-int StackPushBackL(stackL **first, stackL **last, stackL **element, int nBytes)
+__inline int StackPushBackL(stackL **first, stackL **last, stackL **element, int nBytes)
 {
   if (*element=(stackL *)GlobalAlloc(GPTR, nBytes))
   {
@@ -285,7 +283,7 @@ int StackPushBackL(stackL **first, stackL **last, stackL **element, int nBytes)
 #if defined StackSizeL || defined ALLSTACKFUNC
 #define StackSizeL_INCLUDED
 #undef StackSizeL
-int StackSizeL(stackL *first, stackL *last)
+__inline int StackSizeL(stackL *first, stackL *last)
 {
   stackL *tmp=first;
   int nCount;
@@ -310,7 +308,7 @@ int StackSizeL(stackL *first, stackL *last)
 #if defined StackClearL || defined ALLSTACKFUNC
 #define StackClearL_INCLUDED
 #undef StackClearL
-void StackClearL(stackL **first, stackL **last)
+__inline void StackClearL(stackL **first, stackL **last)
 {
   stackL *tmp=*first;
   stackL *tmp2;
@@ -355,7 +353,7 @@ void StackClearL(stackL **first, stackL **last)
 #if defined StackGetIndex || defined ALLSTACKFUNC
 #define StackGetIndex_INCLUDED
 #undef StackGetIndex
-int StackGetIndex(stack *first, stack *last, stack *element, BOOL bPositive)
+__inline int StackGetIndex(stack *first, stack *last, stack *element, BOOL bPositive)
 {
   stack *tmp;
   int nCount;
@@ -408,7 +406,7 @@ int StackGetIndex(stack *first, stack *last, stack *element, BOOL bPositive)
 #if defined StackGetElement || defined ALLSTACKFUNC
 #define StackGetElement_INCLUDED
 #undef StackGetElement
-int StackGetElement(stack *first, stack *last, stack **element, int nIndex)
+__inline int StackGetElement(stack *first, stack *last, stack **element, int nIndex)
 {
   stack *tmp;
   int nCount;
@@ -526,7 +524,7 @@ __inline int StackInsertBefore(stack **first, stack **last, stack *index, stack 
 #if defined StackInsertAfter || defined ALLSTACKFUNC
 #define StackInsertAfter_INCLUDED
 #undef StackInsertAfter
-int StackInsertAfter(stack **first, stack **last, stack *index, stack **element, int nBytes)
+__inline int StackInsertAfter(stack **first, stack **last, stack *index, stack **element, int nBytes)
 {
   *element=NULL;
 
@@ -625,7 +623,7 @@ __inline int StackDelete(stack **first, stack **last, stack *element)
 #if defined StackMoveBefore || defined ALLSTACKFUNC
 #define StackMoveBefore_INCLUDED
 #undef StackMoveBefore
-int StackMoveBefore(stack **first, stack **last, stack *src, stack *dst)
+__inline int StackMoveBefore(stack **first, stack **last, stack *src, stack *dst)
 {
   if (src == dst) return 2;
 
@@ -697,7 +695,7 @@ int StackMoveBefore(stack **first, stack **last, stack *src, stack *dst)
 #if defined StackMoveAfter || defined ALLSTACKFUNC
 #define StackMoveAfter_INCLUDED
 #undef StackMoveAfter
-int StackMoveAfter(stack **first, stack **last, stack *src, stack *dst)
+__inline int StackMoveAfter(stack **first, stack **last, stack *src, stack *dst)
 {
   if (src == dst) return 2;
 
@@ -769,7 +767,7 @@ int StackMoveAfter(stack **first, stack **last, stack *src, stack *dst)
 #if defined StackExchange || defined ALLSTACKFUNC
 #define StackExchange_INCLUDED
 #undef StackExchange
-int StackExchange(stack **first, stack **last, stack *element1, stack *element2)
+__inline int StackExchange(stack **first, stack **last, stack *element1, stack *element2)
 {
   stack *tmpNext;
   stack *tmpPrev;
@@ -868,7 +866,7 @@ int StackExchange(stack **first, stack **last, stack *element1, stack *element2)
 #if defined StackJoin || defined ALLSTACKFUNC
 #define StackJoin_INCLUDED
 #undef StackJoin
-void StackJoin(stack **first, stack **last, stack *index, stack *joinfirst, stack *joinlast)
+__inline void StackJoin(stack **first, stack **last, stack *index, stack *joinfirst, stack *joinlast)
 {
   if (!joinfirst || !joinlast)
     return;
@@ -916,7 +914,7 @@ void StackJoin(stack **first, stack **last, stack *index, stack *joinfirst, stac
 #if defined StackSplit || defined ALLSTACKFUNC
 #define StackSplit_INCLUDED
 #undef StackSplit
-void StackSplit(stack **first, stack **last, stack *splitfirst, stack *splitlast)
+__inline void StackSplit(stack **first, stack **last, stack *splitfirst, stack *splitlast)
 {
   if (!splitfirst || !splitlast)
     return;
@@ -957,7 +955,7 @@ void StackSplit(stack **first, stack **last, stack *splitfirst, stack *splitlast
 #if defined StackSize || defined ALLSTACKFUNC
 #define StackSize_INCLUDED
 #undef StackSize
-int StackSize(stack *first, stack *last)
+__inline int StackSize(stack *first, stack *last)
 {
   stack *tmp=last;
   int nCount;
@@ -982,7 +980,7 @@ int StackSize(stack *first, stack *last)
 #if defined StackClear || defined ALLSTACKFUNC
 #define StackClear_INCLUDED
 #undef StackClear
-void StackClear(stack **first, stack **last)
+__inline void StackClear(stack **first, stack **last)
 {
   stack *tmp1=*last;
   stack *tmp2;
@@ -1033,7 +1031,7 @@ void StackClear(stack **first, stack **last)
 #if defined StackInsertIndex || defined ALLSTACKFUNC
 #define StackInsertIndex_INCLUDED
 #undef StackInsertIndex
-int StackInsertIndex(stack **first, stack **last, stack **element, int nIndex, int nBytes)
+__inline int StackInsertIndex(stack **first, stack **last, stack **element, int nIndex, int nBytes)
 {
   stack *tmp;
   int nCount;
@@ -1100,7 +1098,7 @@ int StackInsertIndex(stack **first, stack **last, stack **element, int nIndex, i
 #if defined StackMoveIndex || defined ALLSTACKFUNC
 #define StackMoveIndex_INCLUDED
 #undef StackMoveIndex
-int StackMoveIndex(stack **first, stack **last, stack *element, int nIndex)
+__inline int StackMoveIndex(stack **first, stack **last, stack *element, int nIndex)
 {
   stack *tmp;
   int nCount;
@@ -1162,7 +1160,7 @@ int StackMoveIndex(stack **first, stack **last, stack *element, int nIndex)
 #if defined StackDeleteRange || defined ALLSTACKFUNC
 #define StackDeleteRange_INCLUDED
 #undef StackDeleteRange
-int StackDeleteRange(stack **first, stack **last, int nIndex, int nIndex2)
+__inline int StackDeleteRange(stack **first, stack **last, int nIndex, int nIndex2)
 {
   stack *tmp;
   stack *tmp2=NULL;
@@ -1274,7 +1272,7 @@ int StackDeleteRange(stack **first, stack **last, int nIndex, int nIndex2)
 #if defined StackMoveRange || defined ALLSTACKFUNC
 #define StackMoveRange_INCLUDED
 #undef StackMoveRange
-int StackMoveRange(stack **first, stack **last, int nIndex, int nIndex2, int nIndex3)
+__inline int StackMoveRange(stack **first, stack **last, int nIndex, int nIndex2, int nIndex3)
 {
   stack *tmp;
   stack *tmp2=NULL;
@@ -1406,7 +1404,7 @@ int StackMoveRange(stack **first, stack **last, int nIndex, int nIndex2, int nIn
 #if defined StackReverseRange || defined ALLSTACKFUNC
 #define StackReverseRange_INCLUDED
 #undef StackReverseRange
-void StackReverseRange(stack **first, stack **last, stack *rangemin, stack *rangemax)
+__inline void StackReverseRange(stack **first, stack **last, stack *rangemin, stack *rangemax)
 {
   stack *tmp1=rangemin;
   stack *tmp2=rangemax;
@@ -1454,7 +1452,7 @@ void StackReverseRange(stack **first, stack **last, stack *rangemin, stack *rang
 #if defined StackCopy || defined ALLSTACKFUNC
 #define StackCopy_INCLUDED
 #undef StackCopy
-int StackCopy(stack *first, stack *last, stack **copyfirst, stack **copylast, int nBytes)
+__inline int StackCopy(stack *first, stack *last, stack **copyfirst, stack **copylast, int nBytes)
 {
   stack *tmp1=first;
   stack *tmp2;
@@ -1508,7 +1506,7 @@ int StackCopy(stack *first, stack *last, stack **copyfirst, stack **copylast, in
 #if defined StackPushSortA || defined ALLSTACKFUNC
 #define StackPushSortA_INCLUDED
 #undef StackPushSortA
-int StackPushSortA(stackS **first, stackS **last, stackS **element, char *pString, int nUpDown, int nBytes)
+__inline int StackPushSortA(stackS **first, stackS **last, stackS **element, char *pString, int nUpDown, int nBytes)
 {
   stackS *tmp;
   int i;
@@ -1546,7 +1544,7 @@ int StackPushSortA(stackS **first, stackS **last, stackS **element, char *pStrin
 #if defined StackSortA || defined ALLSTACKFUNC
 #define StackSortA_INCLUDED
 #undef StackSortA
-int StackSortA(stackS **first, stackS **last, int nUpDown)
+__inline int StackSortA(stackS **first, stackS **last, int nUpDown)
 {
   stackS *tmp1;
   stackS *tmp2;
@@ -1621,3 +1619,6 @@ void main()
 }
 
 */
+
+
+#endif  // _STACKFUNC_H_

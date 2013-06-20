@@ -2231,9 +2231,9 @@ LRESULT CALLBACK MainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         if (wParam == MI_MDI)
           return (LRESULT)nMDI;
         if (wParam == MI_LANGMODULEA)
-          return xstrcpynA((void *)lParam, moCur.szLangModule, MAX_PATH);
+          return xstrcpynA((char *)lParam, moCur.szLangModule, MAX_PATH);
         if (wParam == MI_LANGMODULEW)
-          return xstrcpynW((void *)lParam, moCur.wszLangModule, MAX_PATH);
+          return xstrcpynW((wchar_t *)lParam, moCur.wszLangModule, MAX_PATH);
         if (wParam == MI_LANGIDSYSTEM)
           return (LRESULT)dwLangSystem;
         if (wParam == MI_LANGIDMODULE)

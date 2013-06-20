@@ -1181,7 +1181,7 @@ DWORD WINAPI ExecThreadProc(LPVOID lpParameter)
 
 KEYSTRUCT* StackHotkeyAdd(HSTACK *hStack, BYTE bVk, DWORD dwFlags)
 {
-  KEYSTRUCT *lpElement;
+  KEYSTRUCT *lpElement = NULL;
 
   if (!StackInsertIndex((stack **)&hStack->first, (stack **)&hStack->last, (stack **)&lpElement, -1, sizeof(KEYSTRUCT)))
   {

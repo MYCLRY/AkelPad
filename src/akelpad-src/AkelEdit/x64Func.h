@@ -19,8 +19,6 @@ UINT_PTR SetFilePointer64(HANDLE hFile, INT_PTR nDistanceToMove, DWORD dwMoveMet
 BOOL ReadFile64(HANDLE hFile, LPVOID lpBuffer, UINT_PTR nNumberOfBytesToRead, UINT_PTR *lpNumberOfBytesRead, LPOVERLAPPED lpOverlapped);
 BOOL WriteFile64(HANDLE hFile, LPCVOID lpBuffer, UINT_PTR nNumberOfBytesToWrite, UINT_PTR *lpNumberOfBytesWritten, LPOVERLAPPED lpOverlapped);
 
-#endif
-
 
 /********************************************************************
  *
@@ -157,7 +155,7 @@ __inline INT_PTR WideCharToMultiByte64(UINT dwCodePage, DWORD dwFlags, const wch
 #if defined GetFileSize64 || defined ALLX64FUNC
 #define GetFileSize64_INCLUDED
 #undef GetFileSize64
-UINT_PTR GetFileSize64(HANDLE hFile)
+__inline UINT_PTR GetFileSize64(HANDLE hFile)
 {
   #ifdef _WIN64
     LARGE_INTEGER liFileSize;
@@ -181,7 +179,7 @@ UINT_PTR GetFileSize64(HANDLE hFile)
 #if defined SetFilePointer64 || defined ALLX64FUNC
 #define SetFilePointer64_INCLUDED
 #undef SetFilePointer64
-UINT_PTR SetFilePointer64(HANDLE hFile, INT_PTR nDistanceToMove, DWORD dwMoveMethod)
+__inline UINT_PTR SetFilePointer64(HANDLE hFile, INT_PTR nDistanceToMove, DWORD dwMoveMethod)
 {
   #ifdef _WIN64
     LARGE_INTEGER liDistanceToMove;
@@ -207,7 +205,7 @@ UINT_PTR SetFilePointer64(HANDLE hFile, INT_PTR nDistanceToMove, DWORD dwMoveMet
 #if defined ReadFile64 || defined ALLX64FUNC
 #define ReadFile64_INCLUDED
 #undef ReadFile64
-BOOL ReadFile64(HANDLE hFile, LPVOID lpBuffer, UINT_PTR nNumberOfBytesToRead, UINT_PTR *lpNumberOfBytesRead, LPOVERLAPPED lpOverlapped)
+__inline BOOL ReadFile64(HANDLE hFile, LPVOID lpBuffer, UINT_PTR nNumberOfBytesToRead, UINT_PTR *lpNumberOfBytesRead, LPOVERLAPPED lpOverlapped)
 {
   DWORD dwBytesToRead;
   DWORD dwBytesRead;
@@ -242,7 +240,7 @@ BOOL ReadFile64(HANDLE hFile, LPVOID lpBuffer, UINT_PTR nNumberOfBytesToRead, UI
 #if defined WriteFile64 || defined ALLX64FUNC
 #define WriteFile64_INCLUDED
 #undef WriteFile64
-BOOL WriteFile64(HANDLE hFile, LPCVOID lpBuffer, UINT_PTR nNumberOfBytesToWrite, UINT_PTR *lpNumberOfBytesWritten, LPOVERLAPPED lpOverlapped)
+__inline BOOL WriteFile64(HANDLE hFile, LPCVOID lpBuffer, UINT_PTR nNumberOfBytesToWrite, UINT_PTR *lpNumberOfBytesWritten, LPOVERLAPPED lpOverlapped)
 {
   DWORD dwBytesToWrite;
   DWORD dwBytesWritten;
@@ -309,3 +307,6 @@ void main()
 }
 
 */
+
+
+#endif  // _X64FUNC_H_

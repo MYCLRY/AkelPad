@@ -1225,7 +1225,7 @@ void StackPluginsFill(HSTACK *hStack)
 
 PLUGINITEM* StackPluginInsert(HSTACK *hStack, const char *pPluginName)
 {
-  PLUGINITEM *lpElement;
+  PLUGINITEM *lpElement = NULL;
 
   if (!StackInsertIndex((stack **)&hStack->first, (stack **)&hStack->last, (stack **)&lpElement, -1, sizeof(PLUGINITEM)))
   {

@@ -3,6 +3,7 @@
 #include <windows.h>
 #include <richedit.h>
 #include <commctrl.h>
+#define ALLSTACKFUNC 1
 #include "StackFunc.h"
 #include "StrFunc.h"
 #include "x64Func.h"
@@ -145,7 +146,7 @@ wchar_t wszDefaultAlias[MAX_PATH]=L".cpp";
 HSTACK hSyntaxFilesStack={0};
 HSTACK hManualStack={0};
 STACKVARTHEME hVarThemesStack={0};
-VARTHEME hVarThemeGlobal;
+VARTHEME hVarThemeGlobal = { 0 };
 SYNTAXFILE *lpLoadSyntaxFile=NULL;
 VARTHEME *lpVarThemeActive=NULL;
 VARINFO *lpVarInfoFastCheck=NULL;
@@ -3694,7 +3695,7 @@ void StackRequestSyntaxFile(SYNTAXFILE *lpSyntaxFile)
 
 SYNTAXFILE* StackAddSyntaxFile(HSTACK *hStack, const wchar_t *wpFile)
 {
-  SYNTAXFILE *lpElement;
+  SYNTAXFILE *lpElement = NULL;
 
   if (!StackInsertBefore((stack **)&hStack->first, (stack **)&hStack->last, NULL, (stack **)&lpElement, sizeof(SYNTAXFILE)))
     xstrcpynW(lpElement->wszSyntaxFileName, wpFile, MAX_PATH);
@@ -3703,8 +3704,8 @@ SYNTAXFILE* StackAddSyntaxFile(HSTACK *hStack, const wchar_t *wpFile)
 
 SYNTAXFILE* StackPushSortSyntaxFile(HSTACK *hStack, const wchar_t *wpFile, int nUpDown)
 {
-  SYNTAXFILE *lpElement;
-  SYNTAXFILE *lpNewElement;
+  SYNTAXFILE *lpElement = NULL;
+  SYNTAXFILE *lpNewElement = NULL;
   int i;
 
   if (nUpDown != 1 && nUpDown != -1) return NULL;
@@ -3759,7 +3760,7 @@ SYNTAXFILE* StackGetSyntaxFileByTheme(HSTACK *hStack, HANDLE hTheme)
 
 SYNTAXFILE* StackGetSyntaxFileByIndex(HSTACK *hStack, int nIndex)
 {
-  SYNTAXFILE *lpElement;
+  SYNTAXFILE *lpElement = NULL;
 
   StackGetElement((stack *)hStack->first, (stack *)hStack->last, (stack **)&lpElement, nIndex);
   return lpElement;
@@ -4077,7 +4078,7 @@ VARTHEME* StackGetVarThemeByName(STACKVARTHEME *hStack, const wchar_t *wpVarThem
 
 VARTHEME* StackGetVarThemeByIndex(STACKVARTHEME *hStack, int nIndex)
 {
-  VARTHEME *lpElement;
+  VARTHEME *lpElement = NULL;
 
   StackGetElement((stack *)hStack->first, (stack *)hStack->last, (stack **)&lpElement, nIndex);
   return lpElement;
@@ -4329,7 +4330,7 @@ VARINFO* StackGetVarByName(STACKVAR *hStack, const wchar_t *wpVarName, int nVarN
   }
 
   //Firstly search in GLOBAL var theme
-  hStackCurrent=&hVarThemeGlobal.hVarStack;
+  hStackCurrent=&(hVarThemeGlobal.hVarStack);
 
   for (;;)
   {
@@ -5743,7 +5744,9 @@ void InitCommon(PLUGINDATA *pd)
   ReadOptions(OF_GENERAL_ALLTHEMES|OF_GENERAL_THEMELINK|OF_GENERAL_SETTINGS|OF_HIGHLIGHT|OF_CODEFOLD|OF_AUTOCOMPLETE);
   if (!lpVarThemeActive)
     lpVarThemeActive=RequestVarTheme(&hVarThemesStack, L"Default");
-  GetVarThemeGlobals(lpVarThemeActive);
+  if (lpVarThemeActive) {
+    GetVarThemeGlobals(lpVarThemeActive);
+  }
 }
 
 void InitMain()
