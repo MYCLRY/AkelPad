@@ -3010,7 +3010,7 @@ Return Value
 
 Example:
  wchar_t *wpText;
- int nTextLen=0;
+ INT_PTR nTextLen=0;
 
  wpText=(wchar_t *)SendMessage(pd->hMainWnd, AKD_GETSELTEXTW, (WPARAM)pd->hWndEdit, (LPARAM)&nTextLen);
  SendMessage(pd->hMainWnd, AKD_FREETEXT, 0, (LPARAM)wpText);
