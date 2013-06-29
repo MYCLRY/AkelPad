@@ -118,9 +118,10 @@
 #define FS_FONTBOLDITALIC  4
 
 //CreateToolbarData SET() flags
-#define CCMS_NOSDI      0x01
-#define CCMS_NOMDI      0x02
-#define CCMS_NOPMDI     0x04
+#define CCMS_NOSDI       0x01
+#define CCMS_NOMDI       0x02
+#define CCMS_NOPMDI      0x04
+#define CCMS_NOFILEEXIST 0x20
 
 #define MAX_TOOLBARTEXT_SIZE  64000
 
@@ -1022,9 +1023,11 @@ BOOL CreateToolbarData(TOOLBARDATA *hToolbarData, const wchar_t *wpText)
   const wchar_t *wpCount=wpText;
   const wchar_t *wpLineBegin;
   const wchar_t *wpErrorBegin=wpText;
+  const wchar_t *wpSetArg;
   HICON hIcon;
   SIZE sizeIcon;
   DWORD dwAction;
+  DWORD dwNewFlags;
   DWORD dwSetFlags=0;
   int nPlus;
   int nMinus;
@@ -1034,6 +1037,7 @@ BOOL CreateToolbarData(TOOLBARDATA *hToolbarData, const wchar_t *wpText)
   int nMessageID;
   int nRow=1;
   BOOL bMethod;
+  BOOL bPrevSeparator=FALSE;
   BOOL bInRow=TRUE;
 
   if (wpCount)
@@ -1076,26 +1080,48 @@ BOOL CreateToolbarData(TOOLBARDATA *hToolbarData, const wchar_t *wpText)
       NextString(wpCount, wszButtonItem, MAX_PATH, &wpCount, &nMinus);
 
       //Set options
-      if (!xstrcmpnW(L"SET(", wszButtonItem, (UINT_PTR)-1))
+      wpSetArg=wpLineBegin;
+
+      if (!xstrcmpnW(L"SET(", wpSetArg, (UINT_PTR)-1))
       {
-        dwSetFlags|=xatoiW(wszButtonItem + 4, NULL);
+        dwNewFlags=(DWORD)xatoiW(wpSetArg + 4, &wpSetArg);
+
+        if (dwNewFlags & CCMS_NOFILEEXIST)
+        {
+          wchar_t wszPath[MAX_PATH];
+          wchar_t *wpFileName;
+
+          if (*wpSetArg == L',' && NextString(++wpSetArg, wszPath, MAX_PATH, &wpSetArg, NULL))
+          {
+            if (TranslateFileString(wszPath, wszBuffer, BUFFER_SIZE))
+            {
+              if (SearchPathWide(NULL, wszBuffer, NULL, MAX_PATH, wszPath, &wpFileName))
+                dwNewFlags&=~CCMS_NOFILEEXIST;
+            }
+            while (*wpSetArg == L' ' || *wpSetArg == L'\t') ++wpSetArg;
+            if (*wpSetArg == L')') ++wpSetArg;
+            wpCount=wpSetArg;
+          }
+        }
+        dwSetFlags|=dwNewFlags;
         continue;
       }
-      else if (!xstrcmpnW(L"UNSET(", wszButtonItem, (UINT_PTR)-1))
+      else if (!xstrcmpnW(L"UNSET(", wpSetArg, (UINT_PTR)-1))
       {
-        dwSetFlags&=~xatoiW(wszButtonItem + 6, NULL);
+        dwSetFlags&=~xatoiW(wpSetArg + 6, NULL);
         continue;
       }
-      if (IsFlagOn(dwSetFlags, CCMS_NOSDI|CCMS_NOMDI|CCMS_NOPMDI))
+      if (IsFlagOn(dwSetFlags, CCMS_NOSDI|CCMS_NOMDI|CCMS_NOPMDI|CCMS_NOFILEEXIST))
       {
         //Next line
         while (*wpCount != L'\r' && *wpCount != L'\n') ++wpCount;
         continue;
       }
 
-      if (!xstrcmpW(wszButtonItem, L"SEPARATOR"))
+      if (!xstrcmpW(wszButtonItem, L"SEPARATOR") ||
+          !xstrcmpW(wszButtonItem, L"SEPARATOR1"))
       {
-        if (bInRow)
+        if (bInRow && (!bPrevSeparator || !xstrcmpW(wszButtonItem, L"SEPARATOR")))
         {
           if (lpButton=StackInsertBeforeButton(hToolbarData, lpNextRowItemFirstButton))
           {
@@ -1112,240 +1138,246 @@ BOOL CreateToolbarData(TOOLBARDATA *hToolbarData, const wchar_t *wpText)
             lpButton->tbb.iString=0;
           }
         }
+        bPrevSeparator=TRUE;
         bMethod=TRUE;
-      }
-      else if (!xstrcmpW(wszButtonItem, L"BREAK"))
-      {
-        if (lpLastButton)
-          lpLastButton->tbb.fsState|=TBSTATE_WRAP;
-        bMethod=TRUE;
-        ++nRow;
-
-        if (hRowListStack.nElements)
-        {
-          if (lpRowItem=GetRow(&hRowListStack, nRow))
-          {
-            lpNextRowItemFirstButton=GetFirstToolbarItemOfNextRow(lpRowItem);
-            bInRow=TRUE;
-          }
-          else
-          {
-            lpNextRowItemFirstButton=NULL;
-            bInRow=FALSE;
-          }
-        }
       }
       else
       {
-        //Item name is normal string
-        while (*wpCount == L' ' || *wpCount == L'\t') ++wpCount;
+        bPrevSeparator=FALSE;
 
-        if (*wpCount == L'+')
+        if (!xstrcmpW(wszButtonItem, L"BREAK"))
         {
-          ++wpCount;
-          nPlus=1;
-        }
-        else nPlus=0;
+          if (lpLastButton)
+            lpLastButton->tbb.fsState|=TBSTATE_WRAP;
+          bMethod=TRUE;
+          ++nRow;
 
-        //Parse methods
-        for (;;)
-        {
-          while (*wpCount == L' ' || *wpCount == L'\t') ++wpCount;
-          wpErrorBegin=wpCount;
-
-          if (!GetMethodName(wpCount, wszMethodName, MAX_PATH, &wpCount))
-            break;
-
-          if (!xstrcmpiW(wszMethodName, L"Icon"))
+          if (hRowListStack.nElements)
           {
-            if (!hIcon)
+            if (lpRowItem=GetRow(&hRowListStack, nRow))
             {
-              GetIconParameters(wpCount, wszIconFile, MAX_PATH, &nFileIconIndex, &wpCount);
+              lpNextRowItemFirstButton=GetFirstToolbarItemOfNextRow(lpRowItem);
+              bInRow=TRUE;
+            }
+            else
+            {
+              lpNextRowItemFirstButton=NULL;
+              bInRow=FALSE;
+            }
+          }
+        }
+        else
+        {
+          //Item name is normal string
+          while (*wpCount == L' ' || *wpCount == L'\t') ++wpCount;
 
-              if (bInRow)
+          if (*wpCount == L'+')
+          {
+            ++wpCount;
+            nPlus=1;
+          }
+          else nPlus=0;
+
+          //Parse methods
+          for (;;)
+          {
+            while (*wpCount == L' ' || *wpCount == L'\t') ++wpCount;
+            wpErrorBegin=wpCount;
+
+            if (!GetMethodName(wpCount, wszMethodName, MAX_PATH, &wpCount))
+              break;
+
+            if (!xstrcmpiW(wszMethodName, L"Icon"))
+            {
+              if (!hIcon)
               {
-                if (!*wszIconFile)
-                {
-                  hIcon=(HICON)LoadImageA(hInstanceDLL, MAKEINTRESOURCEA(nFileIconIndex + 100), IMAGE_ICON, sizeIcon.cx, sizeIcon.cy, 0);
+                GetIconParameters(wpCount, wszIconFile, MAX_PATH, &nFileIconIndex, &wpCount);
 
-                  if (hIcon)
-                  {
-                    ImageList_AddIcon(hToolbarData->hImageList, hIcon);
-                    DestroyIcon(hIcon);
-                  }
-                }
-                else
+                if (bInRow)
                 {
-                  wchar_t wszPath[MAX_PATH];
-                  wchar_t *wpFileName;
-                  int nExtracted;
-
-                  if (TranslateFileString(wszIconFile, wszPath, MAX_PATH))
+                  if (!*wszIconFile)
                   {
-                    if (SearchPathWide(NULL, wszPath, NULL, MAX_PATH, wszIconFile, &wpFileName))
+                    hIcon=(HICON)LoadImageA(hInstanceDLL, MAKEINTRESOURCEA(nFileIconIndex + 100), IMAGE_ICON, sizeIcon.cx, sizeIcon.cy, 0);
+
+                    if (hIcon)
                     {
-                      if (bBigIcons)
-                        nExtracted=ExtractIconExWide(wszPath, nFileIconIndex, &hIcon, NULL, 1);
-                      else
-                        nExtracted=ExtractIconExWide(wszPath, nFileIconIndex, NULL, &hIcon, 1);
+                      ImageList_AddIcon(hToolbarData->hImageList, hIcon);
+                      DestroyIcon(hIcon);
+                    }
+                  }
+                  else
+                  {
+                    wchar_t wszPath[MAX_PATH];
+                    wchar_t *wpFileName;
+                    int nExtracted;
 
-                      if (nExtracted)
+                    if (TranslateFileString(wszIconFile, wszPath, MAX_PATH))
+                    {
+                      if (SearchPathWide(NULL, wszPath, NULL, MAX_PATH, wszIconFile, &wpFileName))
                       {
-                        ImageList_AddIcon(hToolbarData->hImageList, hIcon);
-                        DestroyIcon(hIcon);
+                        if (bBigIcons)
+                          nExtracted=ExtractIconExWide(wszPath, nFileIconIndex, &hIcon, NULL, 1);
+                        else
+                          nExtracted=ExtractIconExWide(wszPath, nFileIconIndex, NULL, &hIcon, 1);
+
+                        if (nExtracted)
+                        {
+                          ImageList_AddIcon(hToolbarData->hImageList, hIcon);
+                          DestroyIcon(hIcon);
+                        }
                       }
                     }
                   }
                 }
               }
-            }
-            else
-            {
-              nMessageID=STRID_PARSEMSG_METHODALREADYDEFINED;
-              goto Error;
-            }
-          }
-          else if (!xstrcmpiW(wszMethodName, L"Menu"))
-          {
-            if (!hParamMenuName.first)
-            {
-              ParseMethodParameters(&hParamMenuName, wpCount, &wpCount);
-              if (!bInRow) FreeMethodParameters(&hParamMenuName);
-              bMethod=TRUE;
-            }
-            else
-            {
-              nMessageID=STRID_PARSEMSG_METHODALREADYDEFINED;
-              goto Error;
-            }
-          }
-          else
-          {
-            //Actions
-            if (!lpButton)
-            {
-              if (!xstrcmpiW(wszMethodName, L"Command"))
-                dwAction=EXTACT_COMMAND;
-              else if (!xstrcmpiW(wszMethodName, L"Call"))
-                dwAction=EXTACT_CALL;
-              else if (!xstrcmpiW(wszMethodName, L"Exec"))
-                dwAction=EXTACT_EXEC;
-              else if (!xstrcmpiW(wszMethodName, L"OpenFile"))
-                dwAction=EXTACT_OPENFILE;
-              else if (!xstrcmpiW(wszMethodName, L"SaveFile"))
-                dwAction=EXTACT_SAVEFILE;
-              else if (!xstrcmpiW(wszMethodName, L"Font"))
-                dwAction=EXTACT_FONT;
-              else if (!xstrcmpiW(wszMethodName, L"Recode"))
-                dwAction=EXTACT_RECODE;
-              else if (!xstrcmpiW(wszMethodName, L"Insert"))
-                dwAction=EXTACT_INSERT;
               else
-                dwAction=0;
-
-              if (dwAction)
               {
-                if (bInRow)
-                {
-                  if (lpButton=StackInsertBeforeButton(hToolbarData, lpNextRowItemFirstButton))
-                  {
-                    lpLastButton=lpButton;
-                    if (lpRowItem && !lpRowItem->lpFirstToolbarItem)
-                      lpRowItem->lpFirstToolbarItem=lpButton;
-                    lpButton->bUpdateItem=!nMinus;
-                    lpButton->bAutoLoad=nPlus;
-                    lpButton->dwAction=dwAction;
-                    lpButton->nTextOffset=(int)(wpLineBegin - wpTextBegin);
-
-                    xstrcpynW(lpButton->wszButtonItem, wszButtonItem, MAX_PATH);
-                    lpButton->tbb.iBitmap=-1;
-                    lpButton->tbb.idCommand=++nItemCommand;
-                    lpButton->tbb.fsState=TBSTATE_ENABLED;
-                    lpButton->tbb.fsStyle=TBSTYLE_BUTTON;
-                    lpButton->tbb.dwData=0;
-                    lpButton->tbb.iString=0;
-                    ParseMethodParameters(&lpButton->hParamStack, wpCount, &wpCount);
-
-                    if (dwAction == EXTACT_COMMAND)
-                    {
-                      int nCommand=0;
-
-                      if (lpParameter=GetMethodParameter(&lpButton->hParamStack, 1))
-                        nCommand=lpParameter->nNumber;
-
-                      if (nCommand == IDM_FILE_OPEN)
-                      {
-                        lpButton->tbb.fsStyle|=TBSTYLE_DROPDOWN;
-                      }
-                      if (!*lpButton->wszButtonItem)
-                      {
-                        GetMenuStringWide(hMainMenu, nCommand, lpButton->wszButtonItem, MAX_PATH, MF_BYCOMMAND);
-                      }
-                    }
-                  }
-                }
-                else
-                {
-                  ParseMethodParameters(&hParamButton, wpCount, &wpCount);
-                  FreeMethodParameters(&hParamButton);
-                }
+                nMessageID=STRID_PARSEMSG_METHODALREADYDEFINED;
+                goto Error;
+              }
+            }
+            else if (!xstrcmpiW(wszMethodName, L"Menu"))
+            {
+              if (!hParamMenuName.first)
+              {
+                ParseMethodParameters(&hParamMenuName, wpCount, &wpCount);
+                if (!bInRow) FreeMethodParameters(&hParamMenuName);
                 bMethod=TRUE;
               }
               else
               {
-                nMessageID=STRID_PARSEMSG_UNKNOWNMETHOD;
+                nMessageID=STRID_PARSEMSG_METHODALREADYDEFINED;
                 goto Error;
               }
             }
             else
             {
-              nMessageID=STRID_PARSEMSG_METHODALREADYDEFINED;
-              goto Error;
-            }
-          }
-        }
-
-        if (bMethod)
-        {
-          if (hParamMenuName.first)
-          {
-            if (!lpButton)
-            {
-              //Method "Menu()" without action
-              if (lpButton=StackInsertBeforeButton(hToolbarData, lpNextRowItemFirstButton))
+              //Actions
+              if (!lpButton)
               {
-                lpLastButton=lpButton;
-                if (lpRowItem && !lpRowItem->lpFirstToolbarItem)
-                  lpRowItem->lpFirstToolbarItem=lpButton;
-                lpButton->dwAction=EXTACT_MENU;
-                lpButton->nTextOffset=(int)(wpLineBegin - wpTextBegin);
+                if (!xstrcmpiW(wszMethodName, L"Command"))
+                  dwAction=EXTACT_COMMAND;
+                else if (!xstrcmpiW(wszMethodName, L"Call"))
+                  dwAction=EXTACT_CALL;
+                else if (!xstrcmpiW(wszMethodName, L"Exec"))
+                  dwAction=EXTACT_EXEC;
+                else if (!xstrcmpiW(wszMethodName, L"OpenFile"))
+                  dwAction=EXTACT_OPENFILE;
+                else if (!xstrcmpiW(wszMethodName, L"SaveFile"))
+                  dwAction=EXTACT_SAVEFILE;
+                else if (!xstrcmpiW(wszMethodName, L"Font"))
+                  dwAction=EXTACT_FONT;
+                else if (!xstrcmpiW(wszMethodName, L"Recode"))
+                  dwAction=EXTACT_RECODE;
+                else if (!xstrcmpiW(wszMethodName, L"Insert"))
+                  dwAction=EXTACT_INSERT;
+                else
+                  dwAction=0;
 
-                xstrcpynW(lpButton->wszButtonItem, wszButtonItem, MAX_PATH);
-                lpButton->tbb.iBitmap=-1;
-                lpButton->tbb.idCommand=++nItemCommand;
-                lpButton->tbb.fsState=TBSTATE_ENABLED;
-                lpButton->tbb.fsStyle=TBSTYLE_BUTTON;
-                lpButton->tbb.dwData=0;
-                lpButton->tbb.iString=0;
+                if (dwAction)
+                {
+                  if (bInRow)
+                  {
+                    if (lpButton=StackInsertBeforeButton(hToolbarData, lpNextRowItemFirstButton))
+                    {
+                      lpLastButton=lpButton;
+                      if (lpRowItem && !lpRowItem->lpFirstToolbarItem)
+                        lpRowItem->lpFirstToolbarItem=lpButton;
+                      lpButton->bUpdateItem=!nMinus;
+                      lpButton->bAutoLoad=nPlus;
+                      lpButton->dwAction=dwAction;
+                      lpButton->nTextOffset=(int)(wpLineBegin - wpTextBegin);
+
+                      xstrcpynW(lpButton->wszButtonItem, wszButtonItem, MAX_PATH);
+                      lpButton->tbb.iBitmap=-1;
+                      lpButton->tbb.idCommand=++nItemCommand;
+                      lpButton->tbb.fsState=TBSTATE_ENABLED;
+                      lpButton->tbb.fsStyle=TBSTYLE_BUTTON;
+                      lpButton->tbb.dwData=0;
+                      lpButton->tbb.iString=0;
+                      ParseMethodParameters(&lpButton->hParamStack, wpCount, &wpCount);
+
+                      if (dwAction == EXTACT_COMMAND)
+                      {
+                        int nCommand=0;
+
+                        if (lpParameter=GetMethodParameter(&lpButton->hParamStack, 1))
+                          nCommand=lpParameter->nNumber;
+
+                        if (nCommand == IDM_FILE_OPEN)
+                        {
+                          lpButton->tbb.fsStyle|=TBSTYLE_DROPDOWN;
+                        }
+                        if (!*lpButton->wszButtonItem)
+                        {
+                          GetMenuStringWide(hMainMenu, nCommand, lpButton->wszButtonItem, MAX_PATH, MF_BYCOMMAND);
+                        }
+                      }
+                    }
+                  }
+                  else
+                  {
+                    ParseMethodParameters(&hParamButton, wpCount, &wpCount);
+                    FreeMethodParameters(&hParamButton);
+                  }
+                  bMethod=TRUE;
+                }
+                else
+                {
+                  nMessageID=STRID_PARSEMSG_UNKNOWNMETHOD;
+                  goto Error;
+                }
+              }
+              else
+              {
+                nMessageID=STRID_PARSEMSG_METHODALREADYDEFINED;
+                goto Error;
               }
             }
-            else lpButton->tbb.fsStyle|=TBSTYLE_DROPDOWN;
+          }
 
-            lpButton->hParamMenuName=hParamMenuName;
-            hParamMenuName.first=0;
-            hParamMenuName.last=0;
-            hParamMenuName.nElements=0;
-          }
-          if (hIcon)
+          if (bMethod)
           {
-            lpButton->tbb.iBitmap=nItemBitmap++;
+            if (hParamMenuName.first)
+            {
+              if (!lpButton)
+              {
+                //Method "Menu()" without action
+                if (lpButton=StackInsertBeforeButton(hToolbarData, lpNextRowItemFirstButton))
+                {
+                  lpLastButton=lpButton;
+                  if (lpRowItem && !lpRowItem->lpFirstToolbarItem)
+                    lpRowItem->lpFirstToolbarItem=lpButton;
+                  lpButton->dwAction=EXTACT_MENU;
+                  lpButton->nTextOffset=(int)(wpLineBegin - wpTextBegin);
+
+                  xstrcpynW(lpButton->wszButtonItem, wszButtonItem, MAX_PATH);
+                  lpButton->tbb.iBitmap=-1;
+                  lpButton->tbb.idCommand=++nItemCommand;
+                  lpButton->tbb.fsState=TBSTATE_ENABLED;
+                  lpButton->tbb.fsStyle=TBSTYLE_BUTTON;
+                  lpButton->tbb.dwData=0;
+                  lpButton->tbb.iString=0;
+                }
+              }
+              else lpButton->tbb.fsStyle|=TBSTYLE_DROPDOWN;
+
+              lpButton->hParamMenuName=hParamMenuName;
+              hParamMenuName.first=0;
+              hParamMenuName.last=0;
+              hParamMenuName.nElements=0;
+            }
+            if (hIcon)
+            {
+              lpButton->tbb.iBitmap=nItemBitmap++;
+            }
           }
-        }
-        else
-        {
-          wpErrorBegin=wpLineBegin;
-          nMessageID=STRID_PARSEMSG_NOMETHOD;
-          goto Error;
+          else
+          {
+            wpErrorBegin=wpLineBegin;
+            nMessageID=STRID_PARSEMSG_NOMETHOD;
+            goto Error;
+          }
         }
       }
     }
@@ -1380,6 +1412,8 @@ DWORD IsFlagOn(DWORD dwSetFlags, DWORD dwCheckFlags)
     return CCMS_NOMDI;
   if ((dwCheckFlags & CCMS_NOPMDI) && (dwSetFlags & CCMS_NOPMDI) && nMDI == WMD_PMDI)
     return CCMS_NOPMDI;
+  if ((dwCheckFlags & CCMS_NOFILEEXIST) && (dwSetFlags & CCMS_NOFILEEXIST))
+    return CCMS_NOFILEEXIST;
   return 0;
 }
 
@@ -2842,113 +2876,155 @@ const wchar_t* GetLangStringW(LANGID wLangID, int nStringID)
 \"\" Command(4102) Icon(1)\r\
 \"\" Command(4103) Icon(2)\r\
 \"\" Command(4104) Icon(3)\r\
-SEPARATOR\r\
+SEPARATOR1\r\
 \"\" Command(4105) Icon(4)\r\
 \"\" Command(4106) Icon(5)\r\
-\r\
-# MDI/PMDI\r\
 SET(1)\r\
-\"\" Command(4110) Icon(32)\r\
-\"\" Command(4111) Icon(33)\r\
+    # MDI/PMDI\r\
+    \"\" Command(4110) Icon(32)\r\
+    \"\" Command(4111) Icon(33)\r\
 UNSET(1)\r\
-\r\
-SEPARATOR\r\
+SEPARATOR1\r\
 \"\" Command(4108) Icon(6)\r\
 \"\" Command(4114) Icon(21)\r\
-SEPARATOR\r\
+SEPARATOR1\r\
 " L"\
 \"\" Command(4153) Icon(7)\r\
 \"\" Command(4154) Icon(8)\r\
 \"\" Command(4155) Icon(9)\r\
 \"\" Command(4156) Icon(25)\r\
-SEPARATOR\r\
+SEPARATOR1\r\
 \"\" Command(4151) Icon(10)\r\
 \"\" Command(4152) Icon(11)\r\
-SEPARATOR\r\
+SEPARATOR1\r\
 \"\" Command(4158) Icon(12)\r\
 \"\" Command(4161) Icon(13)\r\
 \"\" Command(4163) Icon(14)\r\
 \"\" Command(4183) Icon(26)\r\
-SEPARATOR\r\
+SEPARATOR1\r\
 " L"\
 \"\" Command(4201) Icon(27)\r\
 -\"\x0423\x0432\x0435\x043B\x0438\x0447\x0438\x0442\x044C\x0020\x0448\x0440\x0438\x0444\x0442\" Command(4204) Icon(28)\r\
 -\"\x0423\x043C\x0435\x043D\x044C\x0448\x0438\x0442\x044C\x0020\x0448\x0440\x0438\x0444\x0442\" Command(4205) Icon(29)\r\
 \"\" Command(4202) Icon(30)\r\
-SEPARATOR\r\
+SEPARATOR1\r\
 \"\" Command(4216) Icon(20)\r\
 \"\" Command(4209) Icon(16)\r\
 \"\x0420\x0430\x0437\x0434\x0435\x043B\x0438\x0442\x044C\x0020\x043D\x0430\x0020\x0034\x0020\x0447\x0430\x0441\x0442\x0438\" Command(4212) Icon(22)\r\
 \"\x0420\x0430\x0437\x0434\x0435\x043B\x0438\x0442\x044C\x0020\x0432\x0435\x0440\x0442\x0438\x043A\x0430\x043B\x044C\x043D\x043E\" Command(4213) Icon(23)\r\
 \"\x0420\x0430\x0437\x0434\x0435\x043B\x0438\x0442\x044C\x0020\x0433\x043E\x0440\x0438\x0437\x043E\x043D\x0442\x0430\x043B\x044C\x043D\x043E\" Command(4214) Icon(24)\r\
 \"\" Command(4210) Icon(15)\r\
-SEPARATOR\r\
+SEPARATOR1\r\
 " L"\
 \"\" Command(4251) Icon(17)\r\
 \"\" Command(4259) Icon(18)\r\
 \"\" Command(4260) Icon(19)\r\
-SEPARATOR\r\
+SEPARATOR1\r\
 " L"\
 \"\x0417\x0430\x043F\x0443\x0441\x0442\x0438\x0442\x044C\x0020\x0431\x043B\x043E\x043A\x043D\x043E\x0442\" Exec(\"notepad.exe\") Icon(\"notepad.exe\")\r\
-\"\x0417\x0430\x043F\x0443\x0441\x0442\x0438\x0442\x044C\x0020\x043E\x0431\x043D\x043E\x0432\x043B\x0435\x043D\x0438\x0435\" Exec(\"%a\\AkelFiles\\AkelUpdater.exe\") Icon(\"%a\\AkelFiles\\AkelUpdater.exe\")\r\
+SET(32, \"%a\\AkelFiles\\AkelUpdater.exe\")\r\
+    \"\x0417\x0430\x043F\x0443\x0441\x0442\x0438\x0442\x044C\x0020\x043E\x0431\x043D\x043E\x0432\x043B\x0435\x043D\x0438\x0435\" Exec(\"%a\\AkelFiles\\AkelUpdater.exe\") Icon(\"%a\\AkelFiles\\AkelUpdater.exe\")\r\
+UNSET(32)\r\
 " L"\
 \r\
-SEPARATOR\r\
+SEPARATOR1\r\
 BREAK\r\
 \"\x0413\x043B\x0430\x0432\x043D\x043E\x0435\x0020\x043C\x0435\x043D\x044E\" Call(\"ContextMenu::Show\", 2, \"%bl\", \"%bb\") Icon(38)\r\
-SEPARATOR\r\
+SEPARATOR1\r\
 " L"\
-\"\x041F\x0440\x043E\x0433\x0440\x0430\x043C\x043C\x0438\x0440\x043E\x0432\x0430\x043D\x0438\x0435\" Menu(\"CODER\") Icon(\"%a\\AkelFiles\\Plugs\\Coder.dll\", 12)\r\
-\"\x041E\x0442\x043C\x0435\x0442\x0438\x0442\x044C\" Menu(\"MARK\") Icon(\"%a\\AkelFiles\\Plugs\\Coder.dll\", 0)\r\
-\"\x0421\x0438\x043D\x0442\x0430\x043A\x0441\x0438\x0447\x0435\x0441\x043A\x0430\x044F\x0020\x0442\x0435\x043C\x0430\" Menu(\"SYNTAXTHEME\") Icon(\"%a\\AkelFiles\\Plugs\\Coder.dll\", 4)\r\
-\"\x0426\x0432\x0435\x0442\x043E\x0432\x0430\x044F\x0020\x0442\x0435\x043C\x0430\" Menu(\"COLORTHEME\") Icon(\"%a\\AkelFiles\\Plugs\\Coder.dll\", 5)\r\
--\"\x041F\x0430\x043D\x0435\x043B\x044C CodeFold\" Call(\"Coder::CodeFold\", 1) Icon(\"%a\\AkelFiles\\Plugs\\Coder.dll\", 3)\r\
-SEPARATOR\r\
+SET(32, \"%a\\AkelFiles\\Plugs\\Coder.dll\")\r\
+    \"\x041F\x0440\x043E\x0433\x0440\x0430\x043C\x043C\x0438\x0440\x043E\x0432\x0430\x043D\x0438\x0435\" Menu(\"CODER\") Icon(\"%a\\AkelFiles\\Plugs\\Coder.dll\", 12)\r\
+    \"\x041E\x0442\x043C\x0435\x0442\x0438\x0442\x044C\" Menu(\"MARK\") Icon(\"%a\\AkelFiles\\Plugs\\Coder.dll\", 0)\r\
+    \"\x0421\x0438\x043D\x0442\x0430\x043A\x0441\x0438\x0447\x0435\x0441\x043A\x0430\x044F\x0020\x0442\x0435\x043C\x0430\" Menu(\"SYNTAXTHEME\") Icon(\"%a\\AkelFiles\\Plugs\\Coder.dll\", 4)\r\
+    \"\x0426\x0432\x0435\x0442\x043E\x0432\x0430\x044F\x0020\x0442\x0435\x043C\x0430\" Menu(\"COLORTHEME\") Icon(\"%a\\AkelFiles\\Plugs\\Coder.dll\", 5)\r\
+    -\"\x041F\x0430\x043D\x0435\x043B\x044C CodeFold\" Call(\"Coder::CodeFold\", 1) Icon(\"%a\\AkelFiles\\Plugs\\Coder.dll\", 3)\r\
+UNSET(32)\r\
+SEPARATOR1\r\
 " L"\
-\"\x041F\x0430\x0440\x043D\x044B\x0435\x0020\x0441\x043A\x043E\x0431\x043A\x0438\" +Call(\"XBrackets::Main\") Menu(\"XBRACKETS\") Icon(\"%a\\AkelFiles\\Plugs\\XBrackets.dll\", 0)\r\
-\"\x041F\x0440\x043E\x0432\x0435\x0440\x043A\x0430\x0020\x043E\x0440\x0444\x043E\x0433\x0440\x0430\x0444\x0438\x0438\" +Call(\"SpellCheck::Background\") Menu(\"SPELLCHECK\") Icon(35)\r\
-\"\x0421\x043F\x0435\x0446\x0438\x0430\x043B\x044C\x043D\x044B\x0435\x0020\x0441\x0438\x043C\x0432\x043E\x043B\x044B\" +Call(\"SpecialChar::Main\") Menu(\"SPECIALCHAR\") Icon(\"%a\\AkelFiles\\Plugs\\SpecialChar.dll\", 0)\r\
-\"\x041D\x043E\x043C\x0435\x0440\x0430\x0020\x0441\x0442\x0440\x043E\x043A\x002C\x0020\x0437\x0430\x043A\x043B\x0430\x0434\x043A\x0438\" +Call(\"LineBoard::Main\") Menu(\"LINEBOARD\") Icon(\"%a\\AkelFiles\\Plugs\\LineBoard.dll\", 0)\r\
-SEPARATOR\r\
+SET(32, \"%a\\AkelFiles\\Plugs\\XBrackets.dll\")\r\
+    \"\x041F\x0430\x0440\x043D\x044B\x0435\x0020\x0441\x043A\x043E\x0431\x043A\x0438\" +Call(\"XBrackets::Main\") Menu(\"XBRACKETS\") Icon(\"%a\\AkelFiles\\Plugs\\XBrackets.dll\", 0)\r\
+UNSET(32)\r\
+SET(32, \"%a\\AkelFiles\\Plugs\\SpellCheck.dll\")\r\
+    \"\x041F\x0440\x043E\x0432\x0435\x0440\x043A\x0430\x0020\x043E\x0440\x0444\x043E\x0433\x0440\x0430\x0444\x0438\x0438\" +Call(\"SpellCheck::Background\") Menu(\"SPELLCHECK\") Icon(35)\r\
+UNSET(32)\r\
+SET(32, \"%a\\AkelFiles\\Plugs\\SpecialChar.dll\")\r\
+    \"\x0421\x043F\x0435\x0446\x0438\x0430\x043B\x044C\x043D\x044B\x0435\x0020\x0441\x0438\x043C\x0432\x043E\x043B\x044B\" +Call(\"SpecialChar::Main\") Menu(\"SPECIALCHAR\") Icon(\"%a\\AkelFiles\\Plugs\\SpecialChar.dll\", 0)\r\
+UNSET(32)\r\
+SET(32, \"%a\\AkelFiles\\Plugs\\LineBoard.dll\")\r\
+    \"\x041D\x043E\x043C\x0435\x0440\x0430\x0020\x0441\x0442\x0440\x043E\x043A\x002C\x0020\x0437\x0430\x043A\x043B\x0430\x0434\x043A\x0438\" +Call(\"LineBoard::Main\") Menu(\"LINEBOARD\") Icon(\"%a\\AkelFiles\\Plugs\\LineBoard.dll\", 0)\r\
+UNSET(32)\r\
+SEPARATOR1\r\
 " L"\
-\"\x0411\x0443\x0444\x0435\x0440\x0020\x043E\x0431\x043C\x0435\x043D\x0430\" Menu(\"CLIPBOARD\") Icon(\"%a\\AkelFiles\\Plugs\\Clipboard.dll\", 0)\r\
-\"\x0421\x043E\x0445\x0440\x0430\x043D\x0435\x043D\x0438\x0435\x0020\x0444\x0430\x0439\x043B\x0430\" Menu(\"SAVEFILE\") Icon(\"%a\\AkelFiles\\Plugs\\SaveFile.dll\", 0)\r\
-\"\x041F\x0440\x043E\x0441\x043C\x043E\x0442\x0440\x0020\x043B\x043E\x0433\x0430\" Call(\"Log::Watch\") Menu(\"LOG\") Icon(\"%a\\AkelFiles\\Plugs\\Log.dll\", 0)\r\
-SEPARATOR\r\
+SET(32, \"%a\\AkelFiles\\Plugs\\Clipboard.dll\")\r\
+    \"\x0411\x0443\x0444\x0435\x0440\x0020\x043E\x0431\x043C\x0435\x043D\x0430\" Menu(\"CLIPBOARD\") Icon(\"%a\\AkelFiles\\Plugs\\Clipboard.dll\", 0)\r\
+UNSET(32)\r\
+SET(32, \"%a\\AkelFiles\\Plugs\\SaveFile.dll\")\r\
+    \"\x0421\x043E\x0445\x0440\x0430\x043D\x0435\x043D\x0438\x0435\x0020\x0444\x0430\x0439\x043B\x0430\" Menu(\"SAVEFILE\") Icon(\"%a\\AkelFiles\\Plugs\\SaveFile.dll\", 0)\r\
+UNSET(32)\r\
+SET(32, \"%a\\AkelFiles\\Plugs\\Log.dll\")\r\
+    \"\x041F\x0440\x043E\x0441\x043C\x043E\x0442\x0440\x0020\x043B\x043E\x0433\x0430\" Call(\"Log::Watch\") Menu(\"LOG\") Icon(\"%a\\AkelFiles\\Plugs\\Log.dll\", 0)\r\
+UNSET(32)\r\
+SEPARATOR1\r\
 " L"\
-\"\x041F\x0430\x043D\x0435\x043B\x044C\x0020\x043F\x0440\x043E\x0432\x043E\x0434\x043D\x0438\x043A\x0430\" +Call(\"Explorer::Main\") Menu(\"EXPLORE\") Icon(\"%a\\AkelFiles\\Plugs\\Explorer.dll\", 0)\r\
-\"\x041F\x0430\x043D\x0435\x043B\x044C\x0020\x043F\x043E\x0438\x0441\x043A\x0430\" +Call(\"QSearch::QSearch\") Menu(\"QSEARCH\") Icon(\"%a\\AkelFiles\\Plugs\\QSearch.dll\", 0)\r\
-SEPARATOR\r\
+SET(32, \"%a\\AkelFiles\\Plugs\\Explorer.dll\")\r\
+    \"\x041F\x0430\x043D\x0435\x043B\x044C\x0020\x043F\x0440\x043E\x0432\x043E\x0434\x043D\x0438\x043A\x0430\" +Call(\"Explorer::Main\") Menu(\"EXPLORE\") Icon(\"%a\\AkelFiles\\Plugs\\Explorer.dll\", 0)\r\
+UNSET(32)\r\
+SET(32, \"%a\\AkelFiles\\Plugs\\QSearch.dll\")\r\
+    \"\x041F\x0430\x043D\x0435\x043B\x044C\x0020\x043F\x043E\x0438\x0441\x043A\x0430\" +Call(\"QSearch::QSearch\") Menu(\"QSEARCH\") Icon(\"%a\\AkelFiles\\Plugs\\QSearch.dll\", 0)\r\
+UNSET(32)\r\
+SEPARATOR1\r\
 " L"\
--\"\x041C\x0430\x043A\x0440\x043E\x0441\x044B...\" Call(\"Macros::Main\") Icon(\"%a\\AkelFiles\\Plugs\\Macros.dll\", 0)\r\
--\"\x0417\x0430\x043F\x0438\x0441\x0430\x0442\x044C\" Call(\"Macros::Main\", 2, \"%m\", \"%i\") Icon(\"%a\\AkelFiles\\Plugs\\Macros.dll\", 1)\r\
--\"\x0412\x043E\x0441\x043F\x0440\x043E\x0438\x0437\x0432\x0435\x0441\x0442\x0438\x0020\x043E\x0434\x0438\x043D\x0020\x0440\x0430\x0437\" Call(\"Macros::Main\", 1, \"\", 1) Icon(\"%a\\AkelFiles\\Plugs\\Macros.dll\", 3)\r\
--\"\x0412\x043E\x0441\x043F\x0440\x043E\x0438\x0437\x0432\x0435\x0441\x0442\x0438\x0020\x0434\x043E\x0020\x043A\x043E\x043D\x0446\x0430\" Call(\"Macros::Main\", 3, \"%m\", \"%i\") Icon(\"%a\\AkelFiles\\Plugs\\Macros.dll\", 4)\r\
-SEPARATOR\r\
+SET(32, \"%a\\AkelFiles\\Plugs\\Macros.dll\")\r\
+    -\"\x041C\x0430\x043A\x0440\x043E\x0441\x044B...\" Call(\"Macros::Main\") Icon(\"%a\\AkelFiles\\Plugs\\Macros.dll\", 0)\r\
+    -\"\x0417\x0430\x043F\x0438\x0441\x0430\x0442\x044C\" Call(\"Macros::Main\", 2, \"%m\", \"%i\") Icon(\"%a\\AkelFiles\\Plugs\\Macros.dll\", 1)\r\
+    -\"\x0412\x043E\x0441\x043F\x0440\x043E\x0438\x0437\x0432\x0435\x0441\x0442\x0438\x0020\x043E\x0434\x0438\x043D\x0020\x0440\x0430\x0437\" Call(\"Macros::Main\", 1, \"\", 1) Icon(\"%a\\AkelFiles\\Plugs\\Macros.dll\", 3)\r\
+    -\"\x0412\x043E\x0441\x043F\x0440\x043E\x0438\x0437\x0432\x0435\x0441\x0442\x0438\x0020\x0434\x043E\x0020\x043A\x043E\x043D\x0446\x0430\" Call(\"Macros::Main\", 3, \"%m\", \"%i\") Icon(\"%a\\AkelFiles\\Plugs\\Macros.dll\", 4)\r\
+UNSET(32)\r\
+SEPARATOR1\r\
 " L"\
--\"\x0421\x043A\x0440\x0438\x043F\x0442\x044B...\" +Call(\"Scripts::Main\") Menu(\"SCRIPTS\") Icon(\"%a\\AkelFiles\\Plugs\\Scripts.dll\", 0)\r\
--\"\x041F\x043E\x0441\x043B\x0435\x0434\x043D\x0438\x0435\x0020\x0444\x0430\x0439\x043B\x044B...\" Call(\"RecentFiles::Manage\") Icon(\"%a\\AkelFiles\\Plugs\\RecentFiles.dll\", 0)\r\
-\r\
-# MDI/PMDI\r\
+SET(32, \"%a\\AkelFiles\\Plugs\\Scripts.dll\")\r\
+    -\"\x0421\x043A\x0440\x0438\x043F\x0442\x044B...\" +Call(\"Scripts::Main\") Menu(\"SCRIPTS\") Icon(\"%a\\AkelFiles\\Plugs\\Scripts.dll\", 0)\r\
+UNSET(32)\r\
+SET(32, \"%a\\AkelFiles\\Plugs\\RecentFiles.dll\")\r\
+    -\"\x041F\x043E\x0441\x043B\x0435\x0434\x043D\x0438\x0435\x0020\x0444\x0430\x0439\x043B\x044B...\" Call(\"RecentFiles::Manage\") Icon(\"%a\\AkelFiles\\Plugs\\RecentFiles.dll\", 0)\r\
+UNSET(32)\r\
 SET(1)\r\
--\"\x0421\x0435\x0441\x0441\x0438\x0438...\" Call(\"Sessions::Main\") Menu(\"SESSIONS\") Icon(\"%a\\AkelFiles\\Plugs\\Sessions.dll\", 0)\r\
+    # MDI/PMDI\r\
+    SET(32, \"%a\\AkelFiles\\Plugs\\Sessions.dll\")\r\
+        -\"\x0421\x0435\x0441\x0441\x0438\x0438...\" Call(\"Sessions::Main\") Menu(\"SESSIONS\") Icon(\"%a\\AkelFiles\\Plugs\\Sessions.dll\", 0)\r\
+    UNSET(32)\r\
 UNSET(1)\r\
-\r\
--\"\x0428\x0430\x0431\x043B\x043E\x043D\x044B...\" Call(\"Templates::Open\") Menu(\"TEMPLATES\") Icon(37)\r\
-SEPARATOR\r\
+SET(32, \"%a\\AkelFiles\\Plugs\\Templates.dll\")\r\
+    -\"\x0428\x0430\x0431\x043B\x043E\x043D\x044B...\" Call(\"Templates::Open\") Menu(\"TEMPLATES\") Icon(37)\r\
+UNSET(32)\r\
+SEPARATOR1\r\
 " L"\
-\"\x0421\x043E\x0440\x0442\x0438\x0440\x043E\x0432\x0430\x0442\x044C\x0020\x0441\x0442\x0440\x043E\x043A\x0438\x0020\x043F\x043E\x0020\x0432\x043E\x0437\x0440\x0430\x0441\x0442\x0430\x043D\x0438\x044E\" Call(\"Format::LineSortStrAsc\") Menu(\"FORMAT\") Icon(\"%a\\AkelFiles\\Plugs\\Format.dll\", 0)\r\
-\"\x0412\x0435\x0440\x0442\x0438\x043A\x0430\x043B\x044C\x043D\x0430\x044F\x0020\x0441\x0438\x043D\x0445\x0440\x043E\x043D\x0438\x0437\x0430\x0446\x0438\x044F\" Call(\"Scroll::SyncVert\") Menu(\"SCROLL\") Icon(\"%a\\AkelFiles\\Plugs\\Scroll.dll\", 1)\r\
-\"Hex \x043A\x043E\x0434\" +Call(\"HexSel::Main\") Icon(\"%a\\AkelFiles\\Plugs\\HexSel.dll\", 0)\r\
-SEPARATOR\r\
+SET(32, \"%a\\AkelFiles\\Plugs\\Format.dll\")\r\
+    \"\x0421\x043E\x0440\x0442\x0438\x0440\x043E\x0432\x0430\x0442\x044C\x0020\x0441\x0442\x0440\x043E\x043A\x0438\x0020\x043F\x043E\x0020\x0432\x043E\x0437\x0440\x0430\x0441\x0442\x0430\x043D\x0438\x044E\" Call(\"Format::LineSortStrAsc\") Menu(\"FORMAT\") Icon(\"%a\\AkelFiles\\Plugs\\Format.dll\", 0)\r\
+UNSET(32)\r\
+SET(32, \"%a\\AkelFiles\\Plugs\\Scroll.dll\")\r\
+    \"\x0412\x0435\x0440\x0442\x0438\x043A\x0430\x043B\x044C\x043D\x0430\x044F\x0020\x0441\x0438\x043D\x0445\x0440\x043E\x043D\x0438\x0437\x0430\x0446\x0438\x044F\" Call(\"Scroll::SyncVert\") Menu(\"SCROLL\") Icon(\"%a\\AkelFiles\\Plugs\\Scroll.dll\", 1)\r\
+UNSET(32)\r\
+SET(32, \"%a\\AkelFiles\\Plugs\\HexSel.dll\")\r\
+    \"Hex \x043A\x043E\x0434\" +Call(\"HexSel::Main\") Icon(\"%a\\AkelFiles\\Plugs\\HexSel.dll\", 0)\r\
+UNSET(32)\r\
+SEPARATOR1\r\
 " L"\
--\"\x0413\x043E\x0440\x044F\x0447\x0438\x0435\x0020\x043A\x043B\x0430\x0432\x0438\x0448\x0438...\" +Call(\"Hotkeys::Main\") Menu(\"HOTKEYS\") Icon(\"%a\\AkelFiles\\Plugs\\Hotkeys.dll\", 0)\r\
--\"\x0421\x0432\x0435\x0440\x043D\x0443\x0442\x044C\x0020\x0432\x0020\x0442\x0440\x0435\x0439\" Call(\"MinimizeToTray::Now\") Menu(\"MINIMIZETOTRAY\") Icon(\"%a\\AkelFiles\\Plugs\\MinimizeToTray.dll\", 0)\r\
-SEPARATOR\r\
+SET(32, \"%a\\AkelFiles\\Plugs\\Hotkeys.dll\")\r\
+    -\"\x0413\x043E\x0440\x044F\x0447\x0438\x0435\x0020\x043A\x043B\x0430\x0432\x0438\x0448\x0438...\" +Call(\"Hotkeys::Main\") Menu(\"HOTKEYS\") Icon(\"%a\\AkelFiles\\Plugs\\Hotkeys.dll\", 0)\r\
+UNSET(32)\r\
+SET(32, \"%a\\AkelFiles\\Plugs\\MinimizeToTray.dll\")\r\
+    -\"\x0421\x0432\x0435\x0440\x043D\x0443\x0442\x044C\x0020\x0432\x0020\x0442\x0440\x0435\x0439\" Call(\"MinimizeToTray::Now\") Menu(\"MINIMIZETOTRAY\") Icon(\"%a\\AkelFiles\\Plugs\\MinimizeToTray.dll\", 0)\r\
+UNSET(32)\r\
+SEPARATOR1\r\
 " L"\
-\"\x0417\x0432\x0443\x043A\x043E\x0432\x043E\x0439\x0020\x043D\x0430\x0431\x043E\x0440\x0020\x0442\x0435\x043A\x0441\x0442\x0430\" +Call(\"Sounds::Main\") Menu(\"SOUNDS\") Icon(\"%a\\AkelFiles\\Plugs\\Sounds.dll\", 0)\r\
-\"\x041C\x0430\x0448\x0438\x043D\x043D\x043E\x0435\x0020\x0447\x0442\x0435\x043D\x0438\x0435\x0020\x0442\x0435\x043A\x0441\x0442\x0430\" +Call(\"Speech::Main\") Icon(\"%a\\AkelFiles\\Plugs\\Speech.dll\", 0)\r\
-SEPARATOR\r";
+SET(32, \"%a\\AkelFiles\\Plugs\\Sounds.dll\")\r\
+    \"\x0417\x0432\x0443\x043A\x043E\x0432\x043E\x0439\x0020\x043D\x0430\x0431\x043E\x0440\x0020\x0442\x0435\x043A\x0441\x0442\x0430\" +Call(\"Sounds::Main\") Menu(\"SOUNDS\") Icon(\"%a\\AkelFiles\\Plugs\\Sounds.dll\", 0)\r\
+UNSET(32)\r\
+SET(32, \"%a\\AkelFiles\\Plugs\\Speech.dll\")\r\
+    \"\x041C\x0430\x0448\x0438\x043D\x043D\x043E\x0435\x0020\x0447\x0442\x0435\x043D\x0438\x0435\x0020\x0442\x0435\x043A\x0441\x0442\x0430\" +Call(\"Speech::Main\") Icon(\"%a\\AkelFiles\\Plugs\\Speech.dll\", 0)\r\
+UNSET(32)\r\
+SEPARATOR1\r";
 
   }
   else
@@ -2989,113 +3065,155 @@ SEPARATOR\r";
 \"\" Command(4102) Icon(1)\r\
 \"\" Command(4103) Icon(2)\r\
 \"\" Command(4104) Icon(3)\r\
-SEPARATOR\r\
+SEPARATOR1\r\
 \"\" Command(4105) Icon(4)\r\
 \"\" Command(4106) Icon(5)\r\
-\r\
-# MDI/PMDI\r\
 SET(1)\r\
-\"\" Command(4110) Icon(32)\r\
-\"\" Command(4111) Icon(33)\r\
+    # MDI/PMDI\r\
+    \"\" Command(4110) Icon(32)\r\
+    \"\" Command(4111) Icon(33)\r\
 UNSET(1)\r\
-\r\
-SEPARATOR\r\
+SEPARATOR1\r\
 \"\" Command(4108) Icon(6)\r\
 \"\" Command(4114) Icon(21)\r\
-SEPARATOR\r\
+SEPARATOR1\r\
 " L"\
 \"\" Command(4153) Icon(7)\r\
 \"\" Command(4154) Icon(8)\r\
 \"\" Command(4155) Icon(9)\r\
 \"\" Command(4156) Icon(25)\r\
-SEPARATOR\r\
+SEPARATOR1\r\
 \"\" Command(4151) Icon(10)\r\
 \"\" Command(4152) Icon(11)\r\
-SEPARATOR\r\
+SEPARATOR1\r\
 \"\" Command(4158) Icon(12)\r\
 \"\" Command(4161) Icon(13)\r\
 \"\" Command(4163) Icon(14)\r\
 \"\" Command(4183) Icon(26)\r\
-SEPARATOR\r\
+SEPARATOR1\r\
 " L"\
 \"\" Command(4201) Icon(27)\r\
 -\"Increase font\" Command(4204) Icon(28)\r\
 -\"Decrease font\" Command(4205) Icon(29)\r\
 \"\" Command(4202) Icon(30)\r\
-SEPARATOR\r\
+SEPARATOR1\r\
 \"\" Command(4216) Icon(20)\r\
 \"\" Command(4209) Icon(16)\r\
 \"Split into four panes\" Command(4212) Icon(22)\r\
 \"Split vertically\" Command(4213) Icon(23)\r\
 \"Split horizontally\" Command(4214) Icon(24)\r\
 \"\" Command(4210) Icon(15)\r\
-SEPARATOR\r\
+SEPARATOR1\r\
 " L"\
 \"\" Command(4251) Icon(17)\r\
 \"\" Command(4259) Icon(18)\r\
 \"\" Command(4260) Icon(19)\r\
-SEPARATOR\r\
+SEPARATOR1\r\
 " L"\
 \"Run Notepad\" Exec(\"notepad.exe\") Icon(\"notepad.exe\")\r\
-\"Run AkelUpdater\" Exec(\"%a\\AkelFiles\\AkelUpdater.exe\") Icon(\"%a\\AkelFiles\\AkelUpdater.exe\")\r\
+SET(32, \"%a\\AkelFiles\\AkelUpdater.exe\")\r\
+    \"Run AkelUpdater\" Exec(\"%a\\AkelFiles\\AkelUpdater.exe\") Icon(\"%a\\AkelFiles\\AkelUpdater.exe\")\r\
+UNSET(32)\r\
 " L"\
 \r\
-SEPARATOR\r\
+SEPARATOR1\r\
 BREAK\r\
 \"Main menu\" Call(\"ContextMenu::Show\", 2, \"%bl\", \"%bb\") Icon(38)\r\
-SEPARATOR\r\
+SEPARATOR1\r\
 " L"\
-\"Programming\" Menu(\"CODER\") Icon(\"%a\\AkelFiles\\Plugs\\Coder.dll\", 12)\r\
-\"Mark\" Menu(\"MARK\") Icon(\"%a\\AkelFiles\\Plugs\\Coder.dll\", 0)\r\
-\"Syntax theme\" Menu(\"SYNTAXTHEME\") Icon(\"%a\\AkelFiles\\Plugs\\Coder.dll\", 4)\r\
-\"Color theme\" Menu(\"COLORTHEME\") Icon(\"%a\\AkelFiles\\Plugs\\Coder.dll\", 5)\r\
--\"CodeFold panel\" Call(\"Coder::CodeFold\", 1) Icon(\"%a\\AkelFiles\\Plugs\\Coder.dll\", 3)\r\
-SEPARATOR\r\
+SET(32, \"%a\\AkelFiles\\Plugs\\Coder.dll\")\r\
+    \"Programming\" Menu(\"CODER\") Icon(\"%a\\AkelFiles\\Plugs\\Coder.dll\", 12)\r\
+    \"Mark\" Menu(\"MARK\") Icon(\"%a\\AkelFiles\\Plugs\\Coder.dll\", 0)\r\
+    \"Syntax theme\" Menu(\"SYNTAXTHEME\") Icon(\"%a\\AkelFiles\\Plugs\\Coder.dll\", 4)\r\
+    \"Color theme\" Menu(\"COLORTHEME\") Icon(\"%a\\AkelFiles\\Plugs\\Coder.dll\", 5)\r\
+    -\"CodeFold panel\" Call(\"Coder::CodeFold\", 1) Icon(\"%a\\AkelFiles\\Plugs\\Coder.dll\", 3)\r\
+UNSET(32)\r\
+SEPARATOR1\r\
 " L"\
-\"Brackets\" +Call(\"XBrackets::Main\") Menu(\"XBRACKETS\") Icon(\"%a\\AkelFiles\\Plugs\\XBrackets.dll\", 0)\r\
-\"Spell check\" +Call(\"SpellCheck::Background\") Menu(\"SPELLCHECK\") Icon(35)\r\
-\"Special characters\" +Call(\"SpecialChar::Main\") Menu(\"SPECIALCHAR\") Icon(\"%a\\AkelFiles\\Plugs\\SpecialChar.dll\", 0)\r\
-\"Line numbers, bookmarks\" +Call(\"LineBoard::Main\") Menu(\"LINEBOARD\") Icon(\"%a\\AkelFiles\\Plugs\\LineBoard.dll\", 0)\r\
-SEPARATOR\r\
+SET(32, \"%a\\AkelFiles\\Plugs\\XBrackets.dll\")\r\
+    \"Brackets\" +Call(\"XBrackets::Main\") Menu(\"XBRACKETS\") Icon(\"%a\\AkelFiles\\Plugs\\XBrackets.dll\", 0)\r\
+UNSET(32)\r\
+SET(32, \"%a\\AkelFiles\\Plugs\\SpellCheck.dll\")\r\
+    \"Spell check\" +Call(\"SpellCheck::Background\") Menu(\"SPELLCHECK\") Icon(35)\r\
+UNSET(32)\r\
+SET(32, \"%a\\AkelFiles\\Plugs\\SpecialChar.dll\")\r\
+    \"Special characters\" +Call(\"SpecialChar::Main\") Menu(\"SPECIALCHAR\") Icon(\"%a\\AkelFiles\\Plugs\\SpecialChar.dll\", 0)\r\
+UNSET(32)\r\
+SET(32, \"%a\\AkelFiles\\Plugs\\LineBoard.dll\")\r\
+    \"Line numbers, bookmarks\" +Call(\"LineBoard::Main\") Menu(\"LINEBOARD\") Icon(\"%a\\AkelFiles\\Plugs\\LineBoard.dll\", 0)\r\
+UNSET(32)\r\
+SEPARATOR1\r\
 " L"\
-\"Clipboard\" Menu(\"CLIPBOARD\") Icon(\"%a\\AkelFiles\\Plugs\\Clipboard.dll\", 0)\r\
-\"File saving\" Menu(\"SAVEFILE\") Icon(\"%a\\AkelFiles\\Plugs\\SaveFile.dll\", 0)\r\
-\"Log view\" Call(\"Log::Watch\") Menu(\"LOG\") Icon(\"%a\\AkelFiles\\Plugs\\Log.dll\", 0)\r\
-SEPARATOR\r\
+SET(32, \"%a\\AkelFiles\\Plugs\\Clipboard.dll\")\r\
+    \"Clipboard\" Menu(\"CLIPBOARD\") Icon(\"%a\\AkelFiles\\Plugs\\Clipboard.dll\", 0)\r\
+UNSET(32)\r\
+SET(32, \"%a\\AkelFiles\\Plugs\\SaveFile.dll\")\r\
+    \"File saving\" Menu(\"SAVEFILE\") Icon(\"%a\\AkelFiles\\Plugs\\SaveFile.dll\", 0)\r\
+UNSET(32)\r\
+SET(32, \"%a\\AkelFiles\\Plugs\\Log.dll\")\r\
+    \"Log view\" Call(\"Log::Watch\") Menu(\"LOG\") Icon(\"%a\\AkelFiles\\Plugs\\Log.dll\", 0)\r\
+UNSET(32)\r\
+SEPARATOR1\r\
 " L"\
-\"Explorer panel\" +Call(\"Explorer::Main\") Menu(\"EXPLORE\") Icon(\"%a\\AkelFiles\\Plugs\\Explorer.dll\", 0)\r\
-\"Search panel\" +Call(\"QSearch::QSearch\") Menu(\"QSEARCH\") Icon(\"%a\\AkelFiles\\Plugs\\QSearch.dll\", 0)\r\
-SEPARATOR\r\
+SET(32, \"%a\\AkelFiles\\Plugs\\Explorer.dll\")\r\
+    \"Explorer panel\" +Call(\"Explorer::Main\") Menu(\"EXPLORE\") Icon(\"%a\\AkelFiles\\Plugs\\Explorer.dll\", 0)\r\
+UNSET(32)\r\
+SET(32, \"%a\\AkelFiles\\Plugs\\QSearch.dll\")\r\
+    \"Search panel\" +Call(\"QSearch::QSearch\") Menu(\"QSEARCH\") Icon(\"%a\\AkelFiles\\Plugs\\QSearch.dll\", 0)\r\
+UNSET(32)\r\
+SEPARATOR1\r\
 " L"\
--\"Macros...\" Call(\"Macros::Main\") Icon(\"%a\\AkelFiles\\Plugs\\Macros.dll\", 0)\r\
--\"Record\" Call(\"Macros::Main\", 2, \"%m\", \"%i\") Icon(\"%a\\AkelFiles\\Plugs\\Macros.dll\", 1)\r\
--\"Play once\" Call(\"Macros::Main\", 1, \"\", 1) Icon(\"%a\\AkelFiles\\Plugs\\Macros.dll\", 3)\r\
--\"Play to the end\" Call(\"Macros::Main\", 3, \"%m\", \"%i\") Icon(\"%a\\AkelFiles\\Plugs\\Macros.dll\", 4)\r\
-SEPARATOR\r\
+SET(32, \"%a\\AkelFiles\\Plugs\\Macros.dll\")\r\
+    -\"Macros...\" Call(\"Macros::Main\") Icon(\"%a\\AkelFiles\\Plugs\\Macros.dll\", 0)\r\
+    -\"Record\" Call(\"Macros::Main\", 2, \"%m\", \"%i\") Icon(\"%a\\AkelFiles\\Plugs\\Macros.dll\", 1)\r\
+    -\"Play once\" Call(\"Macros::Main\", 1, \"\", 1) Icon(\"%a\\AkelFiles\\Plugs\\Macros.dll\", 3)\r\
+    -\"Play to the end\" Call(\"Macros::Main\", 3, \"%m\", \"%i\") Icon(\"%a\\AkelFiles\\Plugs\\Macros.dll\", 4)\r\
+UNSET(32)\r\
+SEPARATOR1\r\
 " L"\
--\"Scripts...\" +Call(\"Scripts::Main\") Menu(\"SCRIPTS\") Icon(\"%a\\AkelFiles\\Plugs\\Scripts.dll\", 0)\r\
--\"Recent files...\" Call(\"RecentFiles::Manage\") Icon(\"%a\\AkelFiles\\Plugs\\RecentFiles.dll\", 0)\r\
-\r\
-# MDI/PMDI\r\
+SET(32, \"%a\\AkelFiles\\Plugs\\Scripts.dll\")\r\
+    -\"Scripts...\" +Call(\"Scripts::Main\") Menu(\"SCRIPTS\") Icon(\"%a\\AkelFiles\\Plugs\\Scripts.dll\", 0)\r\
+UNSET(32)\r\
+SET(32, \"%a\\AkelFiles\\Plugs\\RecentFiles.dll\")\r\
+   -\"Recent files...\" Call(\"RecentFiles::Manage\") Icon(\"%a\\AkelFiles\\Plugs\\RecentFiles.dll\", 0)\r\
+UNSET(32)\r\
 SET(1)\r\
--\"Sessions...\" Call(\"Sessions::Main\") Menu(\"SESSIONS\") Icon(\"%a\\AkelFiles\\Plugs\\Sessions.dll\", 0)\r\
+    # MDI/PMDI\r\
+    SET(32, \"%a\\AkelFiles\\Plugs\\Sessions.dll\")\r\
+        -\"Sessions...\" Call(\"Sessions::Main\") Menu(\"SESSIONS\") Icon(\"%a\\AkelFiles\\Plugs\\Sessions.dll\", 0)\r\
+    UNSET(32)\r\
 UNSET(1)\r\
-\r\
--\"Templates...\" Call(\"Templates::Open\") Menu(\"TEMPLATES\") Icon(37)\r\
-SEPARATOR\r\
+SET(32, \"%a\\AkelFiles\\Plugs\\Templates.dll\")\r\
+    -\"Templates...\" Call(\"Templates::Open\") Menu(\"TEMPLATES\") Icon(37)\r\
+UNSET(32)\r\
+SEPARATOR1\r\
 " L"\
-\"Sort lines by string ascending\" Call(\"Format::LineSortStrAsc\") Menu(\"FORMAT\") Icon(\"%a\\AkelFiles\\Plugs\\Format.dll\", 0)\r\
-\"Vertical synchronization\" Call(\"Scroll::SyncVert\") Menu(\"SCROLL\") Icon(\"%a\\AkelFiles\\Plugs\\Scroll.dll\", 1)\r\
-\"Hex code\" +Call(\"HexSel::Main\") Icon(\"%a\\AkelFiles\\Plugs\\HexSel.dll\", 0)\r\
-SEPARATOR\r\
+SET(32, \"%a\\AkelFiles\\Plugs\\Format.dll\")\r\
+    \"Sort lines by string ascending\" Call(\"Format::LineSortStrAsc\") Menu(\"FORMAT\") Icon(\"%a\\AkelFiles\\Plugs\\Format.dll\", 0)\r\
+UNSET(32)\r\
+SET(32, \"%a\\AkelFiles\\Plugs\\Scroll.dll\")\r\
+    \"Vertical synchronization\" Call(\"Scroll::SyncVert\") Menu(\"SCROLL\") Icon(\"%a\\AkelFiles\\Plugs\\Scroll.dll\", 1)\r\
+UNSET(32)\r\
+SET(32, \"%a\\AkelFiles\\Plugs\\HexSel.dll\")\r\
+    \"Hex code\" +Call(\"HexSel::Main\") Icon(\"%a\\AkelFiles\\Plugs\\HexSel.dll\", 0)\r\
+UNSET(32)\r\
+SEPARATOR1\r\
 " L"\
--\"Hotkeys...\" +Call(\"Hotkeys::Main\") Menu(\"HOTKEYS\") Icon(\"%a\\AkelFiles\\Plugs\\Hotkeys.dll\", 0)\r\
--\"Minimize to tray\" Call(\"MinimizeToTray::Now\") Menu(\"MINIMIZETOTRAY\") Icon(\"%a\\AkelFiles\\Plugs\\MinimizeToTray.dll\", 0)\r\
-SEPARATOR\r\
+SET(32, \"%a\\AkelFiles\\Plugs\\Hotkeys.dll\")\r\
+    -\"Hotkeys...\" +Call(\"Hotkeys::Main\") Menu(\"HOTKEYS\") Icon(\"%a\\AkelFiles\\Plugs\\Hotkeys.dll\", 0)\r\
+UNSET(32)\r\
+SET(32, \"%a\\AkelFiles\\Plugs\\MinimizeToTray.dll\")\r\
+    -\"Minimize to tray\" Call(\"MinimizeToTray::Now\") Menu(\"MINIMIZETOTRAY\") Icon(\"%a\\AkelFiles\\Plugs\\MinimizeToTray.dll\", 0)\r\
+UNSET(32)\r\
+SEPARATOR1\r\
 " L"\
-\"Sound typing\" +Call(\"Sounds::Main\") Menu(\"SOUNDS\") Icon(\"%a\\AkelFiles\\Plugs\\Sounds.dll\", 0)\r\
-\"Machine reading\" +Call(\"Speech::Main\") Icon(\"%a\\AkelFiles\\Plugs\\Speech.dll\", 0)\r\
-SEPARATOR\r";
+SET(32, \"%a\\AkelFiles\\Plugs\\Sounds.dll\")\r\
+    \"Sound typing\" +Call(\"Sounds::Main\") Menu(\"SOUNDS\") Icon(\"%a\\AkelFiles\\Plugs\\Sounds.dll\", 0)\r\
+UNSET(32)\r\
+SET(32, \"%a\\AkelFiles\\Plugs\\Speech.dll\")\r\
+    \"Machine reading\" +Call(\"Speech::Main\") Icon(\"%a\\AkelFiles\\Plugs\\Speech.dll\", 0)\r\
+UNSET(32)\r\
+SEPARATOR1\r";
 
   }
   return L"";

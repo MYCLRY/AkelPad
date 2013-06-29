@@ -14,11 +14,12 @@
 #define STRID_DOCUMENT                   308
 #define STRID_ADDDOCUMENTWORDS           309
 #define STRID_COMPLETENONSYNTAXDOCUMENT  310
-#define STRID_MAXDOCUMENT                311
-#define STRID_CHARS                      312
-#define STRID_ADDHIGHLIGHTWORDS          313
-#define STRID_RIGHTDELIMITERS            314
-#define STRID_SYNTAXDELIMITERS           315
+#define STRID_SAVETYPEDCASE              311
+#define STRID_MAXDOCUMENT                312
+#define STRID_CHARS                      313
+#define STRID_ADDHIGHLIGHTWORDS          314
+#define STRID_RIGHTDELIMITERS            315
+#define STRID_SYNTAXDELIMITERS           316
 
 #define DLLA_AUTOCOMPLETE_ADDWINDOW 50
 #define DLLA_AUTOCOMPLETE_DELWINDOW 51
@@ -42,9 +43,10 @@
 #define CAWE_OTHER          6
 
 //BLOCKINFO structure types
-#define BIT_BLOCK          0
-#define BIT_DOCWORD        1
-#define BIT_HIGHLIGHT      2
+#define BIT_BLOCK          0x1
+#define BIT_DOCWORD        0x2
+#define BIT_NOSYNTAXFILE   0x4
+#define BIT_HIGHLIGHT      0x8
 
 #define AUTOCOMPLETEA   "AutoComplete"
 #define AUTOCOMPLETEW  L"AutoComplete"
@@ -60,7 +62,7 @@
 typedef struct _BLOCKINFO {
   struct _BLOCKINFO *next;
   struct _BLOCKINFO *prev;
-  int nStructType;
+  DWORD dwStructType;
   wchar_t wchFirstLowerChar;
   wchar_t *wpTitle;
   int nTitleLen;
@@ -94,7 +96,7 @@ typedef struct _HOTSPOT {
 typedef struct _DOCWORDINFO {
   struct _DOCWORDINFO *next;
   struct _DOCWORDINFO *prev;
-  int nStructType;
+  DWORD dwStructType;
   wchar_t wchFirstLowerChar;
   wchar_t *wpDocWord;
   int nDocWordLen;
@@ -155,7 +157,7 @@ void StackResetHotSpot(BLOCKINFO *lpBlockInfo);
 void StackFreeHotSpot(HSTACK *hStack);
 
 //Document words
-void StackFillDocWord(STACKDELIM *hDelimiterStack, HDOCWORDS *hDocWordsStack, const wchar_t *wpTitlePart, int nTitlePartLen);
+void StackFillDocWord(SYNTAXFILE *lpSyntaxFile, HDOCWORDS *hDocWordsStack, const wchar_t *wpTitlePart, int nTitlePartLen);
 DOCWORDINFO* StackInsertDocWord(HDOCWORDS *hStack, wchar_t *wpWordDoc, int nWordDocLen);
 DOCWORDINFO* StackGetDocWord(HDOCWORDS *hStack, const wchar_t *wpDocWord, int nDocWordLen);
 void StackFreeDocWord(HDOCWORDS *hStack);

@@ -1,5 +1,5 @@
 *****************************************************************
-***                ToolBar AkelPad plugin v9.8                ***
+***                ToolBar AkelPad plugin v9.9                ***
 *****************************************************************
 
 2013 Shengalts Aleksander aka Instructor (Shengalts@mail.ru)
@@ -42,14 +42,21 @@ Comments:
 Special items:
   SEPARATOR
     separator button.
+  SEPARATOR1
+    same as SEPARATOR, but if specified multiple SEPARATOR1 in sequence, then merged into a single SEPARATOR1.
   BREAK
     wrap next buttons to new line (new row creation). If a button is preceded by a SEPARATOR, new line will be
     divided with separator. BREAK works only on horizontal ToolBar.
-  SET(flags)
+  SET(flags[, "string"])
     set text parse flags (doesn't remove flags that already set). Sets by the sum of members:
-       1 ignore following lines, if SDI mode is used.
-       2 ignore following lines, if MDI mode is used.
-       4 ignore following lines, if PMDI mode is used.
+      SET(1)
+        ignore following lines, if SDI mode is used.
+      SET(2)
+        ignore following lines, if MDI mode is used.
+      SET(4)
+        ignore following lines, if PMDI mode is used.
+      SET(32, "%a\AkelFiles\Plugs\Scripts.dll")
+        ignore following lines, if "Scripts.dll" file doesn't exist.
   UNSET(flags)
     unset text parse flags. See SET() for description.
 

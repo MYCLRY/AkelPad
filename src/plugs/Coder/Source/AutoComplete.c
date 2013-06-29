@@ -5,10 +5,7 @@
 #include "StackFunc.h"
 #include "StrFunc.h"
 #include "WideFunc.h"
-
-//Include AEC functions
 #include "AkelEdit.h"
-
 #include "AkelDLL.h"
 #include "Coder.h"
 #include "HighLight.h"
@@ -35,6 +32,8 @@ DWORD dwCompleteNext=9;       //"Tab"
 DWORD dwCompletePrev=0;       //"None"
 BOOL bAddDocumentWords=TRUE;
 BOOL bCompleteNonSyntaxDocument=TRUE;
+BOOL bSaveTypedCase=TRUE;
+BOOL bSaveTypedCaseOnce=FALSE;
 BOOL bMaxDocumentEnable=TRUE;
 int nMaxDocumentChars=1000000;
 BOOL bAddHighLightWords=TRUE;
@@ -166,6 +165,7 @@ BOOL CALLBACK AutoCompleteSetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPAR
   static HWND hWndCompletePrev;
   static HWND hWndAddDocumentWords;
   static HWND hWndCompleteNonSyntaxDocument;
+  static HWND hWndSaveTypedCase;
   static HWND hWndMaxDocumentEnable;
   static HWND hWndMaxDocumentChars;
   static HWND hWndMaxDocumentPostLabel;
@@ -188,6 +188,7 @@ BOOL CALLBACK AutoCompleteSetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPAR
     hWndCompletePrev=GetDlgItem(hDlg, IDC_AUTOCOMPLETE_SETUP_HOTKEY_COMPLETEPREV);
     hWndAddDocumentWords=GetDlgItem(hDlg, IDC_AUTOCOMPLETE_SETUP_ADDDOCUMENTWORDS);
     hWndCompleteNonSyntaxDocument=GetDlgItem(hDlg, IDC_AUTOCOMPLETE_SETUP_COMPLETENONSYNTAXDOCUMENT);
+    hWndSaveTypedCase=GetDlgItem(hDlg, IDC_AUTOCOMPLETE_SETUP_SAVETYPEDCASE);
     hWndMaxDocumentEnable=GetDlgItem(hDlg, IDC_AUTOCOMPLETE_SETUP_MAXDOCUMENT_ENABLE);
     hWndMaxDocumentChars=GetDlgItem(hDlg, IDC_AUTOCOMPLETE_SETUP_MAXDOCUMENT_CHARS);
     hWndMaxDocumentPostLabel=GetDlgItem(hDlg, IDC_AUTOCOMPLETE_SETUP_MAXDOCUMENT_POSTLABEL);
@@ -206,6 +207,7 @@ BOOL CALLBACK AutoCompleteSetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPAR
     SetDlgItemTextWide(hDlg, IDC_AUTOCOMPLETE_SETUP_DOCUMENTWORDS_GROUP, GetLangStringW(wLangModule, STRID_DOCUMENT));
     SetDlgItemTextWide(hDlg, IDC_AUTOCOMPLETE_SETUP_ADDDOCUMENTWORDS, GetLangStringW(wLangModule, STRID_ADDDOCUMENTWORDS));
     SetDlgItemTextWide(hDlg, IDC_AUTOCOMPLETE_SETUP_COMPLETENONSYNTAXDOCUMENT, GetLangStringW(wLangModule, STRID_COMPLETENONSYNTAXDOCUMENT));
+    SetDlgItemTextWide(hDlg, IDC_AUTOCOMPLETE_SETUP_SAVETYPEDCASE, GetLangStringW(wLangModule, STRID_SAVETYPEDCASE));
     SetDlgItemTextWide(hDlg, IDC_AUTOCOMPLETE_SETUP_MAXDOCUMENT_ENABLE, GetLangStringW(wLangModule, STRID_MAXDOCUMENT));
     SetDlgItemTextWide(hDlg, IDC_AUTOCOMPLETE_SETUP_MAXDOCUMENT_POSTLABEL, GetLangStringW(wLangModule, STRID_CHARS));
     SetDlgItemTextWide(hDlg, IDC_AUTOCOMPLETE_SETUP_ADDHIGHLIGHTWORDS, GetLangStringW(wLangModule, STRID_ADDHIGHLIGHTWORDS));
@@ -218,9 +220,10 @@ BOOL CALLBACK AutoCompleteSetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPAR
     SetDlgItemInt(hDlg, IDC_AUTOCOMPLETE_SETUP_AUTOLISTAFTER, nAutoListAfter, FALSE);
 
     if (bAddDocumentWords) SendMessage(hWndAddDocumentWords, BM_SETCHECK, BST_CHECKED, 0);
-    if (bCompleteNonSyntaxDocument) SendMessage(hWndCompleteNonSyntaxDocument, BM_SETCHECK, BST_CHECKED, 0);
     if (bMaxDocumentEnable) SendMessage(hWndMaxDocumentEnable, BM_SETCHECK, BST_CHECKED, 0);
     SetDlgItemInt(hDlg, IDC_AUTOCOMPLETE_SETUP_MAXDOCUMENT_CHARS, nMaxDocumentChars, FALSE);
+    if (bCompleteNonSyntaxDocument) SendMessage(hWndCompleteNonSyntaxDocument, BM_SETCHECK, BST_CHECKED, 0);
+    if (bSaveTypedCase) SendMessage(hWndSaveTypedCase, BM_SETCHECK, BST_CHECKED, 0);
 
     if (bAddHighLightWords) SendMessage(hWndAddHighLightWords, BM_SETCHECK, BST_CHECKED, 0);
     if (bRightDelimitersEnable) SendMessage(hWndRightDelimitersEnable, BM_SETCHECK, BST_CHECKED, 0);
@@ -263,14 +266,17 @@ BOOL CALLBACK AutoCompleteSetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPAR
       EnableWindow(hWndAutoListPostLabel, bAutoListEnable);
     }
     else if (LOWORD(wParam) == IDC_AUTOCOMPLETE_SETUP_ADDDOCUMENTWORDS ||
-             LOWORD(wParam) == IDC_AUTOCOMPLETE_SETUP_MAXDOCUMENT_ENABLE)
+             LOWORD(wParam) == IDC_AUTOCOMPLETE_SETUP_MAXDOCUMENT_ENABLE ||
+             LOWORD(wParam) == IDC_AUTOCOMPLETE_SETUP_COMPLETENONSYNTAXDOCUMENT)
     {
       bAddDocumentWords=(BOOL)SendMessage(hWndAddDocumentWords, BM_GETCHECK, 0, 0);
       bMaxDocumentEnable=(BOOL)SendMessage(hWndMaxDocumentEnable, BM_GETCHECK, 0, 0);
-      EnableWindow(hWndCompleteNonSyntaxDocument, bAddDocumentWords);
+      bCompleteNonSyntaxDocument=(BOOL)SendMessage(hWndCompleteNonSyntaxDocument, BM_GETCHECK, 0, 0);
       EnableWindow(hWndMaxDocumentEnable, bAddDocumentWords);
       EnableWindow(hWndMaxDocumentChars, bAddDocumentWords && bMaxDocumentEnable);
       EnableWindow(hWndMaxDocumentPostLabel, bAddDocumentWords && bMaxDocumentEnable);
+      EnableWindow(hWndCompleteNonSyntaxDocument, bAddDocumentWords);
+      EnableWindow(hWndSaveTypedCase, bAddDocumentWords && bCompleteNonSyntaxDocument);
     }
   }
   else if (uMsg == WM_NOTIFY)
@@ -290,8 +296,8 @@ BOOL CALLBACK AutoCompleteSetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPAR
       dwCompleteNext=(WORD)SendMessage(hWndCompleteNext, HKM_GETHOTKEY, 0, 0);
       dwCompletePrev=(WORD)SendMessage(hWndCompletePrev, HKM_GETHOTKEY, 0, 0);
 
-      bCompleteNonSyntaxDocument=(BOOL)SendMessage(hWndCompleteNonSyntaxDocument, BM_GETCHECK, 0, 0);
       nMaxDocumentChars=GetDlgItemInt(hDlg, IDC_AUTOCOMPLETE_SETUP_MAXDOCUMENT_CHARS, NULL, FALSE);
+      bSaveTypedCase=(BOOL)SendMessage(hWndSaveTypedCase, BM_GETCHECK, 0, 0);
 
       bAddHighLightWords=(BOOL)SendMessage(hWndAddHighLightWords, BM_GETCHECK, 0, 0);
       bRightDelimitersEnable=(BOOL)SendMessage(hWndRightDelimitersEnable, BM_GETCHECK, 0, 0);
@@ -629,14 +635,18 @@ LRESULT CALLBACK GetMsgProc(int code, WPARAM wParam, LPARAM lParam)
               if (msg->wParam == VK_RETURN)
               {
                 if (GetKeyState(VK_MENU) >= 0 &&
-                    GetKeyState(VK_SHIFT) >= 0 &&
                     GetKeyState(VK_CONTROL) >= 0)
                 {
                   BLOCKINFO *lpBlockInfo;
 
                   if (lpBlockInfo=GetBlockListbox())
                   {
+                    if (GetKeyState(VK_SHIFT) < 0)
+                      bSaveTypedCaseOnce=TRUE;
+                    else
+                      bSaveTypedCaseOnce=FALSE;
                     CompleteTitlePart(lpBlockInfo, nWindowBlockBegin, nWindowBlockEnd);
+                    bSaveTypedCaseOnce=FALSE;
                     msg->message=WM_NULL;
                   }
                 }
@@ -935,7 +945,14 @@ LRESULT CALLBACK NewListboxProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
     BLOCKINFO *lpBlockInfo;
 
     if (lpBlockInfo=GetBlockListbox())
+    {
+      if (GetKeyState(VK_SHIFT) < 0)
+        bSaveTypedCaseOnce=TRUE;
+      else
+        bSaveTypedCaseOnce=FALSE;
       CompleteTitlePart(lpBlockInfo, nWindowBlockBegin, nWindowBlockEnd);
+      bSaveTypedCaseOnce=FALSE;
+    }
     SendMessage(hWndAutoComplete, WM_CLOSE, 0, 0);
     return FALSE;
   }
@@ -1002,7 +1019,7 @@ DWORD CreateAutoCompleteWindow(SYNTAXFILE *lpSyntaxFile, DWORD dwFlags)
   if (wszTitlePart[0])
   {
     if (bAddDocumentWords && !bSkipAddDocumentWords)
-      StackFillDocWord((lpSyntaxFile && bSyntaxDelimitersEnable)?&lpSyntaxFile->hDelimiterStack:NULL, &hDocWordsStack, wszTitlePart, (int)(nBlockEnd - nBlockBegin));
+      StackFillDocWord(lpSyntaxFile, &hDocWordsStack, wszTitlePart, (int)(nBlockEnd - nBlockBegin));
 
     if (lpBlockInfo=StackGetBlock(lpSyntaxFile, &hDocWordsStack, wszTitlePart, (int)(nBlockEnd - nBlockBegin), &bOnlyOne))
     {
@@ -1148,7 +1165,7 @@ void FillListbox(SYNTAXFILE *lpSyntaxFile, HDOCWORDS *hDocWordsStack, const wcha
     {
       //Use hBlockStack.last because ListBox_InsertString to zero index reverse items order
       lpBlockElement=(BLOCKINFO *)lpSyntaxFile->hExactBlockStack.last;
-  
+
       while (lpBlockElement)
       {
         if ((nItem=ListBox_InsertStringWide(hWndListBox, 0, lpBlockElement->wpTitle)) != LB_ERR)
@@ -1214,13 +1231,14 @@ BLOCKINFO* GetBlockListbox()
     lpBlock=(BLOCKINFO *)SendMessage(hWndListBox, LB_GETITEMDATA, nItem, 0);
 
     //Item data is BLOCKINFO pointer
-    if (lpBlock->nStructType == BIT_BLOCK)
+    if (lpBlock->dwStructType & BIT_BLOCK)
       return lpBlock;
 
     //Item data is DOCWORDINFO pointer
-    if (lpBlock->nStructType == BIT_DOCWORD)
+    if (lpBlock->dwStructType & BIT_DOCWORD)
     {
       lpDocWord=(DOCWORDINFO *)lpBlock;
+      biDocWordBlock.dwStructType=lpBlock->dwStructType;
       biDocWordBlock.nTitleLen=(int)xprintfW(wszDocWordTitle, L"%s+", lpDocWord->wpDocWord);
       biDocWordBlock.wpTitle=wszDocWordTitle;
       biDocWordBlock.wpBlock=lpDocWord->wpDocWord;
@@ -1231,6 +1249,7 @@ BLOCKINFO* GetBlockListbox()
 
     //Item data is WORDINFO pointer
     lpHighLightWord=(WORDINFO *)lpBlock;
+    biHighLightBlock.dwStructType=BIT_HIGHLIGHT;
     biHighLightBlock.nTitleLen=(int)xprintfW(wszHighLightTitle, L"%s*", lpHighLightWord->wpWord);
     biHighLightBlock.wpTitle=wszHighLightTitle;
     biHighLightBlock.wpBlock=lpHighLightWord->wpWord;
@@ -1532,10 +1551,23 @@ void CompleteTitlePart(BLOCKINFO *lpBlockInfo, INT_PTR nMin, INT_PTR nMax)
       if (!wpIndentBlock)
         wpIndentBlock=lpBlockMaster->wpBlock;
 
-      cr.cpMin=nMin;
-      cr.cpMax=nMax;
-      SendMessage(hWndEdit, EM_EXSETSEL64, 0, (LPARAM)&cr);
-      SendMessage(hMainWnd, AKD_REPLACESELW, (WPARAM)hWndEdit, (LPARAM)wpIndentBlock);
+      if (bSaveTypedCaseOnce ||
+          ((lpBlockMaster->dwStructType & BIT_DOCWORD) &&
+           (lpBlockMaster->dwStructType & BIT_NOSYNTAXFILE) &&
+            bSaveTypedCase))
+      {
+        cr.cpMin=nMax;
+        cr.cpMax=nMax;
+        SendMessage(hWndEdit, EM_EXSETSEL64, 0, (LPARAM)&cr);
+        SendMessage(hMainWnd, AKD_REPLACESELW, (WPARAM)hWndEdit, (LPARAM)(wpIndentBlock + (nMax - nMin)));
+      }
+      else
+      {
+        cr.cpMin=nMin;
+        cr.cpMax=nMax;
+        SendMessage(hWndEdit, EM_EXSETSEL64, 0, (LPARAM)&cr);
+        SendMessage(hMainWnd, AKD_REPLACESELW, (WPARAM)hWndEdit, (LPARAM)wpIndentBlock);
+      }
 
       if (lpHotSpot=(HOTSPOT *)lpBlockMaster->hHotSpotStack.first)
       {
@@ -1562,7 +1594,7 @@ BLOCKINFO* StackInsertBlock(STACKBLOCK *hBlockStack)
   BLOCKINFO *lpElementNew=NULL;
 
   if (!StackInsertBefore((stack **)&hBlockStack->first, (stack **)&hBlockStack->last, (stack *)NULL, (stack **)&lpElementNew, sizeof(BLOCKINFO)))
-    lpElementNew->nStructType=BIT_BLOCK;
+    lpElementNew->dwStructType=BIT_BLOCK;
   return lpElementNew;
 }
 
@@ -1605,7 +1637,7 @@ BLOCKINFO* StackInsertAndSortBlock(STACKBLOCK *hBlockStack, wchar_t *wpTitle, in
         hBlockStack->lpSorted[FIRST_NONLATIN]=(INT_PTR)lpElementNew;
     }
 
-    lpElementNew->nStructType=BIT_BLOCK;
+    lpElementNew->dwStructType=BIT_BLOCK;
     lpElementNew->wchFirstLowerChar=wchFirstLowerChar;
   }
   return lpElementNew;
@@ -1892,14 +1924,18 @@ void StackFreeHotSpot(HSTACK *hStack)
   StackClear((stack **)&hStack->first, (stack **)&hStack->last);
 }
 
-void StackFillDocWord(STACKDELIM *hDelimiterStack, HDOCWORDS *hDocWordsStack, const wchar_t *wpTitlePart, int nTitlePartLen)
+void StackFillDocWord(SYNTAXFILE *lpSyntaxFile, HDOCWORDS *hDocWordsStack, const wchar_t *wpTitlePart, int nTitlePartLen)
 {
+  STACKDELIM *hDelimiterStack=NULL;
   DOCWORDINFO *lpDocWordInfo;
   AEFINDTEXTW ft;
   AECHARINDEX ciCaret;
   AECHARINDEX ciCount;
   int nDocWordLen;
   BOOL bFound;
+
+  if (lpSyntaxFile && bSyntaxDelimitersEnable)
+    hDelimiterStack=&lpSyntaxFile->hDelimiterStack;
 
   StackFreeDocWord(hDocWordsStack);
 
@@ -1951,6 +1987,7 @@ void StackFillDocWord(STACKDELIM *hDelimiterStack, HDOCWORDS *hDocWordsStack, co
               if (lpDocWordInfo->wpDocWord=(wchar_t *)GlobalAlloc(GPTR, (nDocWordLen + 1) * sizeof(wchar_t)))
                 xmemcpy(lpDocWordInfo->wpDocWord, wszBuffer, (nDocWordLen + 1) * sizeof(wchar_t));
               lpDocWordInfo->nDocWordLen=nDocWordLen;
+              if (!lpSyntaxFile) lpDocWordInfo->dwStructType|=BIT_NOSYNTAXFILE;
             }
           }
         }
@@ -2004,7 +2041,7 @@ DOCWORDINFO* StackInsertDocWord(HDOCWORDS *hStack, wchar_t *wpDocWord, int nDocW
         hStack->lpSorted[FIRST_NONLATIN]=(INT_PTR)lpElementNew;
     }
 
-    lpElementNew->nStructType=BIT_DOCWORD;
+    lpElementNew->dwStructType=BIT_DOCWORD;
     lpElementNew->wchFirstLowerChar=wchFirstLowerChar;
   }
   return lpElementNew;
@@ -2050,6 +2087,7 @@ void ReadAutoCompleteOptions(HANDLE hOptions)
   WideOption(hOptions, L"AutoListAfter", PO_DWORD, (LPBYTE)&nAutoListAfter, sizeof(DWORD));
   WideOption(hOptions, L"AddDocumentWords", PO_DWORD, (LPBYTE)&bAddDocumentWords, sizeof(DWORD));
   WideOption(hOptions, L"CompleteNonSyntaxDocument", PO_DWORD, (LPBYTE)&bCompleteNonSyntaxDocument, sizeof(DWORD));
+  WideOption(hOptions, L"SaveTypedCase", PO_DWORD, (LPBYTE)&bSaveTypedCase, sizeof(DWORD));
   WideOption(hOptions, L"MaxDocumentEnable", PO_DWORD, (LPBYTE)&bMaxDocumentEnable, sizeof(DWORD));
   WideOption(hOptions, L"MaxDocumentChars", PO_DWORD, (LPBYTE)&nMaxDocumentChars, sizeof(DWORD));
   WideOption(hOptions, L"AddHighLightWords", PO_DWORD, (LPBYTE)&bAddHighLightWords, sizeof(DWORD));
@@ -2072,6 +2110,7 @@ void SaveAutoCompleteOptions(HANDLE hOptions, DWORD dwFlags)
     WideOption(hOptions, L"AutoListAfter", PO_DWORD, (LPBYTE)&nAutoListAfter, sizeof(DWORD));
     WideOption(hOptions, L"AddDocumentWords", PO_DWORD, (LPBYTE)&bAddDocumentWords, sizeof(DWORD));
     WideOption(hOptions, L"CompleteNonSyntaxDocument", PO_DWORD, (LPBYTE)&bCompleteNonSyntaxDocument, sizeof(DWORD));
+    WideOption(hOptions, L"SaveTypedCase", PO_DWORD, (LPBYTE)&bSaveTypedCase, sizeof(DWORD));
     WideOption(hOptions, L"MaxDocumentEnable", PO_DWORD, (LPBYTE)&bMaxDocumentEnable, sizeof(DWORD));
     WideOption(hOptions, L"MaxDocumentChars", PO_DWORD, (LPBYTE)&nMaxDocumentChars, sizeof(DWORD));
     WideOption(hOptions, L"AddHighLightWords", PO_DWORD, (LPBYTE)&bAddHighLightWords, sizeof(DWORD));

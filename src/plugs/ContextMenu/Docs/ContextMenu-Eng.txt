@@ -1,5 +1,5 @@
 *****************************************************************
-***              ContextMenu AkelPad plugin v13.6             ***
+***              ContextMenu AkelPad plugin v13.7             ***
 *****************************************************************
 
 2013 Shengalts Aleksander aka Instructor (Shengalts@mail.ru)
@@ -44,6 +44,10 @@ Comments:
 Special menu items:
   SEPARATOR
     separator menu item.
+  SEPARATOR1
+    same as SEPARATOR, but:
+    - if specified multiple SEPARATOR1 in sequence, then merged into a single SEPARATOR1;
+    - if specified SEPARATOR1 at the beginning or at the end of submenu, then removed from submenu.
   EXPLORER
     explorer menu.
   FAVOURITES
@@ -60,13 +64,20 @@ Special menu items:
     MDI documents list (work in "Main menu" with MDI mode only).
   CLEAR
     clear menu (work in "Main menu" only).
-  SET(flags)
+  SET(flags[, "string"])
     set text parse flags (doesn't remove flags that already set). Sets by the sum of members:
-       1 ignore following lines, if SDI mode is used.
-       2 ignore following lines, if MDI mode is used.
-       4 ignore following lines, if PMDI mode is used.
-       8 when copying text from the main menu, don't capture the hotkey.
-      16 don't use the icons for menu items.
+      SET(1)
+        ignore following lines, if SDI mode is used.
+      SET(2)
+        ignore following lines, if MDI mode is used.
+      SET(4)
+        ignore following lines, if PMDI mode is used.
+      SET(8)
+        when copying text from the main menu, don't capture the hotkey.
+      SET(16)
+        don't use the icons for menu items.
+      SET(32, "%a\AkelFiles\Plugs\Scripts.dll")
+        ignore following lines, if "Scripts.dll" file doesn't exist.
   UNSET(flags)
     unset text parse flags. See SET() for description.
 

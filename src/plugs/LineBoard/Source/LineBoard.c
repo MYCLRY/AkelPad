@@ -6,9 +6,7 @@
 #include "StackFunc.h"
 #include "StrFunc.h"
 #include "WideFunc.h"
-
 #include "AkelEdit.h"
-
 #include "AkelDLL.h"
 #include "Resources\Resource.h"
 
@@ -1317,6 +1315,10 @@ BOOL CALLBACK EditMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, L
         if (hDC=GetDC(hWnd))
         {
           GetBoardColors(hWnd);
+
+          //Some variables could be changed after UpdateWindow
+          rcBoard.right=lpBoard->nBoardWidth;
+          GetMaxNumberWidth(hDC, &nNumberAverageWidth);
 
           hRgn=CreateRectRgn(rcBoard.left, rcBoard.top, rcBoard.right, rcBoard.bottom);
           hRgnOld=(HRGN)SelectObject(hDC, hRgn);

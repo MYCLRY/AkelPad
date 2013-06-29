@@ -7,10 +7,7 @@
 #include "StrFunc.h"
 #include "x64Func.h"
 #include "WideFunc.h"
-
-//Include AEC functions
 #include "AkelEdit.h"
-
 #include "AkelDLL.h"
 #include "Coder.h"
 #include "HighLight.h"
@@ -80,7 +77,6 @@
 #define ComboBox_GetLBTextWide
 #define CreateDialogWide
 #define CreateFileWide
-#define CreateFontIndirectWide
 #define CreateFontIndirectWide
 #define CreateWindowExWide
 #define DefWindowProcWide
@@ -4330,7 +4326,7 @@ VARINFO* StackGetVarByName(STACKVAR *hStack, const wchar_t *wpVarName, int nVarN
   }
 
   //Firstly search in GLOBAL var theme
-  hStackCurrent=&(hVarThemeGlobal.hVarStack);
+  hStackCurrent=&hVarThemeGlobal.hVarStack;
 
   for (;;)
   {
@@ -5480,12 +5476,14 @@ const wchar_t* GetLangStringW(LANGID wLangID, int nStringID)
       return L"\x0414\x043E\x043A\x0443\x043C\x0435\x043D\x0442";
     if (nStringID == STRID_ADDDOCUMENTWORDS)
       return L"\x0414\x043E\x043F\x043E\x043B\x043D\x044F\x0442\x044C\x0020\x0441\x043B\x043E\x0432\x0430\x043C\x0438\x0020\x0438\x0437\x0020\x0434\x043E\x043A\x0443\x043C\x0435\x043D\x0442\x0430\x0020\x0028\x043E\x0442\x043C\x0435\x0447\x0435\x043D\x044B\x0020\x043F\x043B\x044E\x0441\x043E\x043C\x0020\x002B\x0029";
-    if (nStringID == STRID_COMPLETENONSYNTAXDOCUMENT)
-      return L"\x0414\x043E\x043F\x043E\x043B\x043D\x044F\x0442\x044C\x0020\x0442\x0430\x043A\x0436\x0435\x0020\x0438\x0437\x0020\x0434\x043E\x043A\x0443\x043C\x0435\x043D\x0442\x0430\x0020\x0431\x0435\x0437\x0020\x0441\x0438\x043D\x0442\x0430\x043A\x0441\x0438\x0447\x0435\x0441\x043A\x043E\x0439\x0020\x0442\x0435\x043C\x044B";
     if (nStringID == STRID_MAXDOCUMENT)
       return L"\x041C\x0430\x043A\x0441\x0438\x043C\x0430\x043B\x044C\x043D\x044B\x0439\x0020\x0434\x043E\x043A\x0443\x043C\x0435\x043D\x0442";
     if (nStringID == STRID_CHARS)
       return L"\x0441\x0438\x043C\x0432\x043E\x043B\x043E\x0432";
+    if (nStringID == STRID_COMPLETENONSYNTAXDOCUMENT)
+      return L"\x0414\x043E\x043F\x043E\x043B\x043D\x044F\x0442\x044C\x0020\x0442\x0430\x043A\x0436\x0435\x0020\x0438\x0437\x0020\x0434\x043E\x043A\x0443\x043C\x0435\x043D\x0442\x0430\x0020\x0431\x0435\x0437\x0020\x0441\x0438\x043D\x0442\x0430\x043A\x0441\x0438\x0447\x0435\x0441\x043A\x043E\x0439\x0020\x0442\x0435\x043C\x044B";
+    if (nStringID == STRID_SAVETYPEDCASE)
+      return L"\x0421\x043E\x0445\x0440\x0430\x043D\x044F\x0442\x044C\x0020\x0440\x0435\x0433\x0438\x0441\x0442\x0440\x0020\x0432\x0432\x0435\x0434\x0435\x043D\x043D\x044B\x0445\x0020\x0441\x0438\x043C\x0432\x043E\x043B\x043E\x0432";
     if (nStringID == STRID_ADDHIGHLIGHTWORDS)
       return L"\x0414\x043E\x043F\x043E\x043B\x043D\x044F\x0442\x044C\x0020\x0441\x043B\x043E\x0432\x0430\x043C\x0438\x0020\x0438\x0437\x0020\x0431\x0430\x0437\x044B\x0020\x0048\x0069\x0067\x0068\x004C\x0069\x0067\x0068\x0074\x0027\x0430\x0020\x0028\x043E\x0442\x043C\x0435\x0447\x0435\x043D\x044B\x0020\x0437\x0432\x0435\x0437\x0434\x043E\x0447\x043A\x043E\x0439\x0020\x002A\x0029";
     if (nStringID == STRID_RIGHTDELIMITERS)
@@ -5674,12 +5672,14 @@ const wchar_t* GetLangStringW(LANGID wLangID, int nStringID)
       return L"Document";
     if (nStringID == STRID_ADDDOCUMENTWORDS)
       return L"Add words from document (marked with plus +)";
-    if (nStringID == STRID_COMPLETENONSYNTAXDOCUMENT)
-      return L"Complete also document without syntax theme";
     if (nStringID == STRID_MAXDOCUMENT)
       return L"Maximum document";
     if (nStringID == STRID_CHARS)
       return L"characters";
+    if (nStringID == STRID_COMPLETENONSYNTAXDOCUMENT)
+      return L"Complete also document without syntax theme";
+    if (nStringID == STRID_SAVETYPEDCASE)
+      return L"Save typed symbols case";
     if (nStringID == STRID_ADDHIGHLIGHTWORDS)
       return L"Add words from HighLight base (marked with asterisk *)";
     if (nStringID == STRID_RIGHTDELIMITERS)
@@ -5744,9 +5744,7 @@ void InitCommon(PLUGINDATA *pd)
   ReadOptions(OF_GENERAL_ALLTHEMES|OF_GENERAL_THEMELINK|OF_GENERAL_SETTINGS|OF_HIGHLIGHT|OF_CODEFOLD|OF_AUTOCOMPLETE);
   if (!lpVarThemeActive)
     lpVarThemeActive=RequestVarTheme(&hVarThemesStack, L"Default");
-  if (lpVarThemeActive) {
-    GetVarThemeGlobals(lpVarThemeActive);
-  }
+  GetVarThemeGlobals(lpVarThemeActive);
 }
 
 void InitMain()

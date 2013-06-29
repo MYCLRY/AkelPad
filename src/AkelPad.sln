@@ -109,7 +109,7 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "AkelUpdaterHelp", "akelupda
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "updater", "updater", "{B48A8035-6DC3-4616-B5AB-61D3D4719E51}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "akeledit", "akelpad-src\akeledit.vcxproj", "{9F64C8CD-239B-4609-B657-853C1B188FE4}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "akeledit", "akelpad-src\akeledit\akeledit.vcxproj", "{9F64C8CD-239B-4609-B657-853C1B188FE4}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

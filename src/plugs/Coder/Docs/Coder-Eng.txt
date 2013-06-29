@@ -1,5 +1,5 @@
 *****************************************************************
-***                 Coder AkelPad plugin v11.1                ***
+***                 Coder AkelPad plugin v11.2                ***
 *****************************************************************
 
 2013 Shengalts Aleksander aka Instructor (Shengalts@mail.ru)
@@ -44,6 +44,10 @@ After replacement - go to the following position of the text block.
 
 Go to previous position:
 Go to the previous position of the text block.
+
+Save typed symbols case:
+Case saved only for files without syntax theme, to force not change case of typed symbols
+for any document, use Shift+Enter to select from list.
 
 
 *** External call Coder::HighLight ***

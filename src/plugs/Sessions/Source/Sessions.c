@@ -5,10 +5,7 @@
 #include <commdlg.h>
 #include <shlobj.h>
 #include <richedit.h>
-
-//Include AEC functions
 #include "AkelEdit.h"
-
 #include "AkelDLL.h"
 #include "StackFunc.h"
 #include "StrFunc.h"
@@ -17,6 +14,10 @@
 
 
 /*
+//Include AEC functions
+#define AEC_FUNCTIONS
+#include "AkelEdit.h"
+
 //Include stack functions
 #define StackGetElement
 #define StackInsertAfter
