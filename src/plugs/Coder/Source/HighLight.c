@@ -59,7 +59,7 @@ void __declspec(dllexport) HighLight(PLUGINDATA *pd)
         DWORD dwFontStyle=0;
         DWORD dwMarkID=MARKID_AUTOASSIGN;
         wchar_t *wpMarkText=NULL;
-        int nMarkTextLen=-1;
+        INT_PTR nMarkTextLen=-1;
 
         if (IsExtCallParamValid(pd->lParam, 2))
           pColorText=(unsigned char *)GetExtCallParam(pd->lParam, 2);
@@ -74,7 +74,7 @@ void __declspec(dllexport) HighLight(PLUGINDATA *pd)
         if (IsExtCallParamValid(pd->lParam, 7))
           wpMarkText=(wchar_t *)GetExtCallParam(pd->lParam, 7);
         if (IsExtCallParamValid(pd->lParam, 8))
-          nMarkTextLen=(int)GetExtCallParam(pd->lParam, 8);
+          nMarkTextLen=(INT_PTR)GetExtCallParam(pd->lParam, 8);
 
         if (pd->dwSupport & PDS_STRANSI)
         {
@@ -108,7 +108,7 @@ void __declspec(dllexport) HighLight(PLUGINDATA *pd)
 
               if (wpMarkText)
               {
-                if (MarkSelection(lpHighlightWindow, wpMarkText, nMarkTextLen, dwColorText, dwColorBk, bMatchCase, dwFontStyle, dwMarkID))
+                if (MarkSelection(lpHighlightWindow, wpMarkText, (int)nMarkTextLen, dwColorText, dwColorBk, bMatchCase, dwFontStyle, dwMarkID))
                   bUpdate=TRUE;
               }
               else
@@ -119,7 +119,7 @@ void __declspec(dllexport) HighLight(PLUGINDATA *pd)
                 {
                   if (wpMarkText=(wchar_t *)SendMessage(hMainWnd, AKD_GETSELTEXTW, (WPARAM)ei.hWndEdit, (LPARAM)&nMarkTextLen))
                   {
-                    if (MarkSelection(lpHighlightWindow, wpMarkText, nMarkTextLen, dwColorText, dwColorBk, bMatchCase, dwFontStyle, dwMarkID))
+                    if (MarkSelection(lpHighlightWindow, wpMarkText, (int)nMarkTextLen, dwColorText, dwColorBk, bMatchCase, dwFontStyle, dwMarkID))
                       bUpdate=TRUE;
                     SendMessage(hMainWnd, AKD_FREETEXT, 0, (LPARAM)wpMarkText);
                   }
@@ -175,7 +175,7 @@ void __declspec(dllexport) HighLight(PLUGINDATA *pd)
               AEMARKTEXTITEMW *lpMarkItem;
               CHARRANGE64 cr;
               wchar_t *wpMarkText;
-              int nMarkTextLen=0;
+              INT_PTR nMarkTextLen=0;
 
               SendMessage(ei.hWndEdit, EM_EXGETSEL64, 0, (LPARAM)&cr);
 
@@ -183,7 +183,7 @@ void __declspec(dllexport) HighLight(PLUGINDATA *pd)
               {
                 if (wpMarkText=(wchar_t *)SendMessage(hMainWnd, AKD_GETSELTEXTW, (WPARAM)ei.hWndEdit, (LPARAM)&nMarkTextLen))
                 {
-                  if (lpMarkText=StackGetMarkByText(lpHighlightWindow, wpMarkText, nMarkTextLen))
+                  if (lpMarkText=StackGetMarkByText(lpHighlightWindow, wpMarkText, (int)nMarkTextLen))
                   {
                     lpMarkItem=(AEMARKTEXTITEMW *)lpMarkText->hMarkTextHandle;
                     if (UnmarkSelection(lpHighlightWindow, lpMarkText->dwMarkID, lpMarkItem->crText, lpMarkItem->crBk))
@@ -738,7 +738,7 @@ BOOL CALLBACK HighLightParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
                       !SendMessage(ei.hWndEdit, AEM_ISDELIMITER, AEDLM_WORD|AEDLM_PREVCHAR, (LPARAM)&aensc->aes.crSel.ciMax))))
               {
                 wchar_t *wpMarkText;
-                int nMarkTextLen=0;
+                INT_PTR nMarkTextLen=0;
                 BOOL bUpdate=FALSE;
 
                 if (UnmarkSelection(lpHighlightWindow, MARKID_SELECTION, (DWORD)-1, (DWORD)-1))
@@ -748,7 +748,7 @@ BOOL CALLBACK HighLightParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
                 {
                   if (wpMarkText=(wchar_t *)SendMessage(hMainWnd, AKD_GETSELTEXTW, (WPARAM)ei.hWndEdit, (LPARAM)&nMarkTextLen))
                   {
-                    if (MarkSelection(lpHighlightWindow, wpMarkText, nMarkTextLen, *lpdwAutoMarkTextColor, *lpdwAutoMarkBkColor, *lpdwAutoMarkFlags, *lpdwAutoMarkFontStyle, MARKID_SELECTION))
+                    if (MarkSelection(lpHighlightWindow, wpMarkText, (int)nMarkTextLen, *lpdwAutoMarkTextColor, *lpdwAutoMarkBkColor, *lpdwAutoMarkFlags, *lpdwAutoMarkFontStyle, MARKID_SELECTION))
                       bUpdate=TRUE;
                     SendMessage(hMainWnd, AKD_FREETEXT, 0, (LPARAM)wpMarkText);
                   }
