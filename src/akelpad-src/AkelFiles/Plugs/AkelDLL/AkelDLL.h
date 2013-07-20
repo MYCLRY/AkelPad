@@ -778,7 +778,7 @@ typedef struct {
     AECHARINDEX ciMax;
   } AECHARRANGE;
 
-  typedef struct {
+  typedef struct _AECOLORS {
     DWORD dwFlags;
     COLORREF crCaret;
     COLORREF crBasicText;

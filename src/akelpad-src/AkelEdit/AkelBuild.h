@@ -445,17 +445,17 @@ typedef struct {
   AEFOLD *last;
 } AESTACKFOLD;
 
-typedef struct {
+typedef struct _AESTACKUNDO {
   AEUNDOITEM *first;
   AEUNDOITEM *last;
 } AESTACKUNDO;
 
-typedef struct {
+typedef struct _AESTACKURL {
   AEURLITEM *first;
   AEURLITEM *last;
 } AESTACKURL;
 
-typedef struct {
+typedef struct _AESTACKERASE {
   AEERASE *first;
   AEERASE *last;
 } AESTACKERASE;
@@ -463,7 +463,7 @@ typedef struct {
 
 //// AKELEDIT
 
-typedef struct {
+typedef struct _AKELTEXT {
   HANDLE hHeap;
   AESTACKLINE hLinesStack;
   AESTACKPOINT hPointsStack;
@@ -539,7 +539,7 @@ typedef struct {
   int nVPosFoldHiddenLines;
 } AKELTEXT;
 
-typedef struct {
+typedef struct _AKELOPTIONS {
   DWORD dwEventMask;
   DWORD dwRichEventMask;
   DWORD dwOptions;
@@ -692,7 +692,7 @@ typedef struct _AKELEDIT {
   //RECT rcCloneMargins;
 } AKELEDIT;
 
-typedef struct {
+typedef struct _AESTACKEDIT {
   AKELEDIT *first;
   AKELEDIT *last;
 } AESTACKEDIT;

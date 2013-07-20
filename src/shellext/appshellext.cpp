@@ -13,13 +13,14 @@ CAppShellExt::CAppShellExt()
 
 HRESULT WINAPI CAppShellExt::UpdateRegistry(BOOL bRegister) throw()
 {
+	USES_CONVERSION;
 	WCHAR bstrCLSID[MAX_PATH/2] = { 0 };
 	StringFromGUID2(__uuidof(CAppShellExt), bstrCLSID, _countof(bstrCLSID));
 
     _ATL_REGMAP_ENTRY regMapEntries[] =
     {
         { L"CLSID", bstrCLSID },
-        { L"CLASSNAME", APPNAME },
+        { L"CLASSNAME", T2CW(APPNAME) },
         { NULL, NULL }
     };
     return _pModule->UpdateRegistryFromResource(IDR_APPSHELLEXT, bRegister, regMapEntries);
