@@ -245,6 +245,7 @@ typedef struct _FOLDWINDOW {
 typedef struct {
   FOLDWINDOW *first;
   FOLDWINDOW *last;
+  BOOL bLock;
 } STACKFOLDWINDOW;
 
 //LineBoard external call

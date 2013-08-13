@@ -2,22 +2,36 @@
 #include <windows.h>
 #include <commdlg.h>
 #include <richedit.h>
+#include "StackFunc.h"
 #include "StrFunc.h"
 #include "WideFunc.h"
-
-//Include AEC functions
 #include "AkelEdit.h"
-
 #include "AkelDLL.h"
 #include "Resources\Resource.h"
 
 /*
+//Include AEC functions
+#define AEC_FUNCTIONS
+#include "AkelEdit.h"
+
+//Include stack functions
+#define StackInsertAfter
+#define StackInsertBefore
+#define StackInsertIndex
+#define StackDelete
+#define StackClear
+#define StackCopy
+#include "StackFunc.h"
+
 //Include string functions
 #define xmemcpy
+#define xmemcmp
 #define xmemset
 #define xstrlenW
 #define xstrcpyW
 #define xstrcpynW
+#define xstrcmpW
+#define xstrcmpnW
 #define xatoiW
 #define xitoaW
 #define xuitoaW
@@ -28,60 +42,101 @@
 #include "StrFunc.h"
 
 //Include wide functions
+#define ComboBox_AddStringWide
 #define CreateFontIndirectWide
 #define DialogBoxWide
 #define GetWindowTextWide
 #define ListBox_AddStringWide
+#define ListBox_InsertStringWide
 #define SetDlgItemTextWide
 #define SetWindowTextWide
 #include "WideFunc.h"
 //*/
 
 //Defines
-#define STRID_SPACE       1
-#define STRID_TAB         2
-#define STRID_NEWLINE     3
-#define STRID_VERTICALTAB 4
-#define STRID_FORMFEED    5
-#define STRID_NULL        6
-#define STRID_WRAP        7
-#define STRID_INDENTLINE  8
-#define STRID_PLUGIN      9
-#define STRID_COLOR       10
-#define STRID_SELCOLOR    11
-#define STRID_DOTTEDLINE  12
-#define STRID_SYMBOL      13
-#define STRID_OK          14
-#define STRID_CANCEL      15
+#define STRID_DEFAULTSPECIALCHARS  1
+#define STRID_SPECIALCHAR_EXISTS   2
+#define STRID_ADD                  3
+#define STRID_EDIT                 4
+#define STRID_DELETE               5
+#define STRID_NAME                 6
+#define STRID_OLDCHAR              7
+#define STRID_HEX                  8
+#define STRID_SPECIAL              9
+#define STRID_SOLIDINDENTLINE      10
+#define STRID_NEWCHAR              11
+#define STRID_DEFAULT              12
+#define STRID_BASICTEXT            13
+#define STRID_SELTEXT              15
+#define STRID_FONTSTYLE            16
+#define STRID_CODERTHEME           17
+#define STRID_NEWLINE              18
+#define STRID_WRAP                 19
+#define STRID_INDENTLINE           20
+#define STRID_IGNORE               21
+#define STRID_NORMAL               22
+#define STRID_BOLD                 23
+#define STRID_ITALIC               24
+#define STRID_BOLDITALIC           25
+#define STRID_PLUGIN               26
+#define STRID_OK                   27
+#define STRID_CANCEL               28
 
-#define DLLA_SPECIALCHAR_SET 1
-#define DLLA_SPECIALCHAR_GET 2
+#define DLLA_SPECIALCHAR_OLDSET 1
+#define DLLA_SPECIALCHAR_OLDGET 2
+#define DLLA_SPECIALCHAR_NEWSET 3
+#define DLLA_SPECIALCHAR_NEWGET 4
 
-#define OF_SETTINGS       0x1
+#define AKDLL_UPDATEADDMODIFY    (WM_USER + 100)
+#define AKDLL_UPDATENEWCHARGROUP (WM_USER + 101)
 
-typedef struct _SPECIALCOLOR {
-  DWORD dwColor;
-  DWORD dwSelColor;
-  BOOL bColorEnable;
-  BOOL bSelColorEnable;
-} SPECIALCOLOR;
+#define OF_LISTTEXT       0x1
+#define OF_SETTINGS       0x2
+
+#define BUFFER_SIZE      1024
+
+#define SCO_SPACE        0
+#define SCO_TAB          1
+#define SCO_NEWLINE      2
+#define SCO_VERTICALTAB  3
+#define SCO_FORMFEED     4
+#define SCO_NULL         5
+#define SCO_WRAP         6
+#define SCO_INDENTLINE   7
+#define SCO_MAX          8
+
+#define SC_ERR          -1
+#define SC_NEWLINE      -2
+#define SC_WRAP         -3
+#define SC_INDENTLINE   -4
+
+#define SCF_BASICENABLE      0x00001
+#define SCF_BASICTEXTCOLOR   0x00004
+#define SCF_BASICBKCOLOR     0x00008
+#define SCF_SELENABLE        0x00100
+#define SCF_SELTEXTCOLOR     0x00400
+#define SCF_SELBKCOLOR       0x00800
+#define SCF_SOLIDINDENTLINE  0x10000
 
 typedef struct _SPECIALCHAR {
-  int nReserved;
-  wchar_t wszNewChar[2];
-  wchar_t wszOldChar[2];
-  SPECIALCOLOR sclr;
+  struct _SPECIALCHAR *next;
+  struct _SPECIALCHAR *prev;
+  wchar_t wszName[MAX_PATH];
+  int nOldChar;
+  int nNewChar;
+  DWORD dwFlags;
+  DWORD dwBasicFontStyle;
+  DWORD dwBasicTextColor;
+  DWORD dwBasicBkColor;
+  DWORD dwSelFontStyle;
+  DWORD dwSelTextColor;
+  DWORD dwSelBkColor;
 } SPECIALCHAR;
 
-#define SC_SPACE        0
-#define SC_TAB          1
-#define SC_NEWLINE      2
-#define SC_VERTICALTAB  3
-#define SC_FORMFEED     4
-#define SC_NULL         5
-#define SC_WRAP         6
-#define SC_INDENTLINE   7
-#define SC_MAX          8
+typedef struct {
+  SPECIALCHAR *first;
+  SPECIALCHAR *last;
+} STACKSPECIALCHAR;
 
 //UpdateEdit flags
 #define UE_ERASE        0x01
@@ -94,12 +149,61 @@ typedef struct _SPECIALCHAR {
   #define SPI_GETCLEARTYPE 0x1048
 #endif
 
+//Coder external call
+#define DLLA_CODER_GETVARTHEMEDATA  24
+
+typedef struct _VARINFO {
+  struct _VARINFO *next;
+  struct _VARINFO *prev;
+  wchar_t *wpVarName;
+  int nVarNameLen;
+  wchar_t *wpVarValue;
+  int nVarValueLen;
+} VARINFO;
+
+typedef struct {
+  VARINFO *first;
+  VARINFO *last;
+} STACKVAR;
+
+typedef struct _VARTHEME {
+  struct _VARTHEME *next;
+  struct _VARTHEME *prev;
+  STACKVAR hVarStack;
+  wchar_t wszVarThemeName[MAX_PATH];
+  int nVarThemeNameLen;
+  const wchar_t *wpTextData;
+} VARTHEME;
+
+typedef struct {
+  UINT_PTR dwStructSize;
+  INT_PTR nAction;
+  HWND hWndEdit;
+  AEHDOC hDocEdit;
+  VARTHEME **lppVarThemeGlobal;
+  VARTHEME **lppVarThemeActive;
+} DLLEXTCODERGETVARTHEMEDATA;
+
+typedef struct {
+  const wchar_t *wpVar;
+  COLORREF *lpcrValue;
+} CODERTHEMEITEM;
+
 //Functions prototypes
 BOOL CALLBACK SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
 LRESULT CALLBACK NewMainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 LRESULT CALLBACK NewFrameProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 LRESULT CALLBACK NewEditProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 LRESULT CALLBACK EditParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+void GetCoderColors(HWND hWnd);
+VARINFO* StackGetVarByName(STACKVAR *hStackGlobal, STACKVAR *hStackActive, const wchar_t *wpVarName, int nVarNameLen);
+void CreateSpecialCharStack(STACKSPECIALCHAR *hStack, const wchar_t *wpText);
+void FreeSpecialCharStack(STACKSPECIALCHAR *hStack);
+int HexCharToValue(const wchar_t **wpText);
+int ValueToHexChar(int nValue, wchar_t *wszHexChar);
+int ValueToNormalChar(int nValue, wchar_t *wszNormalChar);
+void SkipWhitespace(const wchar_t **wpText);
+int NextString(const wchar_t *wpText, wchar_t *wszStr, int nStrLen, const wchar_t **wppText, int *nMinus);
 BOOL GetLineSpaces(AECHARINDEX *ciMinDraw, int nTabStopSize, INT_PTR *lpnLineSpaces);
 BOOL GetCharColor(HWND hWndEdit, INT_PTR nCharOffset, AECHARCOLORS *aecc);
 COLORREF GetColorValueFromStrA(char *pColor);
@@ -122,6 +226,7 @@ void InitMain();
 void UninitMain();
 
 //Global variables
+wchar_t wszBuffer[BUFFER_SIZE];
 wchar_t wszPluginName[MAX_PATH];
 wchar_t wszPluginTitle[MAX_PATH];
 HINSTANCE hInstanceDLL;
@@ -135,9 +240,21 @@ LANGID wLangModule;
 BOOL bInitCommon=FALSE;
 BOOL bInitMain=FALSE;
 DWORD dwSaveFlags=0;
-SPECIALCHAR schArray[SC_MAX]={0};
+char *szSpecialChar=NULL;
+wchar_t *wszSpecialCharText=NULL;
+STACKSPECIALCHAR hSpecialCharStack={0};
+SPECIALCHAR *pscIndentLine=NULL;
 DWORD dwPaintOptions=0;
-BOOL bDottedLine=TRUE;
+SPECIALCHAR scCoder;
+CODERTHEMEITEM cti[]={{L"SpecialChar_BasicFontStyle", &scCoder.dwBasicFontStyle},
+                      {L"SpecialChar_BasicTextColor", &scCoder.dwBasicTextColor},
+                      {L"SpecialChar_BasicBkColor",   &scCoder.dwBasicBkColor},
+                      {L"SpecialChar_SelFontStyle",   &scCoder.dwSelFontStyle},
+                      {L"SpecialChar_SelTextColor",   &scCoder.dwSelTextColor},
+                      {L"SpecialChar_SelBkColor",     &scCoder.dwSelBkColor},
+                      {0, 0}};
+VARINFO *lpVarInfoFastCheck;
+BOOL bCoderTheme=TRUE;
 WNDPROCDATA *NewMainProcData=NULL;
 WNDPROCDATA *NewFrameProcData=NULL;
 WNDPROCDATA *NewEditProcData=NULL;
@@ -190,91 +307,218 @@ void __declspec(dllexport) Settings(PLUGINDATA *pd)
   {
     INT_PTR nAction=GetExtCallParam(pd->lParam, 1);
 
-    if (nAction == DLLA_SPECIALCHAR_SET)
+    if (nAction == DLLA_SPECIALCHAR_OLDSET ||
+        nAction == DLLA_SPECIALCHAR_NEWSET)
     {
-      wchar_t wszChars[MAX_PATH];
-      unsigned char *pSpecialChar=NULL;
-      unsigned char *pColor=NULL;
-      unsigned char *pSelColor=NULL;
-      BOOL bColorEnable=-2;
-      BOOL bSelColorEnable=-2;
-      unsigned char *pNewChar=NULL;
-      const wchar_t *wpNextChar=wszChars;
-      int nSpecialChar;
-      SPECIALCHAR schFirst;
+      wchar_t wszOldChars[MAX_PATH];
+      wchar_t wszNewChars[MAX_PATH];
+      unsigned char *pOldChars=(unsigned char *)L"";
+      unsigned char *pNewChars=(unsigned char *)L"";
+      BOOL bBasicEnable=-2;
+      DWORD dwBasicFontStyle=AEHLS_NONE;
+      unsigned char *pBasicTextColor=NULL;
+      unsigned char *pBasicBkColor=NULL;
+      BOOL bSelEnable=-2;
+      DWORD dwSelFontStyle=AEHLS_NONE;
+      unsigned char *pSelTextColor=NULL;
+      unsigned char *pSelBkColor=NULL;
+      const wchar_t *wpNextOldChar=wszOldChars;
+      const wchar_t *wpNextNewChar=wszNewChars;
+      SPECIALCHAR *pscFirst=NULL;
+      SPECIALCHAR *pscChar;
+      int nOldChar;
+      int nNewChar;
       BOOL bUpdate=FALSE;
 
-      if (IsExtCallParamValid(pd->lParam, 2))
-        pSpecialChar=(unsigned char *)GetExtCallParam(pd->lParam, 2);
-      if (IsExtCallParamValid(pd->lParam, 3))
-        pColor=(unsigned char *)GetExtCallParam(pd->lParam, 3);
-      if (IsExtCallParamValid(pd->lParam, 4))
-        pSelColor=(unsigned char *)GetExtCallParam(pd->lParam, 4);
-      if (IsExtCallParamValid(pd->lParam, 5))
-        bColorEnable=(BOOL)GetExtCallParam(pd->lParam, 5);
-      if (IsExtCallParamValid(pd->lParam, 6))
-        bSelColorEnable=(BOOL)GetExtCallParam(pd->lParam, 6);
-      if (IsExtCallParamValid(pd->lParam, 7))
-        pNewChar=(unsigned char *)GetExtCallParam(pd->lParam, 7);
-
-      schFirst.sclr.dwColor=(DWORD)-1;
+      if (nAction == DLLA_SPECIALCHAR_OLDSET)
+      {
+        if (IsExtCallParamValid(pd->lParam, 2))
+          pOldChars=(unsigned char *)GetExtCallParam(pd->lParam, 2);
+        if (IsExtCallParamValid(pd->lParam, 3))
+          pBasicTextColor=(unsigned char *)GetExtCallParam(pd->lParam, 3);
+        if (IsExtCallParamValid(pd->lParam, 4))
+          pSelTextColor=(unsigned char *)GetExtCallParam(pd->lParam, 4);
+        if (IsExtCallParamValid(pd->lParam, 5))
+          bBasicEnable=(BOOL)GetExtCallParam(pd->lParam, 5);
+        if (IsExtCallParamValid(pd->lParam, 6))
+          bSelEnable=(BOOL)GetExtCallParam(pd->lParam, 6);
+        if (IsExtCallParamValid(pd->lParam, 7))
+          pNewChars=(unsigned char *)GetExtCallParam(pd->lParam, 7);
+      }
+      else if (nAction == DLLA_SPECIALCHAR_NEWSET)
+      {
+        if (IsExtCallParamValid(pd->lParam, 2))
+          pOldChars=(unsigned char *)GetExtCallParam(pd->lParam, 2);
+        if (IsExtCallParamValid(pd->lParam, 3))
+          pNewChars=(unsigned char *)GetExtCallParam(pd->lParam, 3);
+        if (IsExtCallParamValid(pd->lParam, 4))
+          bBasicEnable=(BOOL)GetExtCallParam(pd->lParam, 4);
+        if (IsExtCallParamValid(pd->lParam, 5))
+          dwBasicFontStyle=(DWORD)GetExtCallParam(pd->lParam, 5);
+        if (IsExtCallParamValid(pd->lParam, 6))
+          pBasicTextColor=(unsigned char *)GetExtCallParam(pd->lParam, 6);
+        if (IsExtCallParamValid(pd->lParam, 7))
+          pBasicBkColor=(unsigned char *)GetExtCallParam(pd->lParam, 7);
+        if (IsExtCallParamValid(pd->lParam, 8))
+          bSelEnable=(BOOL)GetExtCallParam(pd->lParam, 8);
+        if (IsExtCallParamValid(pd->lParam, 9))
+          dwSelFontStyle=(DWORD)GetExtCallParam(pd->lParam, 9);
+        if (IsExtCallParamValid(pd->lParam, 10))
+          pSelTextColor=(unsigned char *)GetExtCallParam(pd->lParam, 10);
+        if (IsExtCallParamValid(pd->lParam, 11))
+          pSelBkColor=(unsigned char *)GetExtCallParam(pd->lParam, 11);
+      }
 
       if (pd->dwSupport & PDS_STRANSI)
-        MultiByteToWideChar(CP_ACP, 0, (char *)pSpecialChar, -1, wszChars, MAX_PATH);
-      else
-        xstrcpynW(wszChars, (wchar_t *)pSpecialChar, MAX_PATH);
-
-      while (nSpecialChar=(int)xatoiW(wpNextChar, &wpNextChar))
       {
-        //Zero-based
-        --nSpecialChar;
+        MultiByteToWideChar(CP_ACP, 0, (char *)pOldChars, -1, wszOldChars, MAX_PATH);
+        MultiByteToWideChar(CP_ACP, 0, (char *)pNewChars, -1, wszNewChars, MAX_PATH);
+      }
+      else
+      {
+        xstrcpynW(wszOldChars, (wchar_t *)pOldChars, MAX_PATH);
+        xstrcpynW(wszNewChars, (wchar_t *)pNewChars, MAX_PATH);
+      }
 
-        if (nSpecialChar >= SC_SPACE && nSpecialChar < SC_MAX)
+      for (;;)
+      {
+        SkipWhitespace(&wpNextOldChar);
+        if (*wpNextOldChar)
+          nOldChar=HexCharToValue(&wpNextOldChar);
+        else
+          break;
+
+        SkipWhitespace(&wpNextNewChar);
+        if (*wpNextNewChar)
         {
-          if (schFirst.sclr.dwColor == (DWORD)-1)
-            xmemcpy(&schFirst, &schArray[nSpecialChar], sizeof(SPECIALCHAR));
-
-          if (pd->dwSupport & PDS_STRANSI)
-          {
-            if (pColor && *(char *)pColor == '#')
-              schArray[nSpecialChar].sclr.dwColor=GetColorValueFromStrA((char *)pColor + 1);
-            if (pSelColor && *(char *)pSelColor == '#')
-              schArray[nSpecialChar].sclr.dwSelColor=GetColorValueFromStrA((char *)pSelColor + 1);
-          }
-          else
-          {
-            if (pColor && *(wchar_t *)pColor == '#')
-              schArray[nSpecialChar].sclr.dwColor=GetColorValueFromStrW((wchar_t *)pColor + 1);
-            if (pSelColor && *(wchar_t *)pSelColor == '#')
-              schArray[nSpecialChar].sclr.dwSelColor=GetColorValueFromStrW((wchar_t *)pSelColor + 1);
-          }
-
-          if (bColorEnable != -2)
-          {
-            if (bColorEnable == -1)
-              schArray[nSpecialChar].sclr.bColorEnable=!schFirst.sclr.bColorEnable;
-            else
-              schArray[nSpecialChar].sclr.bColorEnable=bColorEnable;
-          }
-          if (bSelColorEnable != -2)
-          {
-            if (bSelColorEnable == -1)
-              schArray[nSpecialChar].sclr.bSelColorEnable=!schFirst.sclr.bSelColorEnable;
-            else
-              schArray[nSpecialChar].sclr.bSelColorEnable=bSelColorEnable;
-          }
-
-          if (pNewChar)
-          {
-            if (pd->dwSupport & PDS_STRANSI)
-              MultiByteToWideChar(CP_ACP, 0, (char *)pNewChar, 1, schArray[nSpecialChar].wszNewChar, 1);
-            else
-              xstrcpynW(schArray[nSpecialChar].wszNewChar, (wchar_t *)pNewChar, 2);
-          }
-          bUpdate=TRUE;
+          nNewChar=HexCharToValue(&wpNextNewChar);
+          if (*wpNextNewChar == L',')
+            ++wpNextNewChar;
         }
-        if (*wpNextChar == L',')
-          ++wpNextChar;
+        else nNewChar=SC_ERR;
+
+        if (nOldChar != SC_ERR)
+        {
+          if (nAction == DLLA_SPECIALCHAR_OLDSET && nOldChar <= SCO_MAX)
+          {
+            //Zero-based
+            --nOldChar;
+
+            if (nOldChar == SCO_SPACE)
+              nOldChar=L' ';
+            else if (nOldChar == SCO_TAB)
+              nOldChar=L'\t';
+            else if (nOldChar == SCO_NEWLINE)
+              nOldChar=SC_NEWLINE;
+            else if (nOldChar == SCO_VERTICALTAB)
+              nOldChar=L'\v';
+            else if (nOldChar == SCO_FORMFEED)
+              nOldChar=L'\f';
+            else if (nOldChar == SCO_NULL)
+              nOldChar=L'\0';
+            else if (nOldChar == SCO_WRAP)
+              nOldChar=SC_WRAP;
+            else if (nOldChar == SCO_INDENTLINE)
+              nOldChar=SC_INDENTLINE;
+          }
+
+          for (pscChar=hSpecialCharStack.first; pscChar; pscChar=pscChar->next)
+          {
+            if (nOldChar == pscChar->nOldChar)
+              break;
+          }
+          if (!pscChar)
+          {
+            if (!StackInsertIndex((stack **)&hSpecialCharStack.first, (stack **)&hSpecialCharStack.last, (stack **)&pscChar, -1, sizeof(SPECIALCHAR)))
+            {
+              pscChar->nOldChar=nOldChar;
+              ValueToHexChar(pscChar->nOldChar, pscChar->wszName);
+              if (pscChar->nOldChar == SC_INDENTLINE)
+                pscIndentLine=pscChar;
+            }
+          }
+          if (!pscFirst) pscFirst=pscChar;
+
+          if (pscChar)
+          {
+            if (nNewChar != SC_ERR)
+              pscChar->nNewChar=nNewChar;
+
+            //Basic
+            if (bBasicEnable != -2)
+            {
+              if (bBasicEnable == -1)
+              {
+                if (pscChar->dwFlags & SCF_BASICENABLE)
+                  pscChar->dwFlags&=~SCF_BASICENABLE;
+                else
+                  pscChar->dwFlags|=SCF_BASICENABLE;
+              }
+              else
+              {
+                if (bBasicEnable)
+                  pscChar->dwFlags|=SCF_BASICENABLE;
+                else
+                  pscChar->dwFlags&=~SCF_BASICENABLE;
+              }
+            }
+            pscChar->dwBasicFontStyle=dwBasicFontStyle;
+
+            if (pd->dwSupport & PDS_STRANSI)
+            {
+              if (pBasicTextColor && *(char *)pBasicTextColor == '#')
+                pscChar->dwBasicTextColor=GetColorValueFromStrA((char *)pBasicTextColor + 1);
+              if (pBasicBkColor && *(char *)pBasicBkColor == '#')
+                pscChar->dwBasicBkColor=GetColorValueFromStrA((char *)pBasicBkColor + 1);
+            }
+            else
+            {
+              if (pBasicTextColor && *(wchar_t *)pBasicTextColor == L'#')
+                pscChar->dwBasicTextColor=GetColorValueFromStrW((wchar_t *)pBasicTextColor + 1);
+              if (pBasicBkColor && *(wchar_t *)pBasicBkColor == L'#')
+                pscChar->dwBasicBkColor=GetColorValueFromStrW((wchar_t *)pBasicBkColor + 1);
+            }
+
+            //Selection
+            if (bSelEnable != -2)
+            {
+              if (bSelEnable == -1)
+              {
+                if (pscChar->dwFlags & SCF_SELENABLE)
+                  pscChar->dwFlags&=~SCF_SELENABLE;
+                else
+                  pscChar->dwFlags|=SCF_SELENABLE;
+              }
+              else
+              {
+                if (bSelEnable)
+                  pscChar->dwFlags|=SCF_SELENABLE;
+                else
+                  pscChar->dwFlags&=~SCF_SELENABLE;
+              }
+            }
+            pscChar->dwSelFontStyle=dwSelFontStyle;
+
+            if (pd->dwSupport & PDS_STRANSI)
+            {
+              if (pSelTextColor && *(char *)pSelTextColor == '#')
+                pscChar->dwSelTextColor=GetColorValueFromStrA((char *)pSelTextColor + 1);
+              if (pSelBkColor && *(char *)pSelBkColor == '#')
+                pscChar->dwSelBkColor=GetColorValueFromStrA((char *)pSelBkColor + 1);
+            }
+            else
+            {
+              if (pSelTextColor && *(wchar_t *)pSelTextColor == L'#')
+                pscChar->dwSelTextColor=GetColorValueFromStrW((wchar_t *)pSelTextColor + 1);
+              if (pSelBkColor && *(wchar_t *)pSelBkColor == L'#')
+                pscChar->dwSelBkColor=GetColorValueFromStrW((wchar_t *)pSelBkColor + 1);
+            }
+
+            bUpdate=TRUE;
+          }
+        }
+        if (*wpNextOldChar == L',')
+          ++wpNextOldChar;
         else
           break;
       }
@@ -282,62 +526,147 @@ void __declspec(dllexport) Settings(PLUGINDATA *pd)
       if (bUpdate)
       {
         UpdateEditAll(UE_DRAWRECT);
-        dwSaveFlags|=OF_SETTINGS;
+        dwSaveFlags|=OF_LISTTEXT;
       }
     }
-    else if (nAction == DLLA_SPECIALCHAR_GET)
+    else if (nAction == DLLA_SPECIALCHAR_OLDGET ||
+             nAction == DLLA_SPECIALCHAR_NEWGET)
     {
-      wchar_t wszChars[MAX_PATH];
-      unsigned char *pSpecialChar=NULL;
-      COLORREF *lpcrColor=NULL;
-      COLORREF *lpcrSelColor=NULL;
-      BOOL *lpbColorEnable=NULL;
-      BOOL *lpbSelColorEnable=NULL;
+      wchar_t wszOldChars[MAX_PATH];
+      wchar_t wszNewChars[MAX_PATH];
+      unsigned char *pOldChars=NULL;
       unsigned char *pNewChar=NULL;
-      const wchar_t *wpNextChar=wszChars;
-      int nSpecialChar;
+      BOOL *lpbBasicEnable=NULL;
+      DWORD *lpdwBasicFontStyle=NULL;
+      COLORREF *lpcrBasicTextColor=NULL;
+      COLORREF *lpcrBasicBkColor=NULL;
+      BOOL *lpbSelEnable=NULL;
+      DWORD *lpdwSelFontStyle=NULL;
+      COLORREF *lpcrSelTextColor=NULL;
+      COLORREF *lpcrSelBkColor=NULL;
+      const wchar_t *wpNextOldChar=wszOldChars;
+      SPECIALCHAR *pscChar;
+      int nOldChar;
 
-      if (IsExtCallParamValid(pd->lParam, 2))
-        pSpecialChar=(unsigned char *)GetExtCallParam(pd->lParam, 2);
-      if (IsExtCallParamValid(pd->lParam, 3))
-        lpcrColor=(COLORREF *)GetExtCallParam(pd->lParam, 3);
-      if (IsExtCallParamValid(pd->lParam, 4))
-        lpcrSelColor=(COLORREF *)GetExtCallParam(pd->lParam, 4);
-      if (IsExtCallParamValid(pd->lParam, 5))
-        lpbColorEnable=(BOOL *)GetExtCallParam(pd->lParam, 5);
-      if (IsExtCallParamValid(pd->lParam, 6))
-        lpbSelColorEnable=(BOOL *)GetExtCallParam(pd->lParam, 6);
-      if (IsExtCallParamValid(pd->lParam, 7))
-        pNewChar=(unsigned char *)GetExtCallParam(pd->lParam, 7);
+      if (nAction == DLLA_SPECIALCHAR_OLDGET)
+      {
+        if (IsExtCallParamValid(pd->lParam, 2))
+          pOldChars=(unsigned char *)GetExtCallParam(pd->lParam, 2);
+        if (IsExtCallParamValid(pd->lParam, 3))
+          lpcrBasicTextColor=(COLORREF *)GetExtCallParam(pd->lParam, 3);
+        if (IsExtCallParamValid(pd->lParam, 4))
+          lpcrSelTextColor=(COLORREF *)GetExtCallParam(pd->lParam, 4);
+        if (IsExtCallParamValid(pd->lParam, 5))
+          lpbBasicEnable=(BOOL *)GetExtCallParam(pd->lParam, 5);
+        if (IsExtCallParamValid(pd->lParam, 6))
+          lpbSelEnable=(BOOL *)GetExtCallParam(pd->lParam, 6);
+        if (IsExtCallParamValid(pd->lParam, 7))
+          pNewChar=(unsigned char *)GetExtCallParam(pd->lParam, 7);
+      }
+      else if (nAction == DLLA_SPECIALCHAR_NEWGET)
+      {
+        if (IsExtCallParamValid(pd->lParam, 2))
+          pOldChars=(unsigned char *)GetExtCallParam(pd->lParam, 2);
+        if (IsExtCallParamValid(pd->lParam, 3))
+          pNewChar=(unsigned char *)GetExtCallParam(pd->lParam, 3);
+        if (IsExtCallParamValid(pd->lParam, 4))
+          lpbBasicEnable=(BOOL *)GetExtCallParam(pd->lParam, 4);
+        if (IsExtCallParamValid(pd->lParam, 5))
+          lpdwBasicFontStyle=(DWORD *)GetExtCallParam(pd->lParam, 5);
+        if (IsExtCallParamValid(pd->lParam, 6))
+          lpcrBasicTextColor=(COLORREF *)GetExtCallParam(pd->lParam, 6);
+        if (IsExtCallParamValid(pd->lParam, 7))
+          lpcrBasicBkColor=(COLORREF *)GetExtCallParam(pd->lParam, 7);
+        if (IsExtCallParamValid(pd->lParam, 8))
+          lpbSelEnable=(BOOL *)GetExtCallParam(pd->lParam, 8);
+        if (IsExtCallParamValid(pd->lParam, 9))
+          lpdwSelFontStyle=(DWORD *)GetExtCallParam(pd->lParam, 9);
+        if (IsExtCallParamValid(pd->lParam, 10))
+          lpcrSelTextColor=(COLORREF *)GetExtCallParam(pd->lParam, 10);
+        if (IsExtCallParamValid(pd->lParam, 11))
+          lpcrSelBkColor=(COLORREF *)GetExtCallParam(pd->lParam, 11);
+      }
 
       if (pd->dwSupport & PDS_STRANSI)
-        MultiByteToWideChar(CP_ACP, 0, (char *)pSpecialChar, -1, wszChars, MAX_PATH);
+        MultiByteToWideChar(CP_ACP, 0, (char *)pOldChars, -1, wszOldChars, MAX_PATH);
       else
-        xstrcpynW(wszChars, (wchar_t *)pSpecialChar, MAX_PATH);
+        xstrcpynW(wszOldChars, (wchar_t *)pOldChars, MAX_PATH);
 
-      while (nSpecialChar=(int)xatoiW(wpNextChar, &wpNextChar))
+      for (;;)
       {
-        //Zero-based
-        --nSpecialChar;
+        SkipWhitespace(&wpNextOldChar);
+        nOldChar=HexCharToValue(&wpNextOldChar);
 
-        if (nSpecialChar >= SC_SPACE && nSpecialChar < SC_MAX)
+        if (nOldChar != SC_ERR)
         {
-          if (lpcrColor)
-            *lpcrColor=schArray[nSpecialChar].sclr.dwColor;
-          if (lpcrSelColor)
-            *lpcrSelColor=schArray[nSpecialChar].sclr.dwSelColor;
-          if (lpbColorEnable)
-            *lpbColorEnable=schArray[nSpecialChar].sclr.bColorEnable;
-          if (lpbSelColorEnable)
-            *lpbSelColorEnable=schArray[nSpecialChar].sclr.bSelColorEnable;
-          if (pNewChar)
-            xstrcpynW(schArray[nSpecialChar].wszNewChar, (wchar_t *)pNewChar, 2);
+          if (nAction == DLLA_SPECIALCHAR_OLDGET && nOldChar <= SCO_MAX)
+          {
+            //Zero-based
+            --nOldChar;
+
+            if (nOldChar == SCO_SPACE)
+              nOldChar=L' ';
+            else if (nOldChar == SCO_TAB)
+              nOldChar=L'\t';
+            else if (nOldChar == SCO_NEWLINE)
+              nOldChar=SC_NEWLINE;
+            else if (nOldChar == SCO_VERTICALTAB)
+              nOldChar=L'\v';
+            else if (nOldChar == SCO_FORMFEED)
+              nOldChar=L'\f';
+            else if (nOldChar == SCO_NULL)
+              nOldChar=L'\0';
+            else if (nOldChar == SCO_WRAP)
+              nOldChar=SC_WRAP;
+            else if (nOldChar == SCO_INDENTLINE)
+              nOldChar=SC_INDENTLINE;
+          }
+          for (pscChar=hSpecialCharStack.first; pscChar; pscChar=pscChar->next)
+          {
+            if (nOldChar == pscChar->nOldChar)
+              break;
+          }
+          if (pscChar)
+          {
+            if (pNewChar)
+            {
+              ValueToHexChar(pscChar->nNewChar, wszNewChars);
+              if (pd->dwSupport & PDS_STRANSI)
+                WideCharToMultiByte(CP_ACP, 0, wszNewChars, -1, (char *)pNewChar, MAX_PATH, NULL, NULL);
+              else
+                xstrcpynW((wchar_t *)pNewChar, wszNewChars, MAX_PATH);
+            }
+
+            if (lpbBasicEnable)
+            {
+              if (pscChar->dwFlags & SCF_BASICENABLE)
+                *lpbBasicEnable=TRUE;
+              else
+                *lpbBasicEnable=FALSE;
+            }
+            if (lpcrBasicTextColor)
+              *lpcrBasicTextColor=pscChar->dwBasicTextColor;
+            if (lpcrBasicBkColor)
+              *lpcrBasicBkColor=pscChar->dwBasicBkColor;
+
+            if (lpbSelEnable)
+            {
+              if (pscChar->dwFlags & SCF_SELENABLE)
+                *lpbSelEnable=TRUE;
+              else
+                *lpbSelEnable=FALSE;
+            }
+            if (lpcrSelTextColor)
+              *lpcrSelTextColor=pscChar->dwSelTextColor;
+            if (lpcrSelBkColor)
+              *lpcrSelBkColor=pscChar->dwSelBkColor;
+          }
 
           //Check only first special char
           break;
         }
-        if (*wpNextChar == L',')
-          ++wpNextChar;
+        if (*wpNextOldChar == L',')
+          ++wpNextOldChar;
         else
           break;
       }
@@ -347,6 +676,7 @@ void __declspec(dllexport) Settings(PLUGINDATA *pd)
     if (pd->bInMemory) pd->nUnload=UD_NONUNLOAD_UNCHANGE;
     return;
   }
+
   DialogBoxWide(hInstanceDLL, MAKEINTRESOURCEW(IDD_SETUP), hMainWnd, (DLGPROC)SetupDlgProc);
 
   //If plugin already loaded, stay in memory, but show as non-active
@@ -356,18 +686,38 @@ void __declspec(dllexport) Settings(PLUGINDATA *pd)
 BOOL CALLBACK SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
   static HICON hPluginIcon;
-  static SPECIALCHAR schArrayDlg[sizeof(schArray) / sizeof(SPECIALCHAR)];
   static HWND hWndList;
-  static HWND hWndColorCheck;
-  static HWND hWndColorButton;
-  static HWND hWndColorLabel;
-  static HWND hWndSelColorCheck;
-  static HWND hWndSelColorButton;
-  static HWND hWndSelColorLabel;
-  static HWND hWndDottedLineCheck;
-  static HWND hWndCharEdit;
-  static HWND hWndCharLabel;
-  static int nCurItem=0;
+  static HWND hWndAddModifyButton;
+  static HWND hWndDeleteButton;
+  static HWND hWndNameEdit;
+  static HWND hWndOldCharHexRadio;
+  static HWND hWndOldCharHexEdit;
+  static HWND hWndOldCharHexPreview;
+  static HWND hWndOldCharSpecialRadio;
+  static HWND hWndOldCharSpecialCombo;
+  static HWND hWndSolidIndentLineCheck;
+  static HWND hWndNewCharHexEdit;
+  static HWND hWndNewCharHexPreview;
+  static HWND hWndNewCharBasicTextCheck;
+  static HWND hWndNewCharBasicTextCustomRadio;
+  static HWND hWndNewCharBasicTextCustomButton;
+  static HWND hWndNewCharBasicTextDefaultRadio;
+  static HWND hWndNewCharSelTextCheck;
+  static HWND hWndNewCharSelTextCustomRadio;
+  static HWND hWndNewCharSelTextCustomButton;
+  static HWND hWndNewCharSelTextDefaultRadio;
+  static HWND hWndNewCharFontStyleLabel;
+  static HWND hWndNewCharFontStyleCombo;
+  static HWND hWndCoderThemeCheck;
+  static STACKSPECIALCHAR hSpecialCharDlgStack;
+  static SPECIALCHAR scDlgChar;
+  static SPECIALCHAR *pscCurChar;
+  static int nCurItem;
+  static BOOL bCoderThemeDlg;
+  static BOOL bListChanged;
+  SPECIALCHAR *pscChar;
+  int nIndex;
+  BOOL bEnable;
 
   if (uMsg == WM_INITDIALOG)
   {
@@ -376,40 +726,122 @@ BOOL CALLBACK SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     SendMessage(hDlg, WM_SETICON, (WPARAM)ICON_BIG, (LPARAM)hPluginIcon);
 
     hWndList=GetDlgItem(hDlg, IDC_LIST);
-    hWndColorCheck=GetDlgItem(hDlg, IDC_COLOR_CHECK);
-    hWndColorButton=GetDlgItem(hDlg, IDC_COLOR_BUTTON);
-    hWndColorLabel=GetDlgItem(hDlg, IDC_COLOR_LABEL);
-    hWndSelColorCheck=GetDlgItem(hDlg, IDC_SELCOLOR_CHECK);
-    hWndSelColorButton=GetDlgItem(hDlg, IDC_SELCOLOR_BUTTON);
-    hWndSelColorLabel=GetDlgItem(hDlg, IDC_SELCOLOR_LABEL);
-    hWndDottedLineCheck=GetDlgItem(hDlg, IDC_DOTTEDLINE_CHECK);
-    hWndCharEdit=GetDlgItem(hDlg, IDC_CHAR_EDIT);
-    hWndCharLabel=GetDlgItem(hDlg, IDC_CHAR_LABEL);
+    hWndAddModifyButton=GetDlgItem(hDlg, IDC_ADDMODIFY_BUTTON);
+    hWndDeleteButton=GetDlgItem(hDlg, IDC_DELETE_BUTTON);
+    hWndNameEdit=GetDlgItem(hDlg, IDC_NAME_EDIT);
+    hWndOldCharHexRadio=GetDlgItem(hDlg, IDC_OLDCHARHEX_RADIO);
+    hWndOldCharHexEdit=GetDlgItem(hDlg, IDC_OLDCHARHEX_EDIT);
+    hWndOldCharHexPreview=GetDlgItem(hDlg, IDC_OLDCHARHEX_PREVIEW);
+    hWndOldCharSpecialRadio=GetDlgItem(hDlg, IDC_OLDCHARSPECIAL_RADIO);
+    hWndOldCharSpecialCombo=GetDlgItem(hDlg, IDC_OLDCHARSPECIAL_COMBO);
+    hWndSolidIndentLineCheck=GetDlgItem(hDlg, IDC_SOLIDINDENTLINE_CHECK);
+    hWndNewCharHexEdit=GetDlgItem(hDlg, IDC_NEWCHARHEX_EDIT);
+    hWndNewCharHexPreview=GetDlgItem(hDlg, IDC_NEWCHARHEX_PREVIEW);
+    hWndNewCharBasicTextCheck=GetDlgItem(hDlg, IDC_NEWCHARBASICTEXT_CHECK);
+    hWndNewCharBasicTextCustomRadio=GetDlgItem(hDlg, IDC_NEWCHARBASICTEXTCUSTOM_RADIO);
+    hWndNewCharBasicTextCustomButton=GetDlgItem(hDlg, IDC_NEWCHARBASICTEXTCUSTOM_BUTTON);
+    hWndNewCharBasicTextDefaultRadio=GetDlgItem(hDlg, IDC_NEWCHARBASICTEXTDEFAULT_RADIO);
+    hWndNewCharSelTextCheck=GetDlgItem(hDlg, IDC_NEWCHARSELTEXT_CHECK);
+    hWndNewCharSelTextCustomRadio=GetDlgItem(hDlg, IDC_NEWCHARSELTEXTCUSTOM_RADIO);
+    hWndNewCharSelTextCustomButton=GetDlgItem(hDlg, IDC_NEWCHARSELTEXTCUSTOM_BUTTON);
+    hWndNewCharSelTextDefaultRadio=GetDlgItem(hDlg, IDC_NEWCHARSELTEXTDEFAULT_RADIO);
+    hWndNewCharFontStyleLabel=GetDlgItem(hDlg, IDC_NEWCHARFONTSTYLE_LABEL);
+    hWndNewCharFontStyleCombo=GetDlgItem(hDlg, IDC_NEWCHARFONTSTYLE_COMBO);
+    hWndCoderThemeCheck=GetDlgItem(hDlg, IDC_CODERTHEME_CHECK);
 
     SetWindowTextWide(hDlg, wszPluginTitle);
-    SetDlgItemTextWide(hDlg, IDC_COLOR_LABEL, GetLangStringW(wLangModule, STRID_COLOR));
-    SetDlgItemTextWide(hDlg, IDC_SELCOLOR_LABEL, GetLangStringW(wLangModule, STRID_SELCOLOR));
-    SetDlgItemTextWide(hDlg, IDC_DOTTEDLINE_CHECK, GetLangStringW(wLangModule, STRID_DOTTEDLINE));
-    SetDlgItemTextWide(hDlg, IDC_CHAR_LABEL, GetLangStringW(wLangModule, STRID_SYMBOL));
+    SetDlgItemTextWide(hDlg, IDC_DELETE_BUTTON, GetLangStringW(wLangModule, STRID_DELETE));
+    SetDlgItemTextWide(hDlg, IDC_NAME_LABEL, GetLangStringW(wLangModule, STRID_NAME));
+    SetDlgItemTextWide(hDlg, IDC_OLDCHAR_GROUP, GetLangStringW(wLangModule, STRID_OLDCHAR));
+    SetDlgItemTextWide(hDlg, IDC_OLDCHARHEX_RADIO, GetLangStringW(wLangModule, STRID_HEX));
+    SetDlgItemTextWide(hDlg, IDC_OLDCHARSPECIAL_RADIO, GetLangStringW(wLangModule, STRID_SPECIAL));
+    SetDlgItemTextWide(hDlg, IDC_SOLIDINDENTLINE_CHECK, GetLangStringW(wLangModule, STRID_SOLIDINDENTLINE));
+    SetDlgItemTextWide(hDlg, IDC_NEWCHAR_GROUP, GetLangStringW(wLangModule, STRID_NEWCHAR));
+    SetDlgItemTextWide(hDlg, IDC_NEWCHARHEX_LABEL, GetLangStringW(wLangModule, STRID_HEX));
+    SetDlgItemTextWide(hDlg, IDC_NEWCHARBASICTEXT_CHECK, GetLangStringW(wLangModule, STRID_BASICTEXT));
+    SetDlgItemTextWide(hDlg, IDC_NEWCHARBASICTEXTDEFAULT_RADIO, GetLangStringW(wLangModule, STRID_DEFAULT));
+    SetDlgItemTextWide(hDlg, IDC_NEWCHARSELTEXT_CHECK, GetLangStringW(wLangModule, STRID_SELTEXT));
+    SetDlgItemTextWide(hDlg, IDC_NEWCHARSELTEXTDEFAULT_RADIO, GetLangStringW(wLangModule, STRID_DEFAULT));
+    SetDlgItemTextWide(hDlg, IDC_NEWCHARFONTSTYLE_LABEL, GetLangStringW(wLangModule, STRID_FONTSTYLE));
+    SetDlgItemTextWide(hDlg, IDC_CODERTHEME_CHECK, GetLangStringW(wLangModule, STRID_CODERTHEME));
     SetDlgItemTextWide(hDlg, IDOK, GetLangStringW(wLangModule, STRID_OK));
     SetDlgItemTextWide(hDlg, IDCANCEL, GetLangStringW(wLangModule, STRID_CANCEL));
 
-    SendMessage(hWndCharEdit, EM_LIMITTEXT, 1, 0);
-    xmemcpy(&schArrayDlg, &schArray, sizeof(schArray));
+    ComboBox_AddStringWide(hWndOldCharSpecialCombo, GetLangStringW(wLangModule, STRID_NEWLINE));
+    ComboBox_AddStringWide(hWndOldCharSpecialCombo, GetLangStringW(wLangModule, STRID_WRAP));
+    ComboBox_AddStringWide(hWndOldCharSpecialCombo, GetLangStringW(wLangModule, STRID_INDENTLINE));
 
-    ListBox_AddStringWide(hWndList, GetLangStringW(wLangModule, STRID_SPACE));
-    ListBox_AddStringWide(hWndList, GetLangStringW(wLangModule, STRID_TAB));
-    ListBox_AddStringWide(hWndList, GetLangStringW(wLangModule, STRID_NEWLINE));
-    ListBox_AddStringWide(hWndList, GetLangStringW(wLangModule, STRID_VERTICALTAB));
-    ListBox_AddStringWide(hWndList, GetLangStringW(wLangModule, STRID_FORMFEED));
-    ListBox_AddStringWide(hWndList, GetLangStringW(wLangModule, STRID_NULL));
-    ListBox_AddStringWide(hWndList, GetLangStringW(wLangModule, STRID_WRAP));
-    ListBox_AddStringWide(hWndList, GetLangStringW(wLangModule, STRID_INDENTLINE));
+    ComboBox_AddStringWide(hWndNewCharFontStyleCombo, GetLangStringW(wLangModule, STRID_IGNORE));
+    ComboBox_AddStringWide(hWndNewCharFontStyleCombo, GetLangStringW(wLangModule, STRID_NORMAL));
+    ComboBox_AddStringWide(hWndNewCharFontStyleCombo, GetLangStringW(wLangModule, STRID_BOLD));
+    ComboBox_AddStringWide(hWndNewCharFontStyleCombo, GetLangStringW(wLangModule, STRID_ITALIC));
+    ComboBox_AddStringWide(hWndNewCharFontStyleCombo, GetLangStringW(wLangModule, STRID_BOLDITALIC));
 
-    if (bDottedLine) SendMessage(hWndDottedLineCheck, BM_SETCHECK, BST_CHECKED, 0);
+    bCoderThemeDlg=bCoderTheme;
+    SendMessage(hWndCoderThemeCheck, BM_SETCHECK, bCoderThemeDlg, 0);
+
+    FreeSpecialCharStack(&hSpecialCharDlgStack);
+    StackCopy((stack *)hSpecialCharStack.first, (stack *)hSpecialCharStack.last, (stack **)&hSpecialCharDlgStack.first, (stack **)&hSpecialCharDlgStack.last, sizeof(SPECIALCHAR));
+    bListChanged=FALSE;
+
+    for (pscChar=hSpecialCharDlgStack.first; pscChar; pscChar=pscChar->next)
+    {
+      nIndex=ListBox_AddStringWide(hWndList, pscChar->wszName);
+      SendMessage(hWndList, LB_SETITEMDATA, (WPARAM)nIndex, (LPARAM)pscChar);
+    }
 
     SendMessage(hWndList, LB_SETCURSEL, (WPARAM)nCurItem, 0);
     SendMessage(hDlg, WM_COMMAND, MAKELONG(IDC_LIST, LBN_SELCHANGE), (LPARAM)hWndList);
+    SendMessage(hDlg, WM_COMMAND, MAKELONG(IDC_OLDCHARSPECIAL_COMBO, CBN_SELENDOK), (LPARAM)hWndOldCharSpecialCombo);
+    SendMessage(hDlg, WM_COMMAND, IDC_CODERTHEME_CHECK, 0);
+  }
+  else if (uMsg == AKDLL_UPDATEADDMODIFY)
+  {
+    BOOL bEnable;
+
+    if (scDlgChar.nOldChar == SC_ERR || (pscCurChar && !xmemcmp(scDlgChar.wszName, pscCurChar->wszName, sizeof(SPECIALCHAR) - offsetof(SPECIALCHAR, wszName))))
+      bEnable=FALSE;
+    else
+      bEnable=TRUE;
+
+    if (bEnable)
+    {
+      if (pscCurChar && scDlgChar.nOldChar == pscCurChar->nOldChar)
+        SetWindowTextWide(hWndAddModifyButton, GetLangStringW(wLangModule, STRID_EDIT));
+      else
+        SetWindowTextWide(hWndAddModifyButton, GetLangStringW(wLangModule, STRID_ADD));
+    }
+    else SetWindowTextWide(hWndAddModifyButton, GetLangStringW(wLangModule, STRID_EDIT));
+
+    EnableWindow(hWndAddModifyButton, bEnable);
+    EnableWindow(hWndDeleteButton, (BOOL)(INT_PTR)pscCurChar);
+
+    //Update indent line dependencies
+    if (scDlgChar.nOldChar == SC_INDENTLINE)
+    {
+      ShowWindow(hWndSolidIndentLineCheck, SW_SHOW);
+      EnableWindow(hWndNewCharHexEdit, FALSE);
+    }
+    else
+    {
+      ShowWindow(hWndSolidIndentLineCheck, SW_HIDE);
+      EnableWindow(hWndNewCharHexEdit, TRUE);
+    }
+
+    if (!GetFocus()) SetFocus(hWndList);
+  }
+  else if (uMsg == AKDLL_UPDATENEWCHARGROUP)
+  {
+    BOOL bEnable;
+
+    if ((scDlgChar.dwFlags & SCF_BASICENABLE) || (scDlgChar.dwFlags & SCF_SELENABLE))
+      bEnable=TRUE;
+    else
+      bEnable=FALSE;
+
+    EnableWindow(hWndNewCharHexEdit, bEnable);
+    EnableWindow(hWndNewCharFontStyleLabel, bEnable);
+    EnableWindow(hWndNewCharFontStyleCombo, bEnable);
   }
   else if (uMsg == WM_DRAWITEM)
   {
@@ -417,15 +849,15 @@ BOOL CALLBACK SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     HBRUSH hBrush;
     DWORD dwColor=GetSysColor(COLOR_BTNFACE);
 
-    if (wParam == IDC_COLOR_BUTTON)
+    if (wParam == IDC_NEWCHARBASICTEXTCUSTOM_BUTTON)
     {
-      if (schArrayDlg[nCurItem].sclr.bColorEnable)
-        dwColor=schArrayDlg[nCurItem].sclr.dwColor;
+      if (scDlgChar.dwFlags & SCF_BASICTEXTCOLOR)
+        dwColor=scDlgChar.dwBasicTextColor;
     }
-    else if (wParam == IDC_SELCOLOR_BUTTON)
+    else if (wParam == IDC_NEWCHARSELTEXTCUSTOM_BUTTON)
     {
-      if (schArrayDlg[nCurItem].sclr.bSelColorEnable)
-        dwColor=schArrayDlg[nCurItem].sclr.dwSelColor;
+      if (scDlgChar.dwFlags & SCF_SELTEXTCOLOR)
+        dwColor=scDlgChar.dwSelTextColor;
     }
 
     if (hBrush=CreateSolidBrush(dwColor))
@@ -444,58 +876,264 @@ BOOL CALLBACK SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
       if (HIWORD(wParam) == LBN_SELCHANGE)
       {
         nCurItem=(int)SendMessage(hWndList, LB_GETCURSEL, 0, 0);
+        if (nCurItem == LB_ERR)
+        {
+          pscCurChar=NULL;
+          xmemset(scDlgChar.wszName, 0, sizeof(SPECIALCHAR) - offsetof(SPECIALCHAR, wszName));
+        }
+        else
+        {
+          pscCurChar=(SPECIALCHAR *)SendMessage(hWndList, LB_GETITEMDATA, (WPARAM)nCurItem, 0);
+          xmemcpy(scDlgChar.wszName, pscCurChar->wszName, sizeof(SPECIALCHAR) - offsetof(SPECIALCHAR, wszName));
+        }
 
-        SetWindowTextWide(hWndCharEdit, schArrayDlg[nCurItem].wszNewChar);
+        //Update controls
+        SetWindowTextWide(hWndNameEdit, scDlgChar.wszName);
 
-        SendMessage(hWndColorCheck, BM_SETCHECK, schArrayDlg[nCurItem].sclr.bColorEnable, 0);
-        EnableWindow(hWndColorButton, schArrayDlg[nCurItem].sclr.bColorEnable);
-        EnableWindow(hWndColorLabel, schArrayDlg[nCurItem].sclr.bColorEnable);
-        InvalidateRect(hWndColorButton, NULL, FALSE);
+        if (scDlgChar.nOldChar >= 0)
+        {
+          SendMessage(hWndOldCharHexRadio, BM_SETCHECK, BST_CHECKED, 0);
+          SendMessage(hWndOldCharSpecialRadio, BM_SETCHECK, BST_UNCHECKED, 0);
+          SendMessage(hWndOldCharSpecialCombo, CB_SETCURSEL, (WPARAM)-1, 0);
 
-        SendMessage(hWndSelColorCheck, BM_SETCHECK, schArrayDlg[nCurItem].sclr.bSelColorEnable, 0);
-        EnableWindow(hWndSelColorButton, schArrayDlg[nCurItem].sclr.bSelColorEnable);
-        EnableWindow(hWndSelColorLabel, schArrayDlg[nCurItem].sclr.bSelColorEnable);
-        InvalidateRect(hWndSelColorButton, NULL, FALSE);
+          ValueToHexChar(scDlgChar.nOldChar, wszBuffer);
+          SetWindowTextWide(hWndOldCharHexEdit, wszBuffer + 2);
+        }
+        else
+        {
+          SendMessage(hWndOldCharHexRadio, BM_SETCHECK, BST_UNCHECKED, 0);
+          SendMessage(hWndOldCharSpecialRadio, BM_SETCHECK, BST_CHECKED, 0);
+          if (scDlgChar.nOldChar == SC_ERR)
+            SendMessage(hWndOldCharSpecialCombo, CB_SETCURSEL, (WPARAM)-1, 0);
+          else
+            SendMessage(hWndOldCharSpecialCombo, CB_SETCURSEL, (WPARAM)(-2 - scDlgChar.nOldChar), 0);
+          SetWindowTextWide(hWndOldCharHexEdit, L"");
+          SetWindowTextWide(hWndOldCharHexPreview, L"");
+        }
 
-        ShowWindow(hWndCharEdit, nCurItem == SC_INDENTLINE?SW_HIDE:SW_SHOW);
-        ShowWindow(hWndCharLabel, nCurItem == SC_INDENTLINE?SW_HIDE:SW_SHOW);
-        ShowWindow(hWndDottedLineCheck, nCurItem == SC_INDENTLINE?SW_SHOW:SW_HIDE);
+        ValueToHexChar(scDlgChar.nNewChar, wszBuffer);
+        SetWindowTextWide(hWndNewCharHexEdit, wszBuffer + 2);
+
+        if (scDlgChar.dwFlags & SCF_BASICENABLE)
+          SendMessage(hWndNewCharBasicTextCheck, BM_SETCHECK, BST_CHECKED, 0);
+        else
+          SendMessage(hWndNewCharBasicTextCheck, BM_SETCHECK, BST_UNCHECKED, 0);
+        if (scDlgChar.dwFlags & SCF_BASICTEXTCOLOR)
+        {
+          SendMessage(hWndNewCharBasicTextCustomRadio, BM_SETCHECK, BST_CHECKED, 0);
+          SendMessage(hWndNewCharBasicTextDefaultRadio, BM_SETCHECK, BST_UNCHECKED, 0);
+        }
+        else
+        {
+          SendMessage(hWndNewCharBasicTextCustomRadio, BM_SETCHECK, BST_UNCHECKED, 0);
+          SendMessage(hWndNewCharBasicTextDefaultRadio, BM_SETCHECK, BST_CHECKED, 0);
+        }
+
+        SendMessage(hDlg, WM_COMMAND, IDC_NEWCHARBASICTEXT_CHECK, 0);
+
+        if (scDlgChar.dwFlags & SCF_SELENABLE)
+          SendMessage(hWndNewCharSelTextCheck, BM_SETCHECK, BST_CHECKED, 0);
+        else
+          SendMessage(hWndNewCharSelTextCheck, BM_SETCHECK, BST_UNCHECKED, 0);
+        if (scDlgChar.dwFlags & SCF_SELTEXTCOLOR)
+        {
+          SendMessage(hWndNewCharSelTextCustomRadio, BM_SETCHECK, BST_CHECKED, 0);
+          SendMessage(hWndNewCharSelTextDefaultRadio, BM_SETCHECK, BST_UNCHECKED, 0);
+        }
+        else
+        {
+          SendMessage(hWndNewCharSelTextCustomRadio, BM_SETCHECK, BST_UNCHECKED, 0);
+          SendMessage(hWndNewCharSelTextDefaultRadio, BM_SETCHECK, BST_CHECKED, 0);
+        }
+
+        if (scDlgChar.dwBasicFontStyle == scDlgChar.dwSelFontStyle)
+          SendMessage(hWndNewCharFontStyleCombo, CB_SETCURSEL, (WPARAM)scDlgChar.dwBasicFontStyle, 0);
+        else
+          SendMessage(hWndNewCharFontStyleCombo, CB_SETCURSEL, (WPARAM)-1, 0);
+
+        SendMessage(hDlg, WM_COMMAND, IDC_NEWCHARSELTEXT_CHECK, 0);
       }
     }
-    else if (LOWORD(wParam) == IDC_CHAR_EDIT)
+    else if (LOWORD(wParam) == IDC_ADDMODIFY_BUTTON)
     {
-      GetWindowTextWide(hWndCharEdit, schArrayDlg[nCurItem].wszNewChar, 2);
+      if (pscCurChar && scDlgChar.nOldChar == pscCurChar->nOldChar)
+      {
+        if (xstrcmpW(pscCurChar->wszName, scDlgChar.wszName))
+        {
+          SendMessage(hWndList, LB_DELETESTRING, (WPARAM)nCurItem, 0);
+          ListBox_InsertStringWide(hWndList, nCurItem, scDlgChar.wszName);
+          SendMessage(hWndList, LB_SETITEMDATA, (WPARAM)nCurItem, (LPARAM)pscCurChar);
+          SendMessage(hWndList, LB_SETCURSEL, (WPARAM)nCurItem, 0);
+        }
+        xmemcpy(pscCurChar->wszName, scDlgChar.wszName, sizeof(SPECIALCHAR) - offsetof(SPECIALCHAR, wszName));
+        bListChanged=TRUE;
+      }
+      else
+      {
+        for (pscChar=hSpecialCharDlgStack.first; pscChar; pscChar=pscChar->next)
+        {
+          if (scDlgChar.nOldChar != SC_ERR && scDlgChar.nOldChar == pscChar->nOldChar)
+            break;
+        }
+        if (pscChar)
+        {
+          xprintfW(wszBuffer, GetLangStringW(wLangModule, STRID_SPECIALCHAR_EXISTS), pscChar->wszName);
+          MessageBoxW(hDlg, wszBuffer, wszPluginTitle, MB_OK|MB_ICONEXCLAMATION);
+        }
+        else
+        {
+          if (!StackInsertIndex((stack **)&hSpecialCharDlgStack.first, (stack **)&hSpecialCharDlgStack.last, (stack **)&pscChar, -1, sizeof(SPECIALCHAR)))
+          {
+            if (!*scDlgChar.wszName)
+              ValueToHexChar(scDlgChar.nOldChar, scDlgChar.wszName);
+
+            xmemcpy(pscChar->wszName, scDlgChar.wszName, sizeof(SPECIALCHAR) - offsetof(SPECIALCHAR, wszName));
+            nIndex=ListBox_AddStringWide(hWndList, pscChar->wszName);
+            SendMessage(hWndList, LB_SETITEMDATA, (WPARAM)nIndex, (LPARAM)pscChar);
+            SendMessage(hWndList, LB_SETCURSEL, (WPARAM)nIndex, 0);
+            SendMessage(hDlg, WM_COMMAND, MAKELONG(IDC_LIST, LBN_SELCHANGE), (LPARAM)hWndList);
+
+            bListChanged=TRUE;
+          }
+        }
+      }
     }
-    else if (LOWORD(wParam) == IDC_COLOR_CHECK)
+    else if (LOWORD(wParam) == IDC_DELETE_BUTTON)
     {
-      schArrayDlg[nCurItem].sclr.bColorEnable=(BOOL)SendMessage(hWndColorCheck, BM_GETCHECK, 0, 0);
-      EnableWindow(hWndColorButton, schArrayDlg[nCurItem].sclr.bColorEnable);
-      EnableWindow(hWndColorLabel, schArrayDlg[nCurItem].sclr.bColorEnable);
-      InvalidateRect(hWndColorButton, NULL, FALSE);
+      if (pscCurChar)
+      {
+        StackDelete((stack **)&hSpecialCharDlgStack.first, (stack **)&hSpecialCharDlgStack.last, (stack *)pscCurChar);
+        pscCurChar=NULL;
+
+        SendMessage(hWndList, LB_DELETESTRING, (WPARAM)nCurItem, 0);
+        nCurItem=-1;
+
+        SendMessage(hDlg, WM_COMMAND, MAKELONG(IDC_LIST, LBN_SELCHANGE), (LPARAM)hWndList);
+        bListChanged=TRUE;
+      }
     }
-    else if (LOWORD(wParam) == IDC_SELCOLOR_CHECK)
+    else if (LOWORD(wParam) == IDC_NAME_EDIT)
     {
-      schArrayDlg[nCurItem].sclr.bSelColorEnable=(BOOL)SendMessage(hWndSelColorCheck, BM_GETCHECK, 0, 0);
-      EnableWindow(hWndSelColorButton, schArrayDlg[nCurItem].sclr.bSelColorEnable);
-      EnableWindow(hWndSelColorLabel, schArrayDlg[nCurItem].sclr.bSelColorEnable);
-      InvalidateRect(hWndSelColorButton, NULL, FALSE);
+      GetWindowTextWide(hWndNameEdit, scDlgChar.wszName, MAX_PATH);
     }
-    else if (LOWORD(wParam) == IDC_COLOR_BUTTON ||
-             LOWORD(wParam) == IDC_SELCOLOR_BUTTON)
+    else if (LOWORD(wParam) == IDC_OLDCHARSPECIAL_COMBO)
+    {
+      if (HIWORD(wParam) == CBN_SELENDOK)
+      {
+        nIndex=(int)SendMessage(hWndOldCharSpecialCombo, CB_GETCURSEL, 0, 0);
+
+        if (nIndex != LB_ERR)
+        {
+          scDlgChar.nOldChar=-2 - nIndex;
+        }
+        if (scDlgChar.nOldChar == SC_INDENTLINE)
+          ShowWindow(hWndSolidIndentLineCheck, SW_SHOW);
+        else
+          ShowWindow(hWndSolidIndentLineCheck, SW_HIDE);
+      }
+    }
+    else if (LOWORD(wParam) == IDC_OLDCHARHEX_EDIT ||
+             LOWORD(wParam) == IDC_OLDCHARHEX_RADIO ||
+             LOWORD(wParam) == IDC_OLDCHARSPECIAL_RADIO)
+    {
+      if (SendMessage(hWndOldCharHexRadio, BM_GETCHECK, 0, 0) == BST_CHECKED)
+      {
+        GetWindowTextWide(hWndOldCharHexEdit, wszBuffer, BUFFER_SIZE);
+        scDlgChar.nOldChar=(int)hex2decW(wszBuffer, -1);
+        ValueToNormalChar(scDlgChar.nOldChar, wszBuffer);
+        SetWindowTextWide(hWndOldCharHexPreview, wszBuffer);
+        EnableWindow(hWndOldCharHexEdit, TRUE);
+        EnableWindow(hWndOldCharSpecialCombo, FALSE);
+      }
+      else
+      {
+        SendMessage(hDlg, WM_COMMAND, MAKELONG(IDC_OLDCHARSPECIAL_COMBO, CBN_SELENDOK), (LPARAM)hWndOldCharSpecialCombo);
+        EnableWindow(hWndOldCharHexEdit, FALSE);
+        EnableWindow(hWndOldCharSpecialCombo, TRUE);
+      }
+    }
+    else if (LOWORD(wParam) == IDC_SOLIDINDENTLINE_CHECK)
+    {
+      if (SendMessage(hWndSolidIndentLineCheck, BM_GETCHECK, 0, 0) == BST_CHECKED)
+        scDlgChar.dwFlags|=SCF_SOLIDINDENTLINE;
+      else
+        scDlgChar.dwFlags&=~SCF_SOLIDINDENTLINE;
+    }
+    else if (LOWORD(wParam) == IDC_NEWCHARHEX_EDIT)
+    {
+      GetWindowTextWide(hWndNewCharHexEdit, wszBuffer, BUFFER_SIZE);
+      scDlgChar.nNewChar=(int)hex2decW(wszBuffer, -1);
+      ValueToNormalChar(scDlgChar.nNewChar, wszBuffer);
+      SetWindowTextWide(hWndNewCharHexPreview, wszBuffer);
+    }
+    else if (LOWORD(wParam) == IDC_NEWCHARBASICTEXT_CHECK)
+    {
+      bEnable=(BOOL)SendMessage(hWndNewCharBasicTextCheck, BM_GETCHECK, 0, 0);
+      if (bEnable)
+        scDlgChar.dwFlags|=SCF_BASICENABLE;
+      else
+        scDlgChar.dwFlags&=~SCF_BASICENABLE;
+
+      EnableWindow(hWndNewCharBasicTextCustomRadio, bEnable);
+      EnableWindow(hWndNewCharBasicTextCustomButton, bEnable && (scDlgChar.dwFlags & SCF_BASICTEXTCOLOR));
+      EnableWindow(hWndNewCharBasicTextDefaultRadio, bEnable);
+      InvalidateRect(hWndNewCharBasicTextCustomButton, NULL, FALSE);
+
+      SendMessage(hDlg, AKDLL_UPDATENEWCHARGROUP, 0, 0);
+    }
+    else if (LOWORD(wParam) == IDC_NEWCHARBASICTEXTCUSTOM_RADIO ||
+             LOWORD(wParam) == IDC_NEWCHARBASICTEXTDEFAULT_RADIO)
+    {
+      if (SendMessage(hWndNewCharBasicTextCustomRadio, BM_GETCHECK, 0, 0) == BST_CHECKED)
+        scDlgChar.dwFlags|=SCF_BASICTEXTCOLOR;
+      else
+        scDlgChar.dwFlags&=~SCF_BASICTEXTCOLOR;
+
+      EnableWindow(hWndNewCharBasicTextCustomButton, (scDlgChar.dwFlags & SCF_BASICTEXTCOLOR));
+      InvalidateRect(hWndNewCharBasicTextCustomButton, NULL, FALSE);
+    }
+    else if (LOWORD(wParam) == IDC_NEWCHARSELTEXT_CHECK)
+    {
+      bEnable=(BOOL)SendMessage(hWndNewCharSelTextCheck, BM_GETCHECK, 0, 0);
+      if (bEnable)
+        scDlgChar.dwFlags|=SCF_SELENABLE;
+      else
+        scDlgChar.dwFlags&=~SCF_SELENABLE;
+
+      EnableWindow(hWndNewCharSelTextCustomRadio, bEnable);
+      EnableWindow(hWndNewCharSelTextCustomButton, bEnable && (scDlgChar.dwFlags & SCF_SELTEXTCOLOR));
+      EnableWindow(hWndNewCharSelTextDefaultRadio, bEnable);
+      InvalidateRect(hWndNewCharSelTextCustomButton, NULL, FALSE);
+
+      SendMessage(hDlg, AKDLL_UPDATENEWCHARGROUP, 0, 0);
+    }
+    else if (LOWORD(wParam) == IDC_NEWCHARSELTEXTCUSTOM_RADIO ||
+             LOWORD(wParam) == IDC_NEWCHARSELTEXTDEFAULT_RADIO)
+    {
+      if (SendMessage(hWndNewCharSelTextCustomRadio, BM_GETCHECK, 0, 0) == BST_CHECKED)
+        scDlgChar.dwFlags|=SCF_SELTEXTCOLOR;
+      else
+        scDlgChar.dwFlags&=~SCF_SELTEXTCOLOR;
+
+      EnableWindow(hWndNewCharSelTextCustomButton, (scDlgChar.dwFlags & SCF_SELTEXTCOLOR));
+      InvalidateRect(hWndNewCharSelTextCustomButton, NULL, FALSE);
+    }
+    else if (LOWORD(wParam) == IDC_NEWCHARBASICTEXTCUSTOM_BUTTON ||
+             LOWORD(wParam) == IDC_NEWCHARSELTEXTCUSTOM_BUTTON)
     {
       static COLORREF crCustColors[16];
       COLORREF *lpcrColor=NULL;
       HWND hWndButton=NULL;
 
-      if (LOWORD(wParam) == IDC_COLOR_BUTTON)
+      if (LOWORD(wParam) == IDC_NEWCHARBASICTEXTCUSTOM_BUTTON)
       {
-        lpcrColor=&schArrayDlg[nCurItem].sclr.dwColor;
-        hWndButton=hWndColorButton;
+        lpcrColor=&scDlgChar.dwBasicTextColor;
+        hWndButton=hWndNewCharBasicTextCustomButton;
       }
-      else if (LOWORD(wParam) == IDC_SELCOLOR_BUTTON)
+      else if (LOWORD(wParam) == IDC_NEWCHARSELTEXTCUSTOM_BUTTON)
       {
-        lpcrColor=&schArrayDlg[nCurItem].sclr.dwSelColor;
-        hWndButton=hWndSelColorButton;
+        lpcrColor=&scDlgChar.dwSelTextColor;
+        hWndButton=hWndNewCharSelTextCustomButton;
       }
 
       if (bOldWindows)
@@ -533,21 +1171,73 @@ BOOL CALLBACK SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
         }
       }
     }
+    else if (LOWORD(wParam) == IDC_NEWCHARFONTSTYLE_COMBO)
+    {
+      if (HIWORD(wParam) == CBN_SELENDOK)
+      {
+        nIndex=(int)SendMessage(hWndNewCharFontStyleCombo, CB_GETCURSEL, 0, 0);
+        if (nIndex != LB_ERR)
+        {
+          scDlgChar.dwBasicFontStyle=nIndex;
+          scDlgChar.dwSelFontStyle=nIndex;
+        }
+      }
+    }
+    else if (LOWORD(wParam) == IDC_CODERTHEME_CHECK)
+    {
+      bCoderThemeDlg=(int)SendMessage(hWndCoderThemeCheck, BM_GETCHECK, 0, 0);
+    }
     else if (LOWORD(wParam) == IDOK)
     {
-      xmemcpy(&schArray, &schArrayDlg, sizeof(schArray));
-      bDottedLine=(BOOL)SendMessage(hWndDottedLineCheck, BM_GETCHECK, 0, 0);
+      if (pscCurChar && scDlgChar.nOldChar == pscCurChar->nOldChar && xmemcmp(scDlgChar.wszName, pscCurChar->wszName, sizeof(SPECIALCHAR) - offsetof(SPECIALCHAR, wszName)))
+      {
+        //We accept changes for current special char
+        xmemcpy(pscCurChar->wszName, scDlgChar.wszName, sizeof(SPECIALCHAR) - offsetof(SPECIALCHAR, wszName));
+        bListChanged=TRUE;
+      }
 
-      SaveOptions(0);
+      if (bListChanged)
+      {
+        FreeSpecialCharStack(&hSpecialCharStack);
+        hSpecialCharStack.first=hSpecialCharDlgStack.first;
+        hSpecialCharStack.last=hSpecialCharDlgStack.last;
+        hSpecialCharDlgStack.first=NULL;
+        hSpecialCharDlgStack.last=NULL;
+        pscIndentLine=NULL;
+
+        for (pscChar=hSpecialCharStack.first; pscChar; pscChar=pscChar->next)
+        {
+          if (pscChar->nOldChar == SC_INDENTLINE)
+          {
+            pscIndentLine=pscChar;
+            break;
+          }
+        }
+        dwSaveFlags|=OF_LISTTEXT;
+      }
+      if (bCoderThemeDlg != bCoderTheme)
+      {
+        bCoderTheme=bCoderThemeDlg;
+        dwSaveFlags|=OF_SETTINGS;
+      }
+
+      if (dwSaveFlags)
+      {
+        SaveOptions(dwSaveFlags);
+        dwSaveFlags=0;
+      }
+
       EndDialog(hDlg, 0);
       UpdateEditAll(UE_DRAWRECT);
       return TRUE;
     }
     else if (LOWORD(wParam) == IDCANCEL)
     {
+      FreeSpecialCharStack(&hSpecialCharDlgStack);
       EndDialog(hDlg, 0);
       return TRUE;
     }
+    PostMessage(hDlg, AKDLL_UPDATEADDMODIFY, 0, 0);
   }
   else if (uMsg == WM_CLOSE)
   {
@@ -646,6 +1336,7 @@ LRESULT CALLBACK EditParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
           SendMessage(pnt->hdr.hwndFrom, AEM_GETCOLORS, 0, (LPARAM)&aec);
           hbrSelBk=CreateSolidBrush(aec.crSelBk);
           SystemParametersInfoA(SPI_GETCLEARTYPE, 0, &bClearType, 0);
+          GetCoderColors(pnt->hdr.hwndFrom);
 
           SendMessage(pnt->hdr.hwndFrom, AEM_GETSEL, (WPARAM)NULL, (LPARAM)&aes);
           nCharHeight=(int)SendMessage(pnt->hdr.hwndFrom, AEM_GETCHARSIZE, AECS_HEIGHT, 0);
@@ -664,23 +1355,24 @@ LRESULT CALLBACK EditParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
         {
           AECHARINDEX ciCount=pnt->ciMinDraw;
           SPECIALCHAR *pscChar;
-          SPECIALCHAR *pscIndent;
-          COLORREF crCharColor;
+          SPECIALCHAR *pscIndentDraw;
+          DWORD dwFontStyle;
+          COLORREF crTextColor;
+          COLORREF crTextColorPrev=0;
+          COLORREF crBkColor;
           COLORREF crIndentColor;
-          COLORREF crTextColorPrev;
           POINT pt;
           INT_PTR nOffset=pnt->nMinDrawOffset;
           INT_PTR nLineSpaces=0;
           INT_PTR nMaxLineSpaces=0;
           int nChar;
           int nBkModePrev;
-          int i;
           BOOL bIndentFound=FALSE;
           BOOL bCharInSel;
 
           nBkModePrev=SetBkMode(pnt->hDC, TRANSPARENT);
 
-          if (schArray[SC_INDENTLINE].sclr.bColorEnable || schArray[SC_INDENTLINE].sclr.bSelColorEnable)
+          if (pscIndentLine && ((pscIndentLine->dwFlags & SCF_BASICENABLE) || (pscIndentLine->dwFlags & SCF_SELENABLE)))
           {
             if (!pnt->ciMinDraw.lpLine->prev || pnt->ciMinDraw.lpLine->prev->nLineBreak != AELB_WRAP)
             {
@@ -732,8 +1424,7 @@ LRESULT CALLBACK EditParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
 
           do
           {
-            pscChar=NULL;
-            pscIndent=NULL;
+            pscIndentDraw=NULL;
 
             if (ciCount.lpLine->nLineBreak == AELB_WRAP &&
                 ciCount.nCharInLine >= ciCount.lpLine->nLineLen)
@@ -742,14 +1433,13 @@ LRESULT CALLBACK EditParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
             }
             else nChar=AEC_CharAtIndex(&ciCount);
 
-            for (i=0; i < SC_MAX; ++i)
+            for (pscChar=hSpecialCharStack.first; pscChar; pscChar=pscChar->next)
             {
-              if ((nChar == -AELB_EOF && schArray[i].wszOldChar[0] == L'\0') ||
-                  (nChar == -AELB_WRAP && schArray[i].wszOldChar[0] == L'\n') ||
-                  (nChar < -AELB_EOF && nChar > -AELB_WRAP && schArray[i].wszOldChar[0] == L'\r') ||
-                  nChar == schArray[i].wszOldChar[0])
+              if ((nChar == -AELB_EOF && pscChar->nOldChar == L'\0') ||
+                  (nChar == -AELB_WRAP && pscChar->nOldChar == SC_WRAP) ||
+                  (nChar >= -AELB_RRN && nChar <= -AELB_R && pscChar->nOldChar == SC_NEWLINE) ||
+                  (nChar >= 0 && nChar == pscChar->nOldChar))
               {
-                pscChar=&schArray[i];
                 break;
               }
             }
@@ -766,18 +1456,20 @@ LRESULT CALLBACK EditParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
                     (nTabStopSize == 1 ||
                      (nChar == L' ' && (nLineSpaces % nTabStopSize) == 1) ||
                      (nChar == L'\t' && (nLineSpaces % nTabStopSize) == 0)))
-                  pscIndent=&schArray[SC_INDENTLINE];
+                  pscIndentDraw=pscIndentLine;
 
                 if (nChar == L'\t')
                   nLineSpaces+=nTabStopSize - nLineSpaces % nTabStopSize;
               }
-              else pscIndent=&schArray[SC_INDENTLINE];
+              else pscIndentDraw=pscIndentLine;
             }
 
-            if (pscChar || pscIndent)
+            if (pscChar || pscIndentDraw)
             {
               //Get draw char color
-              crCharColor=(DWORD)-1;
+              dwFontStyle=AEHLS_NONE;
+              crTextColor=(DWORD)-1;
+              crBkColor=(DWORD)-1;
               crIndentColor=(DWORD)-1;
 
               if ((aes.dwFlags & AESELT_COLUMNON) ?
@@ -785,26 +1477,92 @@ LRESULT CALLBACK EditParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
                     (AEC_IndexCompare(&ciCount, &aes.crSel.ciMin) >= 0 &&
                      AEC_IndexCompare(&ciCount, &aes.crSel.ciMax) < 0))
               {
-                if (pscChar && pscChar->sclr.bSelColorEnable)
-                  crCharColor=pscChar->sclr.dwSelColor;
-                if (pscIndent && pscIndent->sclr.bSelColorEnable)
-                  crIndentColor=pscIndent->sclr.dwSelColor;
+                if (pscChar && (pscChar->dwFlags & SCF_SELENABLE))
+                {
+                  if (scCoder.dwSelFontStyle != (DWORD)-1)
+                    dwFontStyle=scCoder.dwSelFontStyle;
+                  else
+                    dwFontStyle=pscChar->dwSelFontStyle;
+
+                  if (scCoder.dwSelTextColor != (DWORD)-1)
+                    crTextColor=scCoder.dwSelTextColor;
+                  else
+                  {
+                    if (pscChar->dwFlags & SCF_SELTEXTCOLOR)
+                      crTextColor=pscChar->dwSelTextColor;
+                    else
+                      crTextColor=aec.crSelText;
+                  }
+
+                  if (scCoder.dwSelBkColor != (DWORD)-1)
+                    crBkColor=scCoder.dwSelBkColor;
+                  else
+                  {
+                    if (pscChar->dwFlags & SCF_SELBKCOLOR)
+                      crBkColor=pscChar->dwSelBkColor;
+                  }
+                }
+                if (pscIndentDraw && (pscIndentDraw->dwFlags & SCF_SELENABLE))
+                {
+                  if (scCoder.dwSelTextColor != (DWORD)-1)
+                    crIndentColor=scCoder.dwSelTextColor;
+                  else
+                  {
+                    if (pscIndentDraw->dwFlags & SCF_SELTEXTCOLOR)
+                      crIndentColor=pscIndentDraw->dwSelTextColor;
+                    else
+                      crIndentColor=aec.crSelText;
+                  }
+                }
                 bCharInSel=TRUE;
               }
               else
               {
-                if (pscChar && pscChar->sclr.bColorEnable)
-                  crCharColor=pscChar->sclr.dwColor;
-                if (pscIndent && pscIndent->sclr.bColorEnable)
-                  crIndentColor=pscIndent->sclr.dwColor;
+                if (pscChar && (pscChar->dwFlags & SCF_BASICENABLE))
+                {
+                  if (scCoder.dwBasicFontStyle != (DWORD)-1)
+                    dwFontStyle=scCoder.dwBasicFontStyle;
+                  else
+                    dwFontStyle=pscChar->dwBasicFontStyle;
+
+                  if (scCoder.dwBasicTextColor != (DWORD)-1)
+                    crTextColor=scCoder.dwBasicTextColor;
+                  else
+                  {
+                    if (pscChar->dwFlags & SCF_BASICTEXTCOLOR)
+                      crTextColor=pscChar->dwBasicTextColor;
+                    else
+                      crTextColor=aec.crBasicText;
+                  }
+
+                  if (scCoder.dwBasicBkColor != (DWORD)-1)
+                    crBkColor=scCoder.dwBasicBkColor;
+                  else
+                  {
+                    if (pscChar->dwFlags & SCF_BASICBKCOLOR)
+                      crBkColor=pscChar->dwBasicBkColor;
+                  }
+                }
+                if (pscIndentDraw && (pscIndentDraw->dwFlags & SCF_BASICENABLE))
+                {
+                  if (scCoder.dwBasicTextColor != (DWORD)-1)
+                    crIndentColor=scCoder.dwBasicTextColor;
+                  else
+                  {
+                    if (pscIndentDraw->dwFlags & SCF_BASICTEXTCOLOR)
+                      crIndentColor=pscIndentDraw->dwBasicTextColor;
+                    else
+                      crIndentColor=aec.crBasicText;
+                  }
+                }
                 bCharInSel=FALSE;
               }
 
-              if (crCharColor != (DWORD)-1 || crIndentColor != (DWORD)-1)
+              if (crTextColor != (DWORD)-1 || crBkColor != (DWORD)-1 || crIndentColor != (DWORD)-1)
               {
                 SendMessage(pnt->hdr.hwndFrom, AEM_POSFROMCHAR, (WPARAM)&pt, (LPARAM)&ciCount);
 
-                if (pscIndent && crIndentColor != (DWORD)-1)
+                if (pscIndentDraw && crIndentColor != (DWORD)-1)
                 {
                   //Draw indent line
                   HPEN hPen;
@@ -818,7 +1576,7 @@ LRESULT CALLBACK EditParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
                   hPen=CreatePen(PS_SOLID, 0, crIndentColor);
                   hPenOld=(HPEN)SelectObject(pnt->hDC, hPen);
 
-                  if (bDottedLine)
+                  if (!(pscIndentDraw->dwFlags & SCF_SOLIDINDENTLINE))
                   {
                     ptGlobal.x=pt.x;
                     ptGlobal.y=pt.y;
@@ -835,7 +1593,7 @@ LRESULT CALLBACK EditParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
                     //Inside line
                     nLeft=pt.x;
 
-                    if (bDottedLine)
+                    if (!(pscIndentDraw->dwFlags & SCF_SOLIDINDENTLINE))
                     {
                       for (i=nTop; i < nBottom; i+=2)
                       {
@@ -862,7 +1620,7 @@ LRESULT CALLBACK EditParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
                       {
                         nLeft=(int)((pt.x - ciCount.lpLine->nLineWidth) + nLineSpaces * nSpaceWidth);
 
-                        if (bDottedLine)
+                        if (!(pscIndentDraw->dwFlags & SCF_SOLIDINDENTLINE))
                         {
                           for (i=nTop; i < nBottom; i+=2)
                           {
@@ -883,9 +1641,9 @@ LRESULT CALLBACK EditParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
                   if (hPenOld) SelectObject(pnt->hDC, hPenOld);
                   if (hPen) DeleteObject(hPen);
                 }
-                if (pscChar && crCharColor != (DWORD)-1)
+                if (pscChar && (crTextColor != (DWORD)-1 || crBkColor != (DWORD)-1))
                 {
-                  if (pscChar->wszOldChar[0] == L'\t' && pscChar->wszNewChar[0] == L'\0')
+                  if (crTextColor != (DWORD)-1 && pscChar->nOldChar == L'\t' && pscChar->nNewChar == L'\0')
                   {
                     //Draw tabulation arrow
                     HPEN hPen;
@@ -893,7 +1651,7 @@ LRESULT CALLBACK EditParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
                     int nTabWidth;
                     int nMargin=1;
 
-                    hPen=CreatePen(PS_SOLID, 0, crCharColor);
+                    hPen=CreatePen(PS_SOLID, 0, crTextColor);
                     hPenOld=(HPEN)SelectObject(pnt->hDC, hPen);
                     if (nTabWidth=(int)SendMessage(pnt->hdr.hwndFrom, AEM_GETCHARSIZE, AECS_INDEXWIDTH, (LPARAM)&ciCount))
                       nTabWidth-=nMargin * 2;
@@ -907,7 +1665,7 @@ LRESULT CALLBACK EditParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
                     if (hPenOld) SelectObject(pnt->hDC, hPenOld);
                     if (hPen) DeleteObject(hPen);
                   }
-                  else if (pscChar->wszOldChar[0] == L'\r' && pscChar->wszNewChar[0] == L'\0')
+                  else if (crTextColor != (DWORD)-1 && pscChar->nOldChar == SC_NEWLINE && pscChar->nNewChar == L'\0')
                   {
                     //Draw new line identificator
                     HBRUSH hBrush;
@@ -937,7 +1695,7 @@ LRESULT CALLBACK EditParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
                     }
 
                     //Draw rounded rectangle.
-                    hPen=CreatePen(PS_SOLID, 0, crCharColor);
+                    hPen=CreatePen(PS_SOLID, 0, crTextColor);
                     hPenOld=(HPEN)SelectObject(pnt->hDC, hPen);
                     hBrush=(HBRUSH)GetStockObject(HOLLOW_BRUSH);
                     hBrushOld=(HBRUSH)SelectObject(pnt->hDC, hBrush);
@@ -947,11 +1705,11 @@ LRESULT CALLBACK EditParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
                     if (hPen) DeleteObject(hPen);
 
                     //Draw new line string.
-                    crTextColorPrev=SetTextColor(pnt->hDC, crCharColor);
+                    crTextColorPrev=SetTextColor(pnt->hDC, crTextColor);
                     TextOutW(pnt->hDC, pt.x + nStrMargin, pt.y, wpNewLine, nNewLineLen);
                     SetTextColor(pnt->hDC, crTextColorPrev);
                   }
-                  else if (pscChar->wszOldChar[0] == L'\n' && pscChar->wszNewChar[0] == L'\0')
+                  else if (crTextColor != (DWORD)-1 && pscChar->nOldChar == SC_WRAP && pscChar->nNewChar == L'\0')
                   {
                     //Draw wrap line arrow
                     HPEN hPen;
@@ -959,7 +1717,7 @@ LRESULT CALLBACK EditParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
                     int nMarginX=1;
                     int nMarginY=3;
 
-                    hPen=CreatePen(PS_SOLID, 0, crCharColor);
+                    hPen=CreatePen(PS_SOLID, 0, crTextColor);
                     hPenOld=(HPEN)SelectObject(pnt->hDC, hPen);
 
                     if (!ciCount.lpLine->prev || ciCount.lpLine->prev->nLineBreak != AELB_WRAP)
@@ -983,16 +1741,18 @@ LRESULT CALLBACK EditParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
                   }
                   else
                   {
+                    AECHARCOLORS aecc;
+                    COLORREF crOldBk=0;
+                    HFONT hCharFont;
+                    HFONT hOldFont=NULL;
+                    wchar_t wszChar[10];
+                    int nCharLen;
+
                     //Erase old
                     if (nChar >= 0 &&
                         nChar != L' ' &&
                         nChar != L'\t')
                     {
-                      AECHARCOLORS aecc;
-                      COLORREF crOldBk=0;
-                      HFONT hCharFont;
-                      HFONT hOldFont;
-
                       aecc.dwFlags=0;
                       GetCharColor(pnt->hdr.hwndFrom, nOffset, &aecc);
 
@@ -1005,7 +1765,8 @@ LRESULT CALLBACK EditParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
                       hCharFont=(HFONT)SendMessage(pnt->hdr.hwndFrom, AEM_GETFONT, aecc.dwFontStyle, 0);
                       hOldFont=(HFONT)SelectObject(pnt->hDC, hCharFont);
 
-                      TextOutW(pnt->hDC, pt.x, pt.y, pscChar->wszOldChar, 1);
+                      nCharLen=ValueToNormalChar(pscChar->nOldChar, wszChar);
+                      TextOutW(pnt->hDC, pt.x, pt.y, wszChar, nCharLen);
 
                       SelectObject(pnt->hDC, hOldFont);
                       SetTextColor(pnt->hDC, crTextColorPrev);
@@ -1017,9 +1778,35 @@ LRESULT CALLBACK EditParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
                     }
 
                     //Draw new
-                    crTextColorPrev=SetTextColor(pnt->hDC, crCharColor);
-                    TextOutW(pnt->hDC, pt.x, pt.y, pscChar->wszNewChar, 1);
-                    SetTextColor(pnt->hDC, crTextColorPrev);
+                    if (crTextColor != (DWORD)-1)
+                    {
+                      crTextColorPrev=SetTextColor(pnt->hDC, crTextColor);
+                      if (dwFontStyle != AEHLS_NONE)
+                      {
+                        hCharFont=(HFONT)SendMessage(pnt->hdr.hwndFrom, AEM_GETFONT, dwFontStyle, 0);
+                        hOldFont=(HFONT)SelectObject(pnt->hDC, hCharFont);
+                      }
+                    }
+                    if (crBkColor != (DWORD)-1)
+                    {
+                      crOldBk=SetBkColor(pnt->hDC, crBkColor);
+                      SetBkMode(pnt->hDC, nBkModePrev);
+                    }
+
+                    nCharLen=ValueToNormalChar(pscChar->nNewChar, wszChar);
+                    TextOutW(pnt->hDC, pt.x, pt.y, wszChar, nCharLen);
+
+                    if (crBkColor != (DWORD)-1)
+                    {
+                      SetBkColor(pnt->hDC, crOldBk);
+                      SetBkMode(pnt->hDC, TRANSPARENT);
+                    }
+                    if (crTextColor != (DWORD)-1)
+                    {
+                      SetTextColor(pnt->hDC, crTextColorPrev);
+                      if (dwFontStyle != AEHLS_NONE)
+                        SelectObject(pnt->hDC, hOldFont);
+                    }
                   }
                 }
               }
@@ -1064,6 +1851,252 @@ LRESULT CALLBACK EditParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
     }
   }
   return 0;
+}
+
+void GetCoderColors(HWND hWnd)
+{
+  scCoder.dwBasicFontStyle=(DWORD)-1;
+  scCoder.dwBasicTextColor=(DWORD)-1;
+  scCoder.dwBasicBkColor=(DWORD)-1;
+  scCoder.dwSelFontStyle=(DWORD)-1;
+  scCoder.dwSelTextColor=(DWORD)-1;
+  scCoder.dwSelBkColor=(DWORD)-1;
+
+  if (bCoderTheme)
+  {
+    PLUGINFUNCTION *pfCoder=NULL;
+    PLUGINCALLSENDW pcs;
+    DLLEXTCODERGETVARTHEMEDATA decgvtd;
+    VARTHEME *lpVarThemeGlobal=NULL;
+    VARTHEME *lpVarThemeActive=NULL;
+    STACKVAR *hStackGlobal=NULL;
+    STACKVAR *hStackActive=NULL;
+    VARINFO *lpVarInfo;
+    int i;
+
+    if ((pfCoder=(PLUGINFUNCTION *)SendMessage(hMainWnd, AKD_DLLFINDW, (WPARAM)L"Coder::HighLight", 0)) && pfCoder->bRunning)
+    {
+      decgvtd.dwStructSize=sizeof(DLLEXTCODERGETVARTHEMEDATA);
+      decgvtd.nAction=DLLA_CODER_GETVARTHEMEDATA;
+      decgvtd.hWndEdit=hWnd;
+      decgvtd.hDocEdit=NULL;
+      decgvtd.lppVarThemeGlobal=&lpVarThemeGlobal;
+      decgvtd.lppVarThemeActive=&lpVarThemeActive;
+
+      pcs.pFunction=L"Coder::Settings";
+      pcs.lParam=(LPARAM)&decgvtd;
+      pcs.dwSupport=PDS_STRWIDE;
+      SendMessage(hMainWnd, AKD_DLLCALLW, 0, (LPARAM)&pcs);
+
+      if (lpVarThemeGlobal || lpVarThemeActive)
+      {
+        if (lpVarThemeGlobal) hStackGlobal=&lpVarThemeGlobal->hVarStack;
+        if (lpVarThemeActive) hStackActive=&lpVarThemeActive->hVarStack;
+        lpVarInfoFastCheck=NULL;
+
+        for (i=0; cti[i].wpVar; ++i)
+        {
+          if (lpVarInfo=StackGetVarByName(hStackGlobal, hStackActive, cti[i].wpVar, -1))
+          {
+            if (*lpVarInfo->wpVarValue == L'#')
+              *cti[i].lpcrValue=GetColorValueFromStrW(lpVarInfo->wpVarValue + 1);
+            lpVarInfoFastCheck=lpVarInfo->next;
+          }
+          else break;
+        }
+      }
+    }
+  }
+}
+
+VARINFO* StackGetVarByName(STACKVAR *hStackGlobal, STACKVAR *hStackActive, const wchar_t *wpVarName, int nVarNameLen)
+{
+  STACKVAR *hStackCurrent;
+  VARINFO *lpElement=lpVarInfoFastCheck;
+
+  if (lpElement)
+  {
+    lpVarInfoFastCheck=NULL;
+
+    if ((nVarNameLen == lpElement->nVarNameLen && !xstrcmpnW(wpVarName, lpElement->wpVarName, nVarNameLen)) ||
+        (nVarNameLen == -1 && !xstrcmpW(wpVarName, lpElement->wpVarName)))
+    {
+      return lpElement;
+    }
+  }
+
+  //Firstly search in GLOBAL var theme
+  hStackCurrent=hStackGlobal;
+
+  for (;;)
+  {
+    for (lpElement=hStackCurrent->first; lpElement; lpElement=lpElement->next)
+    {
+      if ((nVarNameLen == lpElement->nVarNameLen && !xstrcmpnW(wpVarName, lpElement->wpVarName, nVarNameLen)) ||
+          (nVarNameLen == -1 && !xstrcmpW(wpVarName, lpElement->wpVarName)))
+      {
+        return lpElement;
+      }
+    }
+    if (hStackActive == hStackCurrent || hStackActive == NULL)
+      break;
+    //Secondly search in input var theme
+    hStackCurrent=hStackActive;
+  }
+  return NULL;
+}
+
+void CreateSpecialCharStack(STACKSPECIALCHAR *hStack, const wchar_t *wpText)
+{
+  SPECIALCHAR sc;
+  SPECIALCHAR *pscChar;
+
+  xmemset(&sc, 0, sizeof(SPECIALCHAR));
+  pscIndentLine=NULL;
+
+  if (wpText)
+  {
+    while (*wpText)
+    {
+      NextString(wpText, sc.wszName, MAX_PATH, &wpText, NULL);
+
+      SkipWhitespace(&wpText);
+      sc.nOldChar=HexCharToValue(&wpText);
+
+      SkipWhitespace(&wpText);
+      sc.nNewChar=HexCharToValue(&wpText);
+
+      SkipWhitespace(&wpText);
+      sc.dwFlags=(DWORD)xatoiW(wpText, &wpText);
+
+      SkipWhitespace(&wpText);
+      sc.dwBasicFontStyle=(DWORD)xatoiW(wpText, &wpText);
+
+      SkipWhitespace(&wpText);
+      sc.dwBasicTextColor=(DWORD)xatoiW(wpText, &wpText);
+
+      SkipWhitespace(&wpText);
+      sc.dwBasicBkColor=(DWORD)xatoiW(wpText, &wpText);
+
+      SkipWhitespace(&wpText);
+      sc.dwSelFontStyle=(DWORD)xatoiW(wpText, &wpText);
+
+      SkipWhitespace(&wpText);
+      sc.dwSelTextColor=(DWORD)xatoiW(wpText, &wpText);
+
+      SkipWhitespace(&wpText);
+      sc.dwSelBkColor=(DWORD)xatoiW(wpText, &wpText);
+
+      if (!StackInsertIndex((stack **)&hStack->first, (stack **)&hStack->last, (stack **)&pscChar, -1, sizeof(SPECIALCHAR)))
+      {
+        xmemcpy(pscChar->wszName, sc.wszName, sizeof(SPECIALCHAR) - offsetof(SPECIALCHAR, wszName));
+        if (pscChar->nOldChar == SC_INDENTLINE)
+          pscIndentLine=pscChar;
+      }
+
+      SkipWhitespace(&wpText);
+    }
+  }
+}
+
+void FreeSpecialCharStack(STACKSPECIALCHAR *hStack)
+{
+  StackClear((stack **)&hStack->first, (stack **)&hStack->last);
+}
+
+int HexCharToValue(const wchar_t **wpText)
+{
+  const wchar_t *wpCount=*wpText;
+  const wchar_t *wpCharStart;
+  int nValue;
+
+  if (*wpCount == L'\\' && *(wpCount + 1) == L'x')
+  {
+    wpCharStart=wpCount + 2;
+    while (*wpCount != L',' && *wpCount != L' ' && *wpCount != L'\t' && *wpCount != L'\r' && *wpCount != L'\n' && *wpCount != L'\0')
+      ++wpCount;
+    nValue=(int)hex2decW(wpCharStart, wpCount - wpCharStart);
+  }
+  else nValue=(int)xatoiW(wpCount, &wpCount);
+
+  *wpText=wpCount;
+  return nValue;
+}
+
+int ValueToHexChar(int nValue, wchar_t *wszHexChar)
+{
+  if (nValue < 0)
+    return (int)xprintfW(wszHexChar, L"%d", nValue);
+
+  if (nValue >= 0x10000) //Unicode scalar value of surrogate pair
+    return (int)xprintfW(wszHexChar, L"\\x%06X", nValue);
+  else
+    return (int)xprintfW(wszHexChar, L"\\x%04X", nValue);
+}
+
+int ValueToNormalChar(int nValue, wchar_t *wszNormalChar)
+{
+  if (nValue >= 0x10000) //Unicode surrogate pair
+  {
+    wszNormalChar[0]=AEC_HighSurrogateFromScalar(nValue);
+    wszNormalChar[1]=AEC_LowSurrogateFromScalar(nValue);
+    wszNormalChar[2]=L'\0';
+    return 2;
+  }
+  else
+  {
+    wszNormalChar[0]=(wchar_t)nValue;
+    wszNormalChar[1]=L'\0';
+    return 1;
+  }
+}
+
+void SkipWhitespace(const wchar_t **wpText)
+{
+  while (**wpText == L' ' || **wpText == L'\t' || **wpText == L'\r' || **wpText == L'\n') ++*wpText;
+}
+
+int NextString(const wchar_t *wpText, wchar_t *wszStr, int nStrLen, const wchar_t **wppText, int *nMinus)
+{
+  int i;
+
+  while (*wpText == L' ' || *wpText == L'\t' || *wpText == L'\r' || *wpText == L'\n') ++wpText;
+
+  if (*wpText == L'-')
+  {
+    if (nMinus) *nMinus=1;
+    ++wpText;
+  }
+  else
+  {
+    if (nMinus) *nMinus=0;
+  }
+
+  if (*wpText == L'\"')
+  {
+    ++wpText;
+    i=0;
+
+    while (*wpText != L'\"' && *wpText != L'\0')
+    {
+      if (i < nStrLen) wszStr[i++]=*wpText;
+      ++wpText;
+    }
+  }
+  else
+  {
+    i=0;
+
+    while (*wpText != L' ' && *wpText != L'\r' && *wpText != L'\0')
+    {
+      if (i < nStrLen) wszStr[i++]=*wpText;
+      ++wpText;
+    }
+  }
+  wszStr[i]=L'\0';
+  if (*wpText != L'\r' && *wpText != L'\0') ++wpText;
+  if (wppText) *wppText=wpText;
+  return i;
 }
 
 BOOL GetLineSpaces(AECHARINDEX *ciMinDraw, int nTabStopSize, INT_PTR *lpnLineSpaces)
@@ -1253,13 +2286,35 @@ INT_PTR WideOption(HANDLE hOptions, const wchar_t *pOptionName, DWORD dwType, BY
 void ReadOptions(DWORD dwFlags)
 {
   HANDLE hOptions;
+  DWORD dwSize;
 
   if (hOptions=(HANDLE)SendMessage(hMainWnd, AKD_BEGINOPTIONSW, POB_READ, (LPARAM)wszPluginName))
   {
-    WideOption(hOptions, L"SpecialChars", PO_BINARY, (LPBYTE)&schArray, sizeof(schArray));
-    WideOption(hOptions, L"DottedLine", PO_DWORD, (LPBYTE)&bDottedLine, sizeof(DWORD));
+    //OF_LISTTEXT
+    dwSize=(DWORD)WideOption(hOptions, L"SpecialCharText", PO_BINARY, NULL, 0);
+
+    if (dwSize)
+    {
+      if (wszSpecialCharText=(wchar_t *)GlobalAlloc(GMEM_FIXED, dwSize))
+      {
+        WideOption(hOptions, L"SpecialCharText", PO_BINARY, (LPBYTE)wszSpecialCharText, dwSize);
+      }
+    }
+
+    //OF_SETTINGS
+    WideOption(hOptions, L"CoderTheme", PO_DWORD, (LPBYTE)&bCoderTheme, sizeof(DWORD));
 
     SendMessage(hMainWnd, AKD_ENDOPTIONS, (WPARAM)hOptions, 0);
+  }
+
+  if (!wszSpecialCharText)
+  {
+    dwSize=(DWORD)xprintfW(NULL, L"%s", GetLangStringW(wLangModule, STRID_DEFAULTSPECIALCHARS));
+
+    if (wszSpecialCharText=(wchar_t *)GlobalAlloc(GMEM_FIXED, dwSize * sizeof(wchar_t)))
+    {
+      xprintfW(wszSpecialCharText, L"%s", GetLangStringW(wLangModule, STRID_DEFAULTSPECIALCHARS));
+    }
   }
 }
 
@@ -1269,9 +2324,37 @@ void SaveOptions(DWORD dwFlags)
 
   if (hOptions=(HANDLE)SendMessage(hMainWnd, AKD_BEGINOPTIONSW, POB_SAVE, (LPARAM)wszPluginName))
   {
-    WideOption(hOptions, L"SpecialChars", PO_BINARY, (LPBYTE)&schArray, sizeof(schArray));
-    WideOption(hOptions, L"DottedLine", PO_DWORD, (LPBYTE)&bDottedLine, sizeof(DWORD));
+    if (dwFlags & OF_LISTTEXT)
+    {
+      SPECIALCHAR *pscChar;
+      wchar_t wszOldChar[32];
+      wchar_t wszNewChar[32];
+      const wchar_t *wpFormat=L"\"%s\" %s %s %d %d %d %d %d %d %d\r";
+      DWORD dwSize;
 
+      for (dwSize=0, pscChar=(SPECIALCHAR *)hSpecialCharStack.first; pscChar; pscChar=pscChar->next)
+      {
+        ValueToHexChar(pscChar->nOldChar, wszOldChar);
+        ValueToHexChar(pscChar->nNewChar, wszNewChar);
+        dwSize+=(DWORD)xprintfW(NULL, wpFormat, pscChar->wszName, wszOldChar, wszNewChar, pscChar->dwFlags, pscChar->dwBasicFontStyle, pscChar->dwBasicTextColor, pscChar->dwBasicBkColor, pscChar->dwSelFontStyle, pscChar->dwSelTextColor, pscChar->dwSelBkColor) - 1;
+      }
+      if (wszSpecialCharText=(wchar_t *)GlobalAlloc(GPTR, (dwSize + 1) * sizeof(wchar_t)))
+      {
+        for (dwSize=0, pscChar=(SPECIALCHAR *)hSpecialCharStack.first; pscChar; pscChar=pscChar->next)
+        {
+          ValueToHexChar(pscChar->nOldChar, wszOldChar);
+          ValueToHexChar(pscChar->nNewChar, wszNewChar);
+          dwSize+=(DWORD)xprintfW(wszSpecialCharText + dwSize, wpFormat, pscChar->wszName, wszOldChar, wszNewChar, pscChar->dwFlags, pscChar->dwBasicFontStyle, pscChar->dwBasicTextColor, pscChar->dwBasicBkColor, pscChar->dwSelFontStyle, pscChar->dwSelTextColor, pscChar->dwSelBkColor);
+        }
+      }
+      WideOption(hOptions, L"SpecialCharText", PO_BINARY, (LPBYTE)wszSpecialCharText, ((int)xstrlenW(wszSpecialCharText) + 1) * sizeof(wchar_t));
+      GlobalFree((HGLOBAL)wszSpecialCharText);
+      wszSpecialCharText=NULL;
+    }
+    if (dwFlags & OF_SETTINGS)
+    {
+      WideOption(hOptions, L"CoderTheme", PO_DWORD, (LPBYTE)&bCoderTheme, sizeof(DWORD));
+    }
     SendMessage(hMainWnd, AKD_ENDOPTIONS, (WPARAM)hOptions, 0);
   }
 }
@@ -1288,30 +2371,63 @@ const wchar_t* GetLangStringW(LANGID wLangID, int nStringID)
 {
   if (wLangID == LANG_RUSSIAN)
   {
-    if (nStringID == STRID_SPACE)
-      return L"\x041F\x0440\x043E\x0431\x0435\x043B";
-    if (nStringID == STRID_TAB)
-      return L"\x0422\x0430\x0431\x0443\x043B\x044F\x0446\x0438\x044F";
+    if (nStringID == STRID_DEFAULTSPECIALCHARS)
+      return L"\
+\"\x041B\x0438\x043D\x0438\x044F\x0020\x043E\x0442\x0441\x0442\x0443\x043F\x0430\" -4 \\x00 257 0 0 0 0 0 0\r\
+\"\x041F\x0440\x043E\x0431\x0435\x043B\" \\x20 \\xB7 257 0 0 0 0 0 0\r\
+\"\x0422\x0430\x0431\x0443\x043B\x044F\x0446\x0438\x044F\" \\x09 \\x00 257 0 0 0 0 0 0\r\
+\"\x041D\x043E\x0432\x0430\x044F\x0020\x0441\x0442\x0440\x043E\x043A\x0430\" -2 \\x00 257 0 0 0 0 0 0\r\
+\"\x041F\x0435\x0440\x0435\x043D\x043E\x0441\" -3 \\x00 257 0 0 0 0 0 0\r\
+\"\x0412\x0435\x0440\x0442\x0438\x043A\x0430\x043B\x044C\x043D\x0430\x044F\x0020\x0442\x0430\x0431\x0443\x043B\x044F\x0446\x0438\x044F\" \\x0b \\xA6 257 0 0 0 0 0 0\r\
+\"\x041F\x0440\x043E\x0433\x043E\x043D\x0020\x043B\x0438\x0441\x0442\x0430\" \\x0c \\xA7 257 0 0 0 0 0 0\r\
+\"\x041D\x0443\x043B\x0435\x0432\x043E\x0439\x0020\x0441\x0438\x043C\x0432\x043E\x043B\" \\x00 \\xA4 257 0 0 0 0 0 0\r";
+
+    if (nStringID == STRID_SPECIALCHAR_EXISTS)
+      return L"\x0421\x043F\x0435\x0446\x0438\x0430\x043B\x044C\x043D\x044B\x0439\x0020\x0441\x0438\x043C\x0432\x043E\x043B\x0020\x0443\x0436\x0435\x0020\x0441\x0443\x0449\x0435\x0441\x0442\x0432\x0443\x0435\x0442: \"%s\"";
+    if (nStringID == STRID_ADD)
+      return L"\x0414\x043E\x0431\x0430\x0432\x0438\x0442\x044C";
+    if (nStringID == STRID_EDIT)
+      return L"\x0418\x0437\x043C\x0435\x043D\x0438\x0442\x044C";
+    if (nStringID == STRID_DELETE)
+      return L"\x0423\x0434\x0430\x043B\x0438\x0442\x044C";
+    if (nStringID == STRID_NAME)
+      return L"\x041D\x0430\x0438\x043C\x0435\x043D\x043E\x0432\x0430\x043D\x0438\x0435:";
+    if (nStringID == STRID_OLDCHAR)
+      return L"\x0421\x0442\x0430\x0440\x044B\x0439\x0020\x0441\x0438\x043C\x0432\x043E\x043B";
+    if (nStringID == STRID_HEX)
+      return L"\x0428\x0435\x0441\x0442\x043D\x0430\x0434\x0446\x0430\x0442\x0435\x0440\x0438\x0447\x043D\x044B\x0439";
+    if (nStringID == STRID_SPECIAL)
+      return L"\x0421\x043F\x0435\x0446\x0438\x0430\x043B\x044C\x043D\x044B\x0439";
+    if (nStringID == STRID_SOLIDINDENTLINE)
+      return L"\x0421\x043F\x043B\x043E\x0448\x043D\x0430\x044F\x0020\x043B\x0438\x043D\x0438\x044F\x0020\x043E\x0442\x0441\x0442\x0443\x043F\x0430";
+    if (nStringID == STRID_NEWCHAR)
+      return L"\x041D\x043E\x0432\x044B\x0439\x0020\x0441\x0438\x043C\x0432\x043E\x043B";
+    if (nStringID == STRID_DEFAULT)
+      return L"\x041F\x043E\x0020\x0443\x043C\x043E\x043B\x0447\x0430\x043D\x0438\x044E";
+    if (nStringID == STRID_BASICTEXT)
+      return L"\x0426\x0432\x0435\x0442\x0020\x0442\x0435\x043A\x0441\x0442\x0430\x0020\x043E\x0441\x043D\x043E\x0432\x043D\x043E\x0439";
+    if (nStringID == STRID_SELTEXT)
+      return L"\x0426\x0432\x0435\x0442\x0020\x0442\x0435\x043A\x0441\x0442\x0430\x0020\x0432\x0020\x0432\x044B\x0434\x0435\x043B\x0435\x043D\x0438\x0438";
+    if (nStringID == STRID_FONTSTYLE)
+      return L"\x0421\x0442\x0438\x043B\x044C\x0020\x0448\x0440\x0438\x0444\x0442\x0430";
+    if (nStringID == STRID_CODERTHEME)
+      return L"\x0418\x0441\x043F\x043E\x043B\x044C\x0437\x043E\x0432\x0430\x0442\x044C\x0020\x0442\x0435\x043C\x044B Coder";
     if (nStringID == STRID_NEWLINE)
       return L"\x041D\x043E\x0432\x0430\x044F\x0020\x0441\x0442\x0440\x043E\x043A\x0430";
-    if (nStringID == STRID_VERTICALTAB)
-      return L"\x0412\x0435\x0440\x0442\x0438\x043A\x0430\x043B\x044C\x043D\x0430\x044F\x0020\x0442\x0430\x0431\x0443\x043B\x044F\x0446\x0438\x044F";
-    if (nStringID == STRID_FORMFEED)
-      return L"\x041F\x0440\x043E\x0433\x043E\x043D\x0020\x043B\x0438\x0441\x0442\x0430";
-    if (nStringID == STRID_NULL)
-      return L"\x041D\x0443\x043B\x0435\x0432\x043E\x0439\x0020\x0441\x0438\x043C\x0432\x043E\x043B";
     if (nStringID == STRID_WRAP)
       return L"\x041F\x0435\x0440\x0435\x043D\x043E\x0441";
     if (nStringID == STRID_INDENTLINE)
       return L"\x041B\x0438\x043D\x0438\x044F\x0020\x043E\x0442\x0441\x0442\x0443\x043F\x0430";
-    if (nStringID == STRID_COLOR)
-      return L"\x0426\x0432\x0435\x0442";
-    if (nStringID == STRID_SELCOLOR)
-      return L"\x0426\x0432\x0435\x0442\x0020\x0432\x0020\x0432\x044B\x0434\x0435\x043B\x0435\x043D\x0438\x0438";
-    if (nStringID == STRID_SYMBOL)
-      return L"\x0421\x0438\x043C\x0432\x043E\x043B";
-    if (nStringID == STRID_DOTTEDLINE)
-      return L"\x041F\x0443\x043D\x043A\x0442\x0438\x0440\x043D\x0430\x044F\x0020\x043B\x0438\x043D\x0438\x044F";
+    if (nStringID == STRID_IGNORE)
+      return L"\x0418\x0433\x043D\x043E\x0440\x0438\x0440\x043E\x0432\x0430\x0442\x044C";
+    if (nStringID == STRID_NORMAL)
+      return L"\x041E\x0431\x044B\x0447\x043D\x044B\x0439";
+    if (nStringID == STRID_BOLD)
+      return L"\x0416\x0438\x0440\x043D\x044B\x0439";
+    if (nStringID == STRID_ITALIC)
+      return L"\x041A\x0443\x0440\x0441\x0438\x0432";
+    if (nStringID == STRID_BOLDITALIC)
+      return L"\x0416\x0438\x0440\x043D\x044B\x0439\x0020\x043A\x0443\x0440\x0441\x0438\x0432";
     if (nStringID == STRID_PLUGIN)
       return L"%s \x043F\x043B\x0430\x0433\x0438\x043D";
     if (nStringID == STRID_OK)
@@ -1321,30 +2437,63 @@ const wchar_t* GetLangStringW(LANGID wLangID, int nStringID)
   }
   else
   {
-    if (nStringID == STRID_SPACE)
-      return L"Space";
-    if (nStringID == STRID_TAB)
-      return L"Tabulation";
+    if (nStringID == STRID_DEFAULTSPECIALCHARS)
+      return L"\
+\"Indent line\" -4 \\x00 257 0 0 0 0 0 0\r\
+\"Space\" \\x20 \\xB7 257 0 0 0 0 0 0\r\
+\"Tabulation\" \\x09 \\x00 257 0 0 0 0 0 0\r\
+\"New line\" -2 \\x00 257 0 0 0 0 0 0\r\
+\"Wrap\" -3 \\x00 257 0 0 0 0 0 0\r\
+\"Vertical tabulation\" \\x0b \\xA6 257 0 0 0 0 0 0\r\
+\"Form-feed\" \\x0c \\xA7 257 0 0 0 0 0 0\r\
+\"Null\" \\x00 \\xA4 257 0 0 0 0 0 0\r";
+
+    if (nStringID == STRID_SPECIALCHAR_EXISTS)
+      return L"Special char already exist: \"%s\"";
+    if (nStringID == STRID_ADD)
+      return L"Add";
+    if (nStringID == STRID_EDIT)
+      return L"Edit";
+    if (nStringID == STRID_DELETE)
+      return L"Delete";
+    if (nStringID == STRID_NAME)
+      return L"Name:";
+    if (nStringID == STRID_OLDCHAR)
+      return L"Old symbol";
+    if (nStringID == STRID_HEX)
+      return L"Hexadecimal";
+    if (nStringID == STRID_SPECIAL)
+      return L"Special";
+    if (nStringID == STRID_SOLIDINDENTLINE)
+      return L"Solid indent line";
+    if (nStringID == STRID_NEWCHAR)
+      return L"New char";
+    if (nStringID == STRID_DEFAULT)
+      return L"Default";
+    if (nStringID == STRID_BASICTEXT)
+      return L"Basic text color";
+    if (nStringID == STRID_SELTEXT)
+      return L"Text color in selection";
+    if (nStringID == STRID_FONTSTYLE)
+      return L"Font style";
+    if (nStringID == STRID_CODERTHEME)
+      return L"Use Coder themes";
     if (nStringID == STRID_NEWLINE)
       return L"New line";
-    if (nStringID == STRID_VERTICALTAB)
-      return L"Vertical tabulation";
-    if (nStringID == STRID_FORMFEED)
-      return L"Form-feed";
-    if (nStringID == STRID_NULL)
-      return L"Null";
     if (nStringID == STRID_WRAP)
       return L"Wrap";
     if (nStringID == STRID_INDENTLINE)
       return L"Indent line";
-    if (nStringID == STRID_COLOR)
-      return L"Color";
-    if (nStringID == STRID_SELCOLOR)
-      return L"Color in selection";
-    if (nStringID == STRID_SYMBOL)
-      return L"Symbol";
-    if (nStringID == STRID_DOTTEDLINE)
-      return L"Dotted line";
+    if (nStringID == STRID_IGNORE)
+      return L"Ignore";
+    if (nStringID == STRID_NORMAL)
+      return L"Normal";
+    if (nStringID == STRID_BOLD)
+      return L"Bold";
+    if (nStringID == STRID_ITALIC)
+      return L"Italic";
+    if (nStringID == STRID_BOLDITALIC)
+      return L"Bold italic";
     if (nStringID == STRID_PLUGIN)
       return L"%s plugin";
     if (nStringID == STRID_OK)
@@ -1388,69 +2537,17 @@ void InitCommon(PLUGINDATA *pd)
   {
     int i;
 
-    for (i=0; pd->wszFunction[i] != ':'; ++i)
+    for (i=0; pd->wszFunction[i] != L':'; ++i)
       wszPluginName[i]=pd->wszFunction[i];
-    wszPluginName[i]='\0';
+    wszPluginName[i]=L'\0';
   }
   xprintfW(wszPluginTitle, GetLangStringW(wLangModule, STRID_PLUGIN), wszPluginName);
 
   dwPaintOptions=(DWORD)SendMessage(hMainWnd, AKD_GETMAININFO, MI_PAINTOPTIONS, 0);
-
-  //Default characters
-  {
-    SPECIALCOLOR scrDefault;
-
-    //Default color
-    scrDefault.dwColor=RGB(0x33, 0x33, 0xCC);
-    scrDefault.dwSelColor=GetSysColor(COLOR_HIGHLIGHTTEXT);
-    scrDefault.bColorEnable=TRUE;
-    scrDefault.bSelColorEnable=TRUE;
-
-    xstrcpyW(schArray[SC_SPACE].wszNewChar, L"\x00B7");
-    xstrcpyW(schArray[SC_SPACE].wszOldChar, L" ");
-    schArray[SC_SPACE].sclr=scrDefault;
-
-    xstrcpyW(schArray[SC_TAB].wszNewChar, L"\x0000");
-    xstrcpyW(schArray[SC_TAB].wszOldChar, L"\t");
-    schArray[SC_TAB].sclr=scrDefault;
-
-    xstrcpyW(schArray[SC_NEWLINE].wszNewChar, L"\x0000"); //or \x00B6
-    xstrcpyW(schArray[SC_NEWLINE].wszOldChar, L"\r");
-    schArray[SC_NEWLINE].sclr=scrDefault;
-
-    xstrcpyW(schArray[SC_VERTICALTAB].wszNewChar, L"\x00A6");
-    xstrcpyW(schArray[SC_VERTICALTAB].wszOldChar, L"\v");
-    schArray[SC_VERTICALTAB].sclr=scrDefault;
-
-    xstrcpyW(schArray[SC_FORMFEED].wszNewChar, L"\x00A7");
-    xstrcpyW(schArray[SC_FORMFEED].wszOldChar, L"\f");
-    schArray[SC_FORMFEED].sclr=scrDefault;
-
-    xstrcpyW(schArray[SC_NULL].wszNewChar, L"\x00A4");
-    xstrcpyW(schArray[SC_NULL].wszOldChar, L"\0");
-    schArray[SC_NULL].sclr=scrDefault;
-
-    xstrcpyW(schArray[SC_WRAP].wszNewChar, L"\x0000"); //or \x002F
-    xstrcpyW(schArray[SC_WRAP].wszOldChar, L"\n");
-    schArray[SC_WRAP].sclr=scrDefault;
-    schArray[SC_WRAP].sclr.dwSelColor=schArray[SC_WRAP].sclr.dwColor;
-
-    xstrcpyW(schArray[SC_INDENTLINE].wszNewChar, L"\x0000");
-    xstrcpyW(schArray[SC_INDENTLINE].wszOldChar, L"\0");
-    schArray[SC_INDENTLINE].sclr=scrDefault;
-  }
   ReadOptions(0);
-
-  ////Make sure that we have null-terminated strings
-  //{
-  //  int i;
-  //
-  //  for (i=0; i < SC_MAX; ++i)
-  //  {
-  //    schArray[i].wszNewChar[1]=L'\0';
-  //    schArray[i].wszOldChar[1]=L'\0';
-  //  }
-  //}
+  CreateSpecialCharStack(&hSpecialCharStack, wszSpecialCharText);
+  GlobalFree((HGLOBAL)wszSpecialCharText);
+  wszSpecialCharText=NULL;
 }
 
 void InitMain()
@@ -1481,6 +2578,8 @@ void UninitMain()
     SaveOptions(dwSaveFlags);
     dwSaveFlags=0;
   }
+  FreeSpecialCharStack(&hSpecialCharStack);
+  pscIndentLine=NULL;
 
   //Remove subclass
   if (NewMainProcData)

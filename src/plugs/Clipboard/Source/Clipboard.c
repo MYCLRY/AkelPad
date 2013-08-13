@@ -84,6 +84,7 @@ void SaveClipboard(UINT uFormat, wchar_t **wpData, char **pData);
 void FreeClipboard(wchar_t **wpData, char **pData);
 void SetClipboardFormat(UINT uFormat);
 void WaitForReleaseVkKeys(DWORD dwThreadCurrent, DWORD dwThreadTarget, DWORD dwTimeout);
+BYTE GetHotkeyMod(DWORD dwHotkey);
 BOOL EscapeStringToEscapeData(wchar_t *wpInput, wchar_t *wszOutput);
 void EscapeDataToEscapeString(wchar_t *wpInput, wchar_t *wszOutput);
 BOOL GetWindowPos(HWND hWnd, HWND hWndOwner, RECT *rc);
@@ -142,9 +143,9 @@ BOOL bInitPasteSerial=FALSE;
 ATOM nHotkeyDelimSkipID=0;
 ATOM nHotkeyDelimAsTabID=0;
 ATOM nHotkeyDelimAsIsID=0;
-DWORD dwHotkeyDelimSkip=MAKEWORD(VK_F9, MOD_CONTROL);
-DWORD dwHotkeyDelimAsTab=MAKEWORD(VK_F10, MOD_CONTROL);
-DWORD dwHotkeyDelimAsIs=MAKEWORD(VK_F11, MOD_CONTROL);
+DWORD dwHotkeyDelimSkip=MAKEWORD(VK_F9, HOTKEYF_CONTROL);
+DWORD dwHotkeyDelimAsTab=MAKEWORD(VK_F10, HOTKEYF_CONTROL);
+DWORD dwHotkeyDelimAsIs=MAKEWORD(VK_F11, HOTKEYF_CONTROL);
 BOOL bEmulatePress=TRUE;
 
 //SelAutoCopy
@@ -633,11 +634,11 @@ LRESULT CALLBACK NewMainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
       WORD wVk;
       int nInsertType=0;
 
-      if (HIBYTE(dwHotkeyDelimSkip) == LOWORD(lParam) && LOBYTE(dwHotkeyDelimSkip) == HIWORD(lParam))
+      if (GetHotkeyMod(dwHotkeyDelimSkip) == LOWORD(lParam) && LOBYTE(dwHotkeyDelimSkip) == HIWORD(lParam))
         nInsertType=IT_DELIM_SKIP;
-      else if (HIBYTE(dwHotkeyDelimAsTab) == LOWORD(lParam) && LOBYTE(dwHotkeyDelimAsTab) == HIWORD(lParam))
+      else if (GetHotkeyMod(dwHotkeyDelimAsTab) == LOWORD(lParam) && LOBYTE(dwHotkeyDelimAsTab) == HIWORD(lParam))
         nInsertType=IT_DELIM_ASTAB;
-      else if (HIBYTE(dwHotkeyDelimAsIs) == LOWORD(lParam) && LOBYTE(dwHotkeyDelimAsIs) == HIWORD(lParam))
+      else if (GetHotkeyMod(dwHotkeyDelimAsIs) == LOWORD(lParam) && LOBYTE(dwHotkeyDelimAsIs) == HIWORD(lParam))
         nInsertType=IT_DELIM_ASIS;
 
       if (nInsertType)
@@ -715,14 +716,20 @@ LRESULT CALLBACK NewMainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                     wVk=VkKeyScan(*pSerial);
 
                     WaitForReleaseVkKeys(dwThreadCurrent, dwTargetForeground, INFINITE);
-                    if (HIBYTE(wVk) & 1) keybd_event(VK_SHIFT, 0, KEYEVENTF_EXTENDEDKEY, 0);
-                    if (HIBYTE(wVk) & 2) keybd_event(VK_CONTROL, 0, KEYEVENTF_EXTENDEDKEY, 0);
-                    if (HIBYTE(wVk) & 4) keybd_event(VK_MENU, 0, KEYEVENTF_EXTENDEDKEY, 0);
+                    if (HIBYTE(wVk) & 1)
+                      keybd_event(VK_SHIFT, 0, KEYEVENTF_EXTENDEDKEY, 0);
+                    if (HIBYTE(wVk) & 2)
+                      keybd_event(VK_CONTROL, 0, KEYEVENTF_EXTENDEDKEY, 0);
+                    if (HIBYTE(wVk) & 4)
+                      keybd_event(VK_MENU, 0, KEYEVENTF_EXTENDEDKEY, 0);
                     keybd_event(LOBYTE(wVk), 0, 0, 0);
                     keybd_event(LOBYTE(wVk), 0, KEYEVENTF_KEYUP, 0);
-                    if (HIBYTE(wVk) & 4) keybd_event(VK_MENU, 0, KEYEVENTF_EXTENDEDKEY|KEYEVENTF_KEYUP, 0);
-                    if (HIBYTE(wVk) & 2) keybd_event(VK_CONTROL, 0, KEYEVENTF_EXTENDEDKEY|KEYEVENTF_KEYUP, 0);
-                    if (HIBYTE(wVk) & 1) keybd_event(VK_SHIFT, 0, KEYEVENTF_EXTENDEDKEY|KEYEVENTF_KEYUP, 0);
+                    if (HIBYTE(wVk) & 4)
+                      keybd_event(VK_MENU, 0, KEYEVENTF_EXTENDEDKEY|KEYEVENTF_KEYUP, 0);
+                    if (HIBYTE(wVk) & 2)
+                      keybd_event(VK_CONTROL, 0, KEYEVENTF_EXTENDEDKEY|KEYEVENTF_KEYUP, 0);
+                    if (HIBYTE(wVk) & 1)
+                      keybd_event(VK_SHIFT, 0, KEYEVENTF_EXTENDEDKEY|KEYEVENTF_KEYUP, 0);
                     WaitForReleaseVkKeys(dwThreadCurrent, dwTargetForeground, INFINITE);
                   }
                   else SendMessage(hWndTargetFocus, WM_CHAR, *pSerial, 1);
@@ -1006,6 +1013,21 @@ void WaitForReleaseVkKeys(DWORD dwThreadCurrent, DWORD dwThreadTarget, DWORD dwT
       }
     }
   }
+}
+
+BYTE GetHotkeyMod(DWORD dwHotkey)
+{
+  //Convert modifier from HKM_GETHOTKEY to WM_HOTKEY.
+  BYTE nHotkeyMod=HIBYTE(dwHotkey);
+  BYTE nResultMod=0;
+
+  if (nHotkeyMod & HOTKEYF_SHIFT)
+    nResultMod|=MOD_SHIFT;
+  if (nHotkeyMod & HOTKEYF_CONTROL)
+    nResultMod|=MOD_CONTROL;
+  if (nHotkeyMod & HOTKEYF_ALT)
+    nResultMod|=MOD_ALT;
+  return nResultMod;
 }
 
 BOOL EscapeStringToEscapeData(wchar_t *wpInput, wchar_t *wszOutput)
@@ -1315,11 +1337,11 @@ void InitPasteSerial()
   bInitPasteSerial=TRUE;
 
   if (nHotkeyDelimSkipID=GlobalAddAtomA("AkelPad::PasteSerial::DelimSkip"))
-    RegisterHotKey(hMainWnd, nHotkeyDelimSkipID, HIBYTE(dwHotkeyDelimSkip), LOBYTE(dwHotkeyDelimSkip));
+    RegisterHotKey(hMainWnd, nHotkeyDelimSkipID, GetHotkeyMod(dwHotkeyDelimSkip), LOBYTE(dwHotkeyDelimSkip));
   if (nHotkeyDelimAsTabID=GlobalAddAtomA("AkelPad::PasteSerial::DelimAsTab"))
-    RegisterHotKey(hMainWnd, nHotkeyDelimAsTabID, HIBYTE(dwHotkeyDelimAsTab), LOBYTE(dwHotkeyDelimAsTab));
+    RegisterHotKey(hMainWnd, nHotkeyDelimAsTabID, GetHotkeyMod(dwHotkeyDelimAsTab), LOBYTE(dwHotkeyDelimAsTab));
   if (nHotkeyDelimAsIsID=GlobalAddAtomA("AkelPad::PasteSerial::DelimAsIs"))
-    RegisterHotKey(hMainWnd, nHotkeyDelimAsIsID, HIBYTE(dwHotkeyDelimAsIs), LOBYTE(dwHotkeyDelimAsIs));
+    RegisterHotKey(hMainWnd, nHotkeyDelimAsIsID, GetHotkeyMod(dwHotkeyDelimAsIs), LOBYTE(dwHotkeyDelimAsIs));
 }
 
 void UninitPasteSerial()

@@ -295,7 +295,7 @@ CODERTHEMEITEM cti[]={{L"LineBoard_TextColor",           &crDrawBoardText},
                       {L"LineBoard_LineUnsavedColor",    &crDrawBoardLineUnsaved},
                       {L"LineBoard_LineSavedColor",      &crDrawBoardLineSaved},
                       {0, 0}};
-VARINFO *lpVarInfoFastCheck=NULL;
+VARINFO *lpVarInfoFastCheck;
 BOOL bLineUnsavedEnable=TRUE;
 BOOL bLineSavedEnable=TRUE;
 int nLineModificationWidth=3;
@@ -2510,6 +2510,7 @@ void GetBoardColors(HWND hWnd)
       {
         if (lpVarThemeGlobal) hStackGlobal=&lpVarThemeGlobal->hVarStack;
         if (lpVarThemeActive) hStackActive=&lpVarThemeActive->hVarStack;
+        lpVarInfoFastCheck=NULL;
 
         for (i=0; cti[i].wpVar; ++i)
         {

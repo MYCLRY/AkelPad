@@ -1108,7 +1108,9 @@ BOOL CALLBACK CodeFoldParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM
         AENSELCHANGE *aensc=(AENSELCHANGE *)lParam;
         FOLDWINDOW *lpFoldWindow;
 
-        if (GetFocus() == aensc->hdr.hwndFrom)
+        if (aensc->hdr.hwndFrom == GetFocus() ||
+            //F3 in Find/Replace dialog selects text when dialog window has focus
+            aensc->hdr.hwndFrom == (HWND)SendMessage(hMainWnd, AKD_GETFRAMEINFO, FI_WNDEDIT, (LPARAM)NULL))
         {
           hWndEdit=aensc->hdr.hwndFrom;
 
@@ -2478,6 +2480,9 @@ void StackEndBoard(STACKFOLDWINDOW *hStack, FOLDWINDOW *lpFoldWindow)
   HWND hWndCurEdit;
   int nWidth;
 
+  if (!lpFoldWindow)
+    hStack->bLock=TRUE;
+
   for (lpElement=hStack->first; lpElement; lpElement=lpElement->next)
   {
     if (lpFoldWindow == NULL || lpFoldWindow == lpElement)
@@ -2502,6 +2507,8 @@ void StackEndBoard(STACKFOLDWINDOW *hStack, FOLDWINDOW *lpFoldWindow)
     SendMessage(hWndCurEdit, AEM_UPDATESCROLLBAR, SB_BOTH, 0);
     SendMessage(hWndCurEdit, AEM_UPDATECARET, 0, 0);
   }
+  if (!lpFoldWindow)
+    hStack->bLock=FALSE;
 }
 
 FOLDWINDOW* StackInsertFoldWindow(STACKFOLDWINDOW *hStack)
@@ -2516,6 +2523,8 @@ FOLDWINDOW* StackInsertFoldWindow(STACKFOLDWINDOW *hStack)
 FOLDWINDOW* StackGetFoldWindow(STACKFOLDWINDOW *hStack, HWND hWndEdit, AEHDOC hDocEdit)
 {
   FOLDWINDOW *lpFoldWindow=NULL;
+
+  if (hStack->bLock) return NULL;
 
   if (lpCurrentFoldWindow)
   {

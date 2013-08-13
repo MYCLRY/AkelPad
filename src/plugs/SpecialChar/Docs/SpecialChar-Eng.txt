@@ -1,5 +1,5 @@
 *****************************************************************
-***              SpecialChar AkelPad plugin v5.4              ***
+***              SpecialChar AkelPad plugin v5.7              ***
 *****************************************************************
 
 2013 Shengalts Aleksander aka Instructor (Shengalts@mail.ru)
@@ -7,16 +7,18 @@
 
 *** Description ***
 
-Shows and highlights special characters: space, tabulation,
-new line, wrap, vertical tabulation, form-feed, null character
-and also indent line.
+Displaying and highlighting of:
+- special characters (space, tabulation, new line, wrap,
+  vertical tabulation, form-feed, null character);
+- any specified character;
+- indent line.
 
 Remarks:
-- If in settings tabulation character is ommited, then tabulation is painted as
+- If in settings tabulation character is equal to \x0000, then tabulation is painted as
   arrow at full length.
-- If in settings new line character is ommited, then new line is painted as:
+- If in settings new line character is equal to \x0000, then new line is painted as
   "rn" or "rrn" - Win, "n" - Unix, "r" - Mac.
-- If in settings wrap line character is ommited, then wrap line is painted as
+- If in settings wrap line character is equal to \x0000, then wrap line is painted as
   down arrow.
 
 
@@ -31,12 +33,12 @@ Settings dialog.
 
 *** External call SpecialChar::Settings ***
 
-Call("SpecialChar::Settings", 1, "SYMBOLS", "#RRGGBB", "#RRGGBB", TEXTCOLORENABLE, BKCOLORENABLE, "CHARACTER")
+Call("SpecialChar::Settings", 1, "OLDSYMBOLS", "#RRGGBB", "#RRGGBB", BASICCOLORENABLE, SELCOLORENABLE, "NEWSYMBOLS")
   Parameters:
     1
-      Set options for specified symbols.
-    "SYMBOLS"
-      Symbols set separated by commas, for example: "1,2,3".
+      Set options for specified symbols (old method).
+    "OLDSYMBOLS"
+      Symbols set separated by commas, for example: "\x20,1,\x09". Symbols are specified in hexadecimal format and can be used special characters:
         1  Space
         2  Tabulation
         3  New line
@@ -48,16 +50,58 @@ Call("SpecialChar::Settings", 1, "SYMBOLS", "#RRGGBB", "#RRGGBB", TEXTCOLORENABL
     "#RRGGBB"
       Text color, ignored if "0".
     "#RRGGBB"
-      Background color, ignored if "0".
-    TEXTCOLORENABLE (one of the following):
+      Color in selection, ignored if "0".
+    BASICCOLORENABLE (one of the following):
       -2  don't change text color enable flag (default).
       -1  invert text color enable flag.
        0  turn off text color.
        1  turn on text color.
-    BKCOLORENABLE (one of the following):
-      -2  don't change background color enable flag (default).
-      -1  invert background color enable flag.
-       0  turn off background color.
-       1  turn on background color.
-    "CHARACTER"
-      Painted symbol. Is not changed, if not specified.
+    SELCOLORENABLE (one of the following):
+      -2  don't change color in selection enable flag (default).
+      -1  invert color in selection enable flag.
+       0  turn off color in selection.
+       1  turn on color in selection.
+    "NEWSYMBOLS"
+      Symbols set, painted instead of OLDSYMBOLS, separated by commas, for example: "\xB7,\x00,\x00". Symbols are specified in hexadecimal format. Default is: "".
+
+Call("SpecialChar::Settings", 3, "OLDSYMBOLS", "NEWSYMBOLS", BASICCOLORENABLE, BASICFONTSTYLE, "#RRGGBB", "#RRGGBB", SELCOLORENABLE, SELFONTSTYLE, "#RRGGBB", "#RRGGBB")
+  Parameters:
+    3
+      Set options for specified symbols (new method).
+    "OLDSYMBOLS"
+      Symbols set separated by commas, for example: "\x20,-3,\x09". Symbols are specified in hexadecimal format and can be used special characters:
+        -2  New line
+        -3  Wrap
+        -4  Indent line
+    "NEWSYMBOLS"
+      Symbols set, painted instead of OLDSYMBOLS, separated by commas, for example: "\xB7,\x00,\x00". Symbols are specified in hexadecimal format. Default is: "".
+    BASICCOLORENABLE (one of the following):
+      -2  don't change text color enable flag (default).
+      -1  invert text color enable flag.
+       0  turn off text color.
+       1  turn on text color.
+    BASICFONTSTYLE (one of the following):
+       0  don't change font style (default).
+       1  normal font style.
+       2  bold font style.
+       3  italic font style.
+       4  bold italic font style.
+    "#RRGGBB"
+      Text color, ignored if "0".
+    "#RRGGBB"
+      Background color, ignored if "0".
+    SELCOLORENABLE (one of the following):
+      -2  don't change color in selection enable flag (default).
+      -1  invert color in selection enable flag.
+       0  turn off color in selection.
+       1  turn on color in selection.
+    SELFONTSTYLE (one of the following):
+       0  don't change font style (default).
+       1  normal font style.
+       2  bold font style.
+       3  italic font style.
+       4  bold italic font style.
+    "#RRGGBB"
+      Text color in selection, ignored if "0".
+    "#RRGGBB"
+      Background color in selection, ignored if "0".

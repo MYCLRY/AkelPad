@@ -526,8 +526,8 @@ void __declspec(dllexport) Settings(PLUGINDATA *pd)
             hDoc=(AEHDOC)GetExtCallParam(pd->lParam, 3);
           if (IsExtCallParamValid(pd->lParam, 4))
             lppVarThemeGlobal=(VARTHEME **)GetExtCallParam(pd->lParam, 4);
-          if (IsExtCallParamValid(pd->lParam, 4))
-            lppVarThemeActive=(VARTHEME **)GetExtCallParam(pd->lParam, 4);
+          if (IsExtCallParamValid(pd->lParam, 5))
+            lppVarThemeActive=(VARTHEME **)GetExtCallParam(pd->lParam, 5);
 
           *lppVarThemeGlobal=&hVarThemeGlobal;
           if (lpSyntaxFile=StackGetSyntaxFileByWindow(&hSyntaxFilesStack, hWnd, hDoc, NULL))
@@ -2992,7 +2992,7 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                   {
                     if (nExpandLen=ExpandVars(wszBuffer, nQuoteEndLen, NULL, 0, lpVarStack))
                       if (wpQuoteEnd=(wchar_t *)GlobalAlloc(GPTR, nExpandLen * sizeof(wchar_t)))
-                        ExpandVars(wszBuffer, nQuoteEndLen, wpQuoteEnd, nExpandLen, lpVarStack);
+                        nQuoteEndLen=(int)ExpandVars(wszBuffer, nQuoteEndLen, wpQuoteEnd, nExpandLen, lpVarStack);
                   }
                   else break;
 
