@@ -42,6 +42,12 @@
 #define StackClear
 #include "AkelEdit\StackFunc.h"
 
+//Include AEC functions
+#ifndef AKELEDIT_STATICBUILD
+  #define AEC_FUNCTIONS
+  #include "AkelEdit\AkelEdit.h"
+#endif
+
 //Include string functions
 #ifndef AKELEDIT_STATICBUILD
   #define WideCharLower
@@ -244,10 +250,11 @@ wchar_t wbuf2[BUFFER_SIZE];
 //Command line
 wchar_t wszCmdLine[COMMANDLINE_SIZE];
 wchar_t wszCmdArg[COMMANDARG_SIZE];
-wchar_t *wszCmdLineBegin=NULL;
+wchar_t *wpCmdLineBegin=NULL;
 int nCmdLineBeginLen=0;
-wchar_t *wszCmdLineEnd=NULL;
+wchar_t *wpCmdLineEnd=NULL;
 int nCmdLineEndLen=0;
+BOOL bCmdLineChanged=FALSE;
 const wchar_t *wpCmdLine=NULL;
 DWORD dwCmdLineOptions=0;
 BOOL bCmdLineQuitAsEnd=FALSE;
@@ -286,9 +293,12 @@ int nLastFunctionIndex;
 INIFILE hIniFile={0};
 wchar_t wszIniFile[MAX_PATH];
 
-//Main Window
+//Main settings
 MAINOPTIONS moInit;
 MAINOPTIONS moCur;
+BOOL bSaveManual=FALSE;
+
+//Main Window
 HWND hMainWnd=NULL;
 HWND hDummyWindow;
 DWORD dwLastMainSizeType=SIZE_RESTORED;
@@ -1213,16 +1223,16 @@ EXTERN_C int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPTSTR lpCmd
 
 void WinMainCleanUp()
 {
-  if (wszCmdLineBegin)
+  if (wpCmdLineBegin)
   {
-    API_HeapFree(hHeap, 0, (LPVOID)wszCmdLineBegin);
-    wszCmdLineBegin=NULL;
+    API_HeapFree(hHeap, 0, (LPVOID)wpCmdLineBegin);
+    wpCmdLineBegin=NULL;
     nCmdLineBeginLen=0;
   }
-  if (wszCmdLineEnd)
+  if (wpCmdLineEnd)
   {
-    API_HeapFree(hHeap, 0, (LPVOID)wszCmdLineEnd);
-    wszCmdLineEnd=NULL;
+    API_HeapFree(hHeap, 0, (LPVOID)wpCmdLineEnd);
+    wpCmdLineEnd=NULL;
     nCmdLineEndLen=0;
   }
   if (hIconShieldAkelAdmin)
@@ -2268,9 +2278,9 @@ LRESULT CALLBACK MainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
           #endif
         }
         if (wParam == MI_CMDLINEBEGIN)
-          return xstrcpyW((void *)lParam, wszCmdLineBegin);
+          return xstrcpyW((void *)lParam, wpCmdLineBegin);
         if (wParam == MI_CMDLINEEND)
-          return xstrcpyW((void *)lParam, wszCmdLineEnd);
+          return xstrcpyW((void *)lParam, wpCmdLineEnd);
         if (wParam == MI_SHOWMODIFY)
           return moCur.dwShowModify;
         if (wParam == MI_STATUSPOSTYPE)
@@ -2443,34 +2453,54 @@ LRESULT CALLBACK MainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
       }
       if (wParam == MIS_CMDLINEBEGIN)
       {
-        if (wszCmdLineBegin)
-          API_HeapFree(hHeap, 0, (LPVOID)wszCmdLineBegin);
+        bCmdLineChanged=TRUE;
+        if (wpCmdLineBegin)
+          API_HeapFree(hHeap, 0, (LPVOID)wpCmdLineBegin);
         nCmdLineBeginLen=(int)xstrlenW((wchar_t *)lParam);
 
-        if (wszCmdLineBegin=(wchar_t *)API_HeapAlloc(hHeap, 0, (nCmdLineBeginLen + 1) * sizeof(wchar_t)))
+        if (wpCmdLineBegin=(wchar_t *)API_HeapAlloc(hHeap, 0, (nCmdLineBeginLen + 1) * sizeof(wchar_t)))
         {
-          xstrcpynW(wszCmdLineBegin, (void *)lParam, nCmdLineBeginLen + 1);
+          xstrcpynW(wpCmdLineBegin, (void *)lParam, nCmdLineBeginLen + 1);
           return TRUE;
         }
         return FALSE;
       }
       if (wParam == MIS_CMDLINEEND)
       {
-        if (wszCmdLineEnd)
-          API_HeapFree(hHeap, 0, (LPVOID)wszCmdLineEnd);
+        bCmdLineChanged=TRUE;
+        if (wpCmdLineEnd)
+          API_HeapFree(hHeap, 0, (LPVOID)wpCmdLineEnd);
         nCmdLineEndLen=(int)xstrlenW((wchar_t *)lParam);
 
-        if (wszCmdLineEnd=(wchar_t *)API_HeapAlloc(hHeap, 0, (nCmdLineEndLen + 1) * sizeof(wchar_t)))
+        if (wpCmdLineEnd=(wchar_t *)API_HeapAlloc(hHeap, 0, (nCmdLineEndLen + 1) * sizeof(wchar_t)))
         {
-          xstrcpynW(wszCmdLineEnd, (void *)lParam, nCmdLineEndLen + 1);
+          xstrcpynW(wpCmdLineEnd, (void *)lParam, nCmdLineEndLen + 1);
           return TRUE;
         }
         return FALSE;
       }
       if (wParam == MIS_SHOWMODIFY)
-        return SetOption(lParam, &moCur.dwShowModify, sizeof(DWORD), INI_DWORD);
+      {
+        if ((DWORD)lParam != moCur.dwShowModify)
+        {
+          UpdateAsterisk(lpFrameCurrent, FALSE);
+          SetModifyStatus(NULL, FALSE);
+          moCur.dwShowModify=(DWORD)lParam;
+          UpdateAsterisk(lpFrameCurrent, lpFrameCurrent->ei.bModified);
+          SetModifyStatus(NULL, lpFrameCurrent->ei.bModified);
+          return TRUE;
+        }
+        return FALSE;
+      }
       if (wParam == MIS_STATUSPOSTYPE)
-        return SetOption(lParam, &moCur.dwStatusPosType, sizeof(DWORD), INI_DWORD);
+      {
+        if (SetOption(lParam, &moCur.dwStatusPosType, sizeof(DWORD), INI_DWORD))
+        {
+          SetSelectionStatus(lpFrameCurrent->ei.hDocEdit, lpFrameCurrent->ei.hWndEdit, NULL, NULL);
+          return TRUE;
+        }
+        return FALSE;
+      }
       if (wParam == MIS_STATUSUSERFORMAT)
       {
         if (SetOption(lParam, moCur.wszStatusUserFormat, sizeof(moCur.wszStatusUserFormat), INI_STRINGUNICODE))
@@ -2581,6 +2611,7 @@ LRESULT CALLBACK MainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
           DoWindowTabView((DWORD)lParam, FALSE);
           DoWindowTabType((DWORD)lParam, FALSE);
           DoWindowTabSwitch((DWORD)lParam, FALSE);
+          moCur.dwTabOptionsMDI=(DWORD)lParam;
           return TRUE;
         }
         return FALSE;
@@ -5312,66 +5343,15 @@ BOOL CALLBACK EditParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPa
         else
           lpFrame=GetFrameDataFromEditWindow(aenm->hdr.hwndFrom);
 
-        //Synchronize changed state
-        if (nMDI == WMD_SDI)
-        {
-          if (moCur.dwShowModify & SM_MAINTITLE_SDI)
-          {
-            wchar_t *wpTitle=AllocWideStr(BUFFER_SIZE);
-
-            xprintfW(wpTitle, L"%s%s - %s", aenm->bModified?L"* ":L"", GetFileName(lpFrame->wszFile, lpFrame->nFileLen), APP_MAIN_TITLEW);
-            SetWindowTextWide(hMainWnd, wpTitle);
-
-            FreeWideStr(wpTitle);
-          }
-        }
         if (nMDI)
         {
-          if (moCur.dwShowModify & SM_TABTITLE_MDI)
-          {
-            int nItem;
-
-            if ((nItem=GetTabItemFromParam(hTab, (LPARAM)lpFrame)) != -1)
-            {
-              wchar_t *wpTitle=AllocWideStr(BUFFER_SIZE);
-              TCITEMW tcItem;
-
-              tcItem.mask=TCIF_TEXT;
-              tcItem.pszText=wpTitle;
-              tcItem.cchTextMax=MAX_PATH;
-              TabCtrl_GetItemWide(hTab, nItem, &tcItem);
-
-              if (aenm->bModified)
-                xprintfW(wpTitle, L"%s *", wpTitle);
-              else
-                TrimModifyState(wpTitle, -1);
-              TabCtrl_SetItemWide(hTab, nItem, &tcItem);
-
-              FreeWideStr(wpTitle);
-            }
-          }
-          if (moCur.dwShowModify & SM_FRAMETITLE_MDI)
-          {
-            wchar_t *wpTitle=AllocWideStr(BUFFER_SIZE);
-
-            if (nMDI == WMD_MDI)
-            {
-              xprintfW(wpTitle, L"%s%s", lpFrame->wszFile, aenm->bModified?L" *":L"");
-              SetWindowTextWide(lpFrame->hWndEditParent, wpTitle);
-            }
-            else if (nMDI == WMD_PMDI)
-            {
-              xprintfW(wpTitle, L"%s - [%s%s]", APP_MAIN_TITLEW, lpFrame->wszFile, aenm->bModified?L" *":L"");
-              SetWindowTextWide(hMainWnd, wpTitle);
-            }
-            FreeWideStr(wpTitle);
-          }
           if (aenm->bModified)
             ++nDocumentsModified;
           else
             --nDocumentsModified;
           UpdateStatusUser(lpFrame, CSB_DOCUMENTSMODIFIED|CSB_DOCUMENTSSAVED);
         }
+        UpdateAsterisk(lpFrame, aenm->bModified);
         SetModifyStatus(lpFrame, aenm->bModified);
       }
       else if (((NMHDR *)lParam)->code == AEN_LINK)
@@ -5865,6 +5845,7 @@ LRESULT CALLBACK EditProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 BOOL CALLBACK CloneDragAndDropMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, LRESULT *lResult)
 {
+  static RECT rcInitMasterWindow;
   static POINT ptMouseDown;
   static int nMouseMove;
 
@@ -5997,6 +5978,7 @@ BOOL CALLBACK CloneDragAndDropMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
     {
       if (hCursorClone)
       {
+        rcInitMasterWindow=lpFrameCurrent->rcMasterWindow;
         GetCursorPos(&ptMouseDown);
         nMouseMove=1;
         SetMouseCapture(hWnd, MSC_SPLITSIZE);
@@ -6009,7 +5991,7 @@ BOOL CALLBACK CloneDragAndDropMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
   {
     if (dwMouseCapture & MSC_SPLITSIZE)
     {
-      RECT rcMasterInitial=lpFrameCurrent->rcMasterWindow;
+      RECT rcBeforeMove=lpFrameCurrent->rcMasterWindow;
       POINT ptPos;
 
       if (nMouseMove > 0)
@@ -6029,14 +6011,15 @@ BOOL CALLBACK CloneDragAndDropMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
           lpFrameCurrent->rcMasterWindow.bottom+=(ptPos.y - ptMouseDown.y);
         ResizeEditWindow(lpFrameCurrent, REW_TEST);
 
-        ptMouseDown.x+=(lpFrameCurrent->rcMasterWindow.right - rcMasterInitial.right);
-        ptMouseDown.y+=(lpFrameCurrent->rcMasterWindow.bottom - rcMasterInitial.bottom);
+        ptMouseDown.x+=(lpFrameCurrent->rcMasterWindow.right - rcBeforeMove.right);
+        ptMouseDown.y+=(lpFrameCurrent->rcMasterWindow.bottom - rcBeforeMove.bottom);
       }
       *lResult=0;
       return TRUE;
     }
   }
-  else if (uMsg == WM_LBUTTONUP)
+  else if (uMsg == WM_LBUTTONUP ||
+           uMsg == WM_CAPTURECHANGED)
   {
     if (dwMouseCapture & MSC_SPLITSIZE)
     {
@@ -6045,21 +6028,17 @@ BOOL CALLBACK CloneDragAndDropMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
       if (nMouseMove == 0)
       {
         ResizeEditWindow(lpFrameCurrent, REW_TEST);
-        ResizeEditWindow(lpFrameCurrent, 0);
-        *lResult=0;
-        return TRUE;
-      }
-    }
-  }
-  else if (uMsg == WM_CAPTURECHANGED)
-  {
-    if (dwMouseCapture & MSC_SPLITSIZE)
-    {
-      ReleaseMouseCapture(MSC_SPLITSIZE);
 
-      if (nMouseMove == 0)
-      {
-        ResizeEditWindow(lpFrameCurrent, REW_TEST);
+        if (uMsg == WM_LBUTTONUP)
+        {
+          ResizeEditWindow(lpFrameCurrent, 0);
+          *lResult=0;
+          return TRUE;
+        }
+        else if (uMsg == WM_CAPTURECHANGED)
+        {
+          lpFrameCurrent->rcMasterWindow=rcInitMasterWindow;
+        }
       }
     }
   }
