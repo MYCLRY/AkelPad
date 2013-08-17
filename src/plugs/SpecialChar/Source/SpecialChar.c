@@ -225,6 +225,8 @@ void InitCommon(PLUGINDATA *pd);
 void InitMain();
 void UninitMain();
 
+void DrawVisualEndOfLine(HDC hDC, const RECTL *rc, COLORREF color, int lbType);
+
 //Global variables
 wchar_t wszBuffer[BUFFER_SIZE];
 wchar_t wszPluginName[MAX_PATH];
@@ -1678,6 +1680,7 @@ LRESULT CALLBACK EditParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
                     SIZE sizeNewLine;
                     int nStrMargin=1;
 
+#if 0
                     //New line string: "r", "n", "rn", "rrn".
                     nNewLineLen=GetNewLineString(ciCount.lpLine->nLineBreak, &wpNewLine);
                     GetTextExtentPoint32W(pnt->hDC, wpNewLine, nNewLineLen, &sizeNewLine);
@@ -1708,6 +1711,15 @@ LRESULT CALLBACK EditParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
                     crTextColorPrev=SetTextColor(pnt->hDC, crTextColor);
                     TextOutW(pnt->hDC, pt.x + nStrMargin, pt.y, wpNewLine, nNewLineLen);
                     SetTextColor(pnt->hDC, crTextColorPrev);
+#else
+                    GetTextExtentPoint32W(pnt->hDC, L"  ", 2, &sizeNewLine);
+                    pt.x+=nStrMargin;
+                    sizeNewLine.cx+=nStrMargin * 2;
+                    {
+                        RECTL rc = {pt.x, pt.y, pt.x + sizeNewLine.cx, pt.y + nCharHeightNoGap};
+                        DrawVisualEndOfLine(pnt->hDC, &rc, crTextColor, ciCount.lpLine->nLineBreak);
+                    }
+#endif
                   }
                   else if (crTextColor != (DWORD)-1 && pscChar->nOldChar == SC_WRAP && pscChar->nNewChar == L'\0')
                   {
@@ -2615,4 +2627,154 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
   {
   }
   return TRUE;
+}
+
+#include <assert.h>
+#define ENSURE_NOT_ZERO(x) do { if ((x)<=0) { (x) = 1; } } while(FALSE)
+
+/////////////////////////////////////////////////////////////////////////////
+void DrawVisualEndOfLine(HDC hDC, const RECTL *rc, COLORREF color, int lbType)
+{
+    const LONG x=rc->left, y=rc->top, cx=rc->right-rc->left, cy=rc->bottom-rc->top;
+
+    POINT pt[10] = { 0 };
+    int nPtCount = _countof(pt);
+    if (lbType == AELB_RN)
+    {
+        // Windows style line break. "\r\n" ("carriage return" and "line feed")
+        // 
+        //              P5+----+P4             ----+  y1
+        //       P8       |    |                   |  y2
+        //       /|P7   P6|    |                   |    
+        // P9  /  +-------+    |                   |  y3
+        // P0<              0  | (xCenter,yCenter) |  y4
+        //     \  +------------+P3                 |  y5
+        //       \|P2       +--+                   |    
+        //   |   P1     nDelta |               ----+  y6
+        //   |                 |                        
+        //   +-----------------+                        
+        //   x1   x2      x3   x4                       
+
+        double xDelta = (double) cx * 1.0 / 34.0;
+        double yDelta = (double) cy * 1.0 / 34.0;
+
+        LONG x1, x2, x3, x4;
+        LONG y1, y2, y3, y4, y5, y6;
+
+        x1 = x + (LONG) (xDelta *  6.0 + 0.5); ENSURE_NOT_ZERO(x1);
+        x2 = x + (LONG) (xDelta * 14.0 + 0.5); ENSURE_NOT_ZERO(x2);
+        x3 = x + (LONG) (xDelta * 18.0 + 0.5); ENSURE_NOT_ZERO(x3);
+        x4 = x + (LONG) (xDelta * 26.0 + 0.5); ENSURE_NOT_ZERO(x4);
+
+        y1 = y + (LONG) (yDelta *  8.0 + 0.5); ENSURE_NOT_ZERO(y1);
+        y2 = y + (LONG) (yDelta * 10.0 + 0.5); ENSURE_NOT_ZERO(y2);
+        y3 = y + (LONG) (yDelta * 14.0 + 0.5); ENSURE_NOT_ZERO(y3);
+        y4 = y + (LONG) (yDelta * 18.0 + 0.5); ENSURE_NOT_ZERO(y4);
+        y5 = y + (LONG) (yDelta * 22.0 + 0.5); ENSURE_NOT_ZERO(y5);
+        y6 = y + (LONG) (yDelta * 26.0 + 0.5); ENSURE_NOT_ZERO(y6);
+
+        pt[0].x = pt[9].x = x1;
+        pt[0].y = pt[9].y = y4;
+        pt[1].x = pt[2].x = pt[7].x = pt[8].x = x2;
+        pt[1].y = y6;
+        pt[2].y = pt[3].y = y5;
+        pt[3].x = pt[4].x = x4;
+        pt[4].y = pt[5].y = y1;
+        pt[5].x = pt[6].x = x3;
+        pt[6].y = pt[7].y = y3;
+        pt[8].y = y2;
+
+        nPtCount = 10;
+    } else if (lbType == AELB_N) {
+        // unix style line break. "\n" (line feed). 
+        //                    |
+        //                   |=|----------------|---
+        //         (x2, y1)p2|||p3((x4, y1)     |
+        //                   |||                |  
+        //                   |||                |2dx
+        //                   |||                |  
+        //---------(x2, y2)p1|+|p4(x4, y2)------+-------------- 
+        //     (x1, y2)p0|\==|||==/|p5(x5, y2)--|---
+        //     (x1, y2)p7| \  |  / |            |
+        //               |  \ | /  |            |dx
+        //               |    v----+------------|---
+        //          (x3, y3)p6|    |
+        //               |    |    |
+        //             --|---2dx---|--
+
+        LONG dx = (min(cx, cy) + 3) / 4;
+        LONG xc = x + 2 * dx;
+
+        LONG x1 = xc - dx;
+        LONG x2 = xc - dx / 2;
+        LONG x3 = xc;
+        LONG x4 = xc + dx / 2;
+        LONG x5 = xc + dx;
+
+        LONG y1 = y + 1 * dx;
+        LONG y2 = y + 3 * dx;
+        LONG y3 = y + 4 * dx;
+
+
+        pt[0].x = pt[7].x = x1;
+        pt[0].y = pt[7].y = pt[1].y = pt[4].y = pt[5].y = y2;
+        pt[1].x = pt[2].x = x2;
+        pt[2].y = pt[3].y = y1;
+        pt[3].x = pt[4].x = x4;
+        pt[5].x = x5;
+        pt[6].x = x3;
+        pt[6].y = y3;
+
+        nPtCount = 8;
+    } else if (lbType == AELB_R) {
+        // MAC OS type line break. "\r" (carriage return).
+        //                           |Y
+        //                           |
+        //       (x2, y1) p1|--------|----------------------|---
+        //                 /|(x2, y2)|            (x3, y2)  | 
+        // p0(x1, y3)    /  +p2======|===========|p3        |1dy
+        // -----------|<-------------+-----------|----------|------X
+        // p7(x1, y3) |  \  +p5======|=|=========|p4        |1dy
+        //            |    \|(x2, y4)| |         |(x3, y4)  |
+        //       (x2, y5) p6|--------+-+---------+----------|--- 
+        //            |     |        | |         |
+        //------------|-1dy-|---1dy--|-|---1dy---|----
+        //                           |
+        //                           | 
+        //
+
+        LONG dx = (min(cx, cy) + 3) / 4;
+        LONG yCenter = y + cy / 2;
+
+        LONG x1 = x + dx;
+        LONG x2 = x + 2 * dx;
+        LONG x3 = x + 4 * dx;
+
+        LONG y1 = yCenter - dx;
+        LONG y2 = yCenter - dx / 2;
+        LONG y3 = yCenter;
+        LONG y4 = yCenter + dx / 2;
+        LONG y5 = yCenter + dx;
+
+        pt[0].x = pt[7].x = x1;
+        pt[0].y = pt[7].y = y3;
+        pt[1].x = pt[2].x = pt[5].x = pt[6].x = x2;
+        pt[1].y = y1;
+        pt[2].y = pt[3].y = y2;
+        pt[3].x = pt[4].x = x3;
+        pt[5].y = pt[4].y = y4;
+        pt[6].y = y5;
+
+        nPtCount = 8;
+    } else {
+        assert(FALSE);
+    }
+
+    {
+        HGDIOBJ oldPen = SelectObject(hDC,GetStockObject(DC_PEN));
+        COLORREF oldColor = SetDCPenColor(hDC, color);
+        Polyline(hDC, pt, nPtCount);
+        SetDCPenColor(hDC, oldColor);
+        SelectObject(hDC, oldPen);
+    }
 }
