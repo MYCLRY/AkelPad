@@ -304,6 +304,7 @@ typedef struct _SUBMENUITEM {
   struct _SUBMENUITEM *prev;
   HMENU hSubMenu;
   int nSubMenuIndex;
+  int nSubMenuCodeItem;
 } SUBMENUITEM;
 
 typedef struct {
@@ -2399,13 +2400,14 @@ BOOL CreateContextMenu(POPUPMENU *hMenuStack, const wchar_t *wpText, int nType)
   DWORD dwAction=0;
   DWORD dwNewFlags;
   DWORD dwSetFlags=0;
-  BOOL bPrevSeparator=FALSE;
+  int nPrevSeparator=0;
   BOOL bMethod;
   BOOL bMainMenuParent;
   int nPlus;
   int nMinus;
   int nParentIndex=0;
   int nSubMenuIndex=0;
+  int nSubMenuCodeItem=0;
   int nItem;
   INT_PTR nImageListIconIndex;
   int nFileIconIndex;
@@ -2498,28 +2500,31 @@ BOOL CreateContextMenu(POPUPMENU *hMenuStack, const wchar_t *wpText, int nType)
       {
         InsertMenuCommon(hMenuStack->hIconMenu, NULL, -1, 0, 0, hSubMenu, -1, MF_BYPOSITION|MF_SEPARATOR, IDM_SEPARATOR, NULL);
         ++nSubMenuIndex;
-        bPrevSeparator=TRUE;
+        ++nSubMenuCodeItem;
+        nPrevSeparator=IDM_SEPARATOR;
         bMethod=TRUE;
       }
       else if (!xstrcmpW(wszMenuItem, L"SEPARATOR1"))
       {
-        if (!bPrevSeparator)
+        if (!nPrevSeparator && nSubMenuCodeItem)
         {
           InsertMenuCommon(hMenuStack->hIconMenu, NULL, -1, 0, 0, hSubMenu, -1, MF_BYPOSITION|MF_SEPARATOR, IDM_SEPARATOR1, NULL);
           ++nSubMenuIndex;
+          ++nSubMenuCodeItem;
         }
-        bPrevSeparator=TRUE;
+        nPrevSeparator=IDM_SEPARATOR1;
         bMethod=TRUE;
       }
       else
       {
-        bPrevSeparator=FALSE;
+        nPrevSeparator=0;
 
         if (!xstrcmpW(wszMenuItem, L"EXPLORER"))
         {
           hMenuStack->hExplorerSubMenu=hSubMenu;
           hMenuStack->nExplorerFirstIndex=nSubMenuIndex;
           hMenuStack->nExplorerLastIndex=-1;
+          ++nSubMenuCodeItem;
           bMethod=TRUE;
         }
         else if (!xstrcmpW(wszMenuItem, L"FAVOURITES"))
@@ -2527,6 +2532,7 @@ BOOL CreateContextMenu(POPUPMENU *hMenuStack, const wchar_t *wpText, int nType)
           hMenuStack->hFavouritesSubMenu=hSubMenu;
           hMenuStack->nFavouritesFirstIndex=nSubMenuIndex;
           hMenuStack->nFavouritesLastIndex=-1;
+          ++nSubMenuCodeItem;
           bMethod=TRUE;
         }
         else if (!xstrcmpW(wszMenuItem, L"RECENTFILES"))
@@ -2534,6 +2540,7 @@ BOOL CreateContextMenu(POPUPMENU *hMenuStack, const wchar_t *wpText, int nType)
           hMenuStack->hRecentFilesSubMenu=hSubMenu;
           hMenuStack->nRecentFilesFirstIndex=nSubMenuIndex;
           hMenuStack->nRecentFilesLastIndex=-1;
+          ++nSubMenuCodeItem;
           bMethod=TRUE;
         }
         else if (!xstrcmpW(wszMenuItem, L"LANGUAGES"))
@@ -2541,6 +2548,7 @@ BOOL CreateContextMenu(POPUPMENU *hMenuStack, const wchar_t *wpText, int nType)
           hMenuStack->hLanguagesSubMenu=hSubMenu;
           hMenuStack->nLanguagesFirstIndex=nSubMenuIndex;
           hMenuStack->nLanguagesLastIndex=-1;
+          ++nSubMenuCodeItem;
           bMethod=TRUE;
         }
         else if (!xstrcmpW(wszMenuItem, L"OPENCODEPAGES"))
@@ -2548,6 +2556,7 @@ BOOL CreateContextMenu(POPUPMENU *hMenuStack, const wchar_t *wpText, int nType)
           hMenuStack->hOpenCodepagesSubMenu=hSubMenu;
           hMenuStack->nOpenCodepagesFirstIndex=nSubMenuIndex;
           hMenuStack->nOpenCodepagesLastIndex=-1;
+          ++nSubMenuCodeItem;
           bMethod=TRUE;
         }
         else if (!xstrcmpW(wszMenuItem, L"SAVECODEPAGES"))
@@ -2555,11 +2564,13 @@ BOOL CreateContextMenu(POPUPMENU *hMenuStack, const wchar_t *wpText, int nType)
           hMenuStack->hSaveCodepagesSubMenu=hSubMenu;
           hMenuStack->nSaveCodepagesFirstIndex=nSubMenuIndex;
           hMenuStack->nSaveCodepagesLastIndex=-1;
+          ++nSubMenuCodeItem;
           bMethod=TRUE;
         }
         else if (!xstrcmpW(wszMenuItem, L"MDIDOCUMENTS"))
         {
           hMenuStack->hMdiDocumentsSubMenu=hSubMenu;
+          ++nSubMenuCodeItem;
           bMethod=TRUE;
         }
         else if (!xstrcmpW(wszMenuItem, L"CLEAR"))
@@ -2771,6 +2782,7 @@ BOOL CreateContextMenu(POPUPMENU *hMenuStack, const wchar_t *wpText, int nType)
             }
             ++nItem;
             ++nSubMenuIndex;
+            ++nSubMenuCodeItem;
           }
         }
       }
@@ -2788,6 +2800,7 @@ BOOL CreateContextMenu(POPUPMENU *hMenuStack, const wchar_t *wpText, int nType)
           {
             lpSubmenuItem->hSubMenu=hSubMenu;
             lpSubmenuItem->nSubMenuIndex=nSubMenuIndex;
+            lpSubmenuItem->nSubMenuCodeItem=nSubMenuCodeItem;
           }
           else break;
 
@@ -2799,6 +2812,8 @@ BOOL CreateContextMenu(POPUPMENU *hMenuStack, const wchar_t *wpText, int nType)
           nParentIndex=nSubMenuIndex;
           hSubMenu=CreatePopupMenu();
           nSubMenuIndex=0;
+          nSubMenuCodeItem=0;
+          nPrevSeparator=0;
 
           //Load icon optimization (part 3):
           if (!StackInsertIndex((stack **)&hMenuStack->hMenuItemStack.first, (stack **)&hMenuStack->hMenuItemStack.last, (stack **)&lpMenuItem, -1, sizeof(MENUITEM)))
@@ -2853,11 +2868,13 @@ BOOL CreateContextMenu(POPUPMENU *hMenuStack, const wchar_t *wpText, int nType)
         {
           if (lpSubmenuItem=hSubmenuStack.last)
           {
-            RemoveSeparator1(hMenuStack, hSubMenu);
+            if (nPrevSeparator == IDM_SEPARATOR1)
+              RemoveSeparator1(hMenuStack, hSubMenu);
 
             //Goto parent submenu
             hSubMenu=lpSubmenuItem->hSubMenu;
             nSubMenuIndex=lpSubmenuItem->nSubMenuIndex;
+            nSubMenuCodeItem=lpSubmenuItem->nSubMenuCodeItem;
             StackDelete((stack **)&hSubmenuStack.first, (stack **)&hSubmenuStack.last, (stack *)lpSubmenuItem);
 
             if (lpSubmenuItem=hSubmenuStack.last)
@@ -2865,6 +2882,8 @@ BOOL CreateContextMenu(POPUPMENU *hMenuStack, const wchar_t *wpText, int nType)
             else
               hParentMenu=NULL;
             ++nSubMenuIndex;
+            ++nSubMenuCodeItem;
+            nPrevSeparator=0;
           }
           else
           {
@@ -2877,7 +2896,8 @@ BOOL CreateContextMenu(POPUPMENU *hMenuStack, const wchar_t *wpText, int nType)
         else break;
       }
     }
-    RemoveSeparator1(hMenuStack, hSubMenu);
+    if (nPrevSeparator == IDM_SEPARATOR1)
+      RemoveSeparator1(hMenuStack, hSubMenu);
     StackClear((stack **)&hSubmenuStack.first, (stack **)&hSubmenuStack.last);
 
     //Load icon optimization (part 4):
@@ -4339,13 +4359,11 @@ HMENU FindRootSubMenuByName(POPUPMENU *hMenuStack, const wchar_t *wpSubMenuName)
 
 void RemoveSeparator1(POPUPMENU *hMenuStack, HMENU hSubMenu)
 {
-  //Remove IDM_SEPARATOR1 item from first/last place in submenu
+  //Remove IDM_SEPARATOR1 item from last place in submenu
   ICONMENUSUBMENU *lpSubMenu;
 
   if (lpSubMenu=IconMenu_GetMenuByHandle(hMenuStack->hIconMenu, hSubMenu))
   {
-    if (lpSubMenu->first && lpSubMenu->first->dwItemID == IDM_SEPARATOR1)
-      DeleteMenuCommon(hMenuStack->hIconMenu, hSubMenu, 0, MF_BYPOSITION);
     if (lpSubMenu->last && lpSubMenu->last->dwItemID == IDM_SEPARATOR1)
       DeleteMenuCommon(hMenuStack->hIconMenu, hSubMenu, lpSubMenu->nItemCount - 1, MF_BYPOSITION);
   }
