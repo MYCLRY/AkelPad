@@ -169,6 +169,8 @@ BEGIN
     EDITTEXT        IDC_CODEFOLD_SETUP_CHARSLIMIT,170,57,59,14,
                     ES_AUTOHSCROLL
     LTEXT           "",IDC_CODEFOLD_SETUP_CHARSLIMIT_POSTLABEL,233,60,69,8
+    CONTROL         "",IDC_CODEFOLD_SETUP_LISTSYSTEMCOLORS,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,8,87,146,8
 END
 
 IDD_CODEFOLD2_SETUP DIALOG DISCARDABLE  70, 70, 318, 210
@@ -320,22 +322,6 @@ BEGIN
     "\0"
 END
 
-#endif    // APSTUDIO_INVOKED
-
-
-/////////////////////////////////////////////////////////////////////////////
-//
-// DESIGNINFO
-//
-
-#ifdef APSTUDIO_INVOKED
-GUIDELINES DESIGNINFO DISCARDABLE 
-BEGIN
-    IDD_CODEFOLD1_SETUP, DIALOG
-    BEGIN
-        BOTTOMMARGIN, 194
-    END
-END
 #endif    // APSTUDIO_INVOKED
 
 #endif    // English (U.S.) resources

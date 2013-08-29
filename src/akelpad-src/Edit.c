@@ -14346,7 +14346,7 @@ BOOL CALLBACK OptionsGeneralDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM 
       {
         SHGetPathFromIDListWide(pIdList, wbuf);
 
-        if (SHGetMalloc(&pMalloc))
+        if (SUCCEEDED(SHGetMalloc(&pMalloc)))
         {
           pMalloc->lpVtbl->Free(pMalloc, pIdList);
           pMalloc->lpVtbl->Release(pMalloc);

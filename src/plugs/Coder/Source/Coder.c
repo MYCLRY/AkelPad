@@ -491,22 +491,24 @@ void __declspec(dllexport) Settings(PLUGINDATA *pd)
           if (pVariableName)
           {
             if (lpSyntaxFile=StackGetSyntaxFileByWindow(&hSyntaxFilesStack, hWnd, hDoc, NULL))
-              lpVarTheme=lpSyntaxFile->lpVarThemeLink;
-            if (!lpVarTheme) lpVarTheme=lpVarThemeActive;
-
-            if (lpVarTheme)
             {
-              if (pd->dwSupport & PDS_STRANSI)
-                MultiByteToWideChar(CP_ACP, 0, (char *)pVariableName, -1, wszVariableName, MAX_PATH);
-              else
-                xstrcpynW(wszVariableName, (wchar_t *)pVariableName, MAX_PATH);
+              lpVarTheme=lpSyntaxFile->lpVarThemeLink;
+              if (!lpVarTheme) lpVarTheme=lpVarThemeActive;
 
-              if (lpVarInfo=StackGetVarByName(&lpVarTheme->hVarStack, wszVariableName, -1))
+              if (lpVarTheme)
               {
                 if (pd->dwSupport & PDS_STRANSI)
-                  nVariableValueLen=WideCharToMultiByte(CP_ACP, 0, lpVarInfo->wpVarValue, lpVarInfo->nVarValueLen + 1, (char *)pVariableValue, 0x3FFFFFFF, NULL, NULL);
+                  MultiByteToWideChar(CP_ACP, 0, (char *)pVariableName, -1, wszVariableName, MAX_PATH);
                 else
-                  nVariableValueLen=xstrcpynW((wchar_t *)pVariableValue, lpVarInfo->wpVarValue, lpVarInfo->nVarValueLen + 1) + (pVariableValue?1:0);
+                  xstrcpynW(wszVariableName, (wchar_t *)pVariableName, MAX_PATH);
+
+                if (lpVarInfo=StackGetVarByName(&lpVarTheme->hVarStack, wszVariableName, -1))
+                {
+                  if (pd->dwSupport & PDS_STRANSI)
+                    nVariableValueLen=WideCharToMultiByte(CP_ACP, 0, lpVarInfo->wpVarValue, lpVarInfo->nVarValueLen + 1, (char *)pVariableValue, 0x3FFFFFFF, NULL, NULL);
+                  else
+                    nVariableValueLen=xstrcpynW((wchar_t *)pVariableValue, lpVarInfo->wpVarValue, lpVarInfo->nVarValueLen + 1) + (pVariableValue?1:0);;
+                }
               }
             }
             if (lpnVariableValueLen) *lpnVariableValueLen=nVariableValueLen;
@@ -531,8 +533,10 @@ void __declspec(dllexport) Settings(PLUGINDATA *pd)
 
           *lppVarThemeGlobal=&hVarThemeGlobal;
           if (lpSyntaxFile=StackGetSyntaxFileByWindow(&hSyntaxFilesStack, hWnd, hDoc, NULL))
+          {
             *lppVarThemeActive=lpSyntaxFile->lpVarThemeLink;
-          if (!*lppVarThemeActive) *lppVarThemeActive=lpVarThemeActive;
+            if (!*lppVarThemeActive) *lppVarThemeActive=lpVarThemeActive;
+          }
         }
       }
       else MessageBoxW(hMainWnd, GetLangStringW(wLangModule, STRID_CODER_NOTRUNNING), wszPluginTitle, MB_OK|MB_ICONEXCLAMATION);
@@ -5480,6 +5484,8 @@ const wchar_t* GetLangStringW(LANGID wLangID, int nStringID)
       return L"\x041C\x0430\x043A\x0441\x0438\x043C\x0430\x043B\x044C\x043D\x044B\x0439\x0020\x0434\x043E\x043A\x0443\x043C\x0435\x043D\x0442";
     if (nStringID == STRID_CHARS)
       return L"\x0441\x0438\x043C\x0432\x043E\x043B\x043E\x0432";
+    if (nStringID == STRID_LISTSYSTEMCOLORS)
+      return L"\x0421\x0438\x0441\x0442\x0435\x043C\x043D\x044B\x0435\x0020\x0446\x0432\x0435\x0442\x0430\x0020\x0432\x0020\x0441\x043F\x0438\x0441\x043A\x0435";
     if (nStringID == STRID_COMPLETENONSYNTAXDOCUMENT)
       return L"\x0414\x043E\x043F\x043E\x043B\x043D\x044F\x0442\x044C\x0020\x0442\x0430\x043A\x0436\x0435\x0020\x0438\x0437\x0020\x0434\x043E\x043A\x0443\x043C\x0435\x043D\x0442\x0430\x0020\x0431\x0435\x0437\x0020\x0441\x0438\x043D\x0442\x0430\x043A\x0441\x0438\x0447\x0435\x0441\x043A\x043E\x0439\x0020\x0442\x0435\x043C\x044B";
     if (nStringID == STRID_SAVETYPEDCASE)
@@ -5676,6 +5682,8 @@ const wchar_t* GetLangStringW(LANGID wLangID, int nStringID)
       return L"Maximum document";
     if (nStringID == STRID_CHARS)
       return L"characters";
+    if (nStringID == STRID_LISTSYSTEMCOLORS)
+      return L"System colors in list";
     if (nStringID == STRID_COMPLETENONSYNTAXDOCUMENT)
       return L"Complete also document without syntax theme";
     if (nStringID == STRID_SAVETYPEDCASE)

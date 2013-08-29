@@ -38,6 +38,7 @@ int nCharsLimit=1000000;
 int nFoldLimit=10000;
 int nShowDock=CFSD_AUTO;
 int nFollowCaret=FCO_ANYWHERE;
+BOOL bListSystemColors=FALSE;
 BOOL bNoPrintCollapsed=FALSE;
 BOOL bCollapseOnOpen=FALSE;
 BOOL bTagMarkEnable=TRUE;
@@ -623,6 +624,7 @@ BOOL CALLBACK CodeFold1SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM 
   static HWND hWndFollowCaretEverywhere;
   static HWND hWndFollowCaretOnlyRoot;
   static HWND hWndFollowCaretNone;
+  static HWND hWndListSystemColors;
   static int nShowDockDlg;
 
   if (uMsg == WM_INITDIALOG)
@@ -636,6 +638,7 @@ BOOL CALLBACK CodeFold1SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM 
     hWndFollowCaretEverywhere=GetDlgItem(hDlg, IDC_CODEFOLD_SETUP_FOLLOWCARET_ANYWHERE);
     hWndFollowCaretOnlyRoot=GetDlgItem(hDlg, IDC_CODEFOLD_SETUP_FOLLOWCARET_ONLYROOT);
     hWndFollowCaretNone=GetDlgItem(hDlg, IDC_CODEFOLD_SETUP_FOLLOWCARET_NONE);
+    hWndListSystemColors=GetDlgItem(hDlg, IDC_CODEFOLD_SETUP_LISTSYSTEMCOLORS);
 
     SetDlgItemTextWide(hDlg, IDC_CODEFOLD_SETUP_SHOWDOCK_GROUP, GetLangStringW(wLangModule, STRID_SHOWDOCK_GROUP));
     SetDlgItemTextWide(hDlg, IDC_CODEFOLD_SETUP_SHOWDOCK_AUTO, GetLangStringW(wLangModule, STRID_AUTO));
@@ -648,6 +651,7 @@ BOOL CALLBACK CodeFold1SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM 
     SetDlgItemTextWide(hDlg, IDC_CODEFOLD_SETUP_FOLLOWCARET_NONE, GetLangStringW(wLangModule, STRID_NONE));
     SetDlgItemTextWide(hDlg, IDC_CODEFOLD_SETUP_CHARSLIMIT_GROUP, GetLangStringW(wLangModule, STRID_MAXDOCUMENT));
     SetDlgItemTextWide(hDlg, IDC_CODEFOLD_SETUP_CHARSLIMIT_POSTLABEL, GetLangStringW(wLangModule, STRID_CHARS));
+    SetDlgItemTextWide(hDlg, IDC_CODEFOLD_SETUP_LISTSYSTEMCOLORS, GetLangStringW(wLangModule, STRID_LISTSYSTEMCOLORS));
 
     nShowDockDlg=nShowDock;
     if (nShowDockDlg == CFSD_NONE)
@@ -666,6 +670,9 @@ BOOL CALLBACK CodeFold1SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM 
       SendMessage(hWndFollowCaretNone, BM_SETCHECK, BST_CHECKED, 0);
 
     SetDlgItemInt(hDlg, IDC_CODEFOLD_SETUP_CHARSLIMIT, nCharsLimit, FALSE);
+
+    if (bListSystemColors)
+      SendMessage(hWndListSystemColors, BM_SETCHECK, BST_CHECKED, 0);
   }
   else if (uMsg == WM_COMMAND)
   {
@@ -727,6 +734,8 @@ BOOL CALLBACK CodeFold1SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM 
         nFollowCaret=FCO_NONE;
 
       nCharsLimit=GetDlgItemInt(hDlg, IDC_CODEFOLD_SETUP_CHARSLIMIT, NULL, FALSE);
+
+      bListSystemColors=(BOOL)SendMessage(hWndListSystemColors, BM_GETCHECK, 0, 0);
 
       if (nInitCodeFold)
       {
@@ -3514,16 +3523,25 @@ FOLDWINDOW* SetActiveEdit(HWND hWndEdit, HWND hWndTreeView, DWORD dwFlags)
         DWORD dwText;
         DWORD dwBk;
 
-        if (lpFoldWindow && lpFoldWindow->pfwd->lpSyntaxFile)
+        if (bListSystemColors)
         {
-          dwText=lpFoldWindow->pfwd->lpSyntaxFile->dwListTextColor;
-          dwBk=lpFoldWindow->pfwd->lpSyntaxFile->dwListBkColor;
+          dwText=(DWORD)-1;
+          dwBk=(DWORD)-1;
         }
         else
         {
-          dwText=dwListTextColor;
-          dwBk=dwListBkColor;
+          if (lpFoldWindow && lpFoldWindow->pfwd->lpSyntaxFile)
+          {
+            dwText=lpFoldWindow->pfwd->lpSyntaxFile->dwListTextColor;
+            dwBk=lpFoldWindow->pfwd->lpSyntaxFile->dwListBkColor;
+          }
+          else
+          {
+            dwText=dwListTextColor;
+            dwBk=dwListBkColor;
+          }
         }
+
         if ((DWORD)SendMessage(hWndTreeView, TVM_GETTEXTCOLOR, 0, 0) != dwText)
           SendMessage(hWndTreeView, TVM_SETTEXTCOLOR, 0, (LPARAM)dwText);
         if ((DWORD)SendMessage(hWndTreeView, TVM_GETBKCOLOR, 0, 0) != dwBk)
@@ -4248,6 +4266,7 @@ void ReadCodeFoldOptions(HANDLE hOptions)
   WideOption(hOptions, L"FoldLimit", PO_DWORD, (LPBYTE)&nFoldLimit, sizeof(DWORD));
   WideOption(hOptions, L"CharsLimit", PO_DWORD, (LPBYTE)&nCharsLimit, sizeof(DWORD));
   WideOption(hOptions, L"FollowCaret", PO_DWORD, (LPBYTE)&nFollowCaret, sizeof(DWORD));
+  WideOption(hOptions, L"ListSystemColors", PO_DWORD, (LPBYTE)&bListSystemColors, sizeof(DWORD));
   WideOption(hOptions, L"DrawNodeType", PO_DWORD, (LPBYTE)&nDrawNodeType, sizeof(DWORD));
   WideOption(hOptions, L"TagMarkEnable", PO_DWORD, (LPBYTE)&bTagMarkEnable, sizeof(DWORD));
   WideOption(hOptions, L"CollapseOnOpen", PO_DWORD, (LPBYTE)&bCollapseOnOpen, sizeof(DWORD));
@@ -4284,6 +4303,7 @@ void SaveCodeFoldOptions(HANDLE hOptions, DWORD dwFlags)
     WideOption(hOptions, L"FoldLimit", PO_DWORD, (LPBYTE)&nFoldLimit, sizeof(DWORD));
     WideOption(hOptions, L"CharsLimit", PO_DWORD, (LPBYTE)&nCharsLimit, sizeof(DWORD));
     WideOption(hOptions, L"FollowCaret", PO_DWORD, (LPBYTE)&nFollowCaret, sizeof(DWORD));
+    WideOption(hOptions, L"ListSystemColors", PO_DWORD, (LPBYTE)&bListSystemColors, sizeof(DWORD));
     WideOption(hOptions, L"DrawNodeType", PO_DWORD, (LPBYTE)&nDrawNodeType, sizeof(DWORD));
     WideOption(hOptions, L"TagMarkEnable", PO_DWORD, (LPBYTE)&bTagMarkEnable, sizeof(DWORD));
     WideOption(hOptions, L"CollapseOnOpen", PO_DWORD, (LPBYTE)&bCollapseOnOpen, sizeof(DWORD));

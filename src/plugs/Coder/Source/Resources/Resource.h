@@ -129,6 +129,7 @@
 #define IDM_CODEFOLD_LISTEXPAND         5006
 #define IDM_CODEFOLD_LISTCOLLAPSE       5007
 #define IDM_CODEFOLD_STATISTICS         5008
+#define IDC_CODEFOLD_SETUP_LISTSYSTEMCOLORS 13001
 #define IDC_STATIC                      -1
 
 // Next default values for new objects
@@ -137,7 +138,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        11001
 #define _APS_NEXT_COMMAND_VALUE         12001
-#define _APS_NEXT_CONTROL_VALUE         13001
+#define _APS_NEXT_CONTROL_VALUE         13002
 #define _APS_NEXT_SYMED_VALUE           14001
 #endif
 #endif

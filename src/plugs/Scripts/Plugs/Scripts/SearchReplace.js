@@ -1388,7 +1388,7 @@ function DialogResizeMessages(drs, rcMinMax, rcCurrent, dwFlags, hDlg, uMsg, wPa
       var lpGrip;
       var hDC;
 
-      if (ps=AkelPad.MemAlloc(64 /*sizeof(PAINTSTRUCT)*/))
+      if (ps=AkelPad.MemAlloc(_X64?72:64 /*sizeof(PAINTSTRUCT)*/))
       {
         if (hDC=oSys.Call("user32::BeginPaint", hDlg, ps))
         {
@@ -1964,7 +1964,7 @@ function CenterWindow(hWndParent, hWnd)
   var X;
   var Y;
 
-  if (lpRect=AkelPad.MemAlloc(16))  //sizeof(RECT)
+  if (lpRect=AkelPad.MemAlloc(16 /*sizeof(RECT)*/))
   {
     if (!hWndParent)
       hWndParent=oSys.Call("user32::GetDesktopWindow");
@@ -2046,7 +2046,7 @@ function ScrollCaret(hWnd)
     var dwScrollFlags=0;
     var dwScrollResult;
 
-    if (lpStp=AkelPad.MemAlloc(_X64?32:20))  //sizeof(AESCROLLTOPOINT)
+    if (lpStp=AkelPad.MemAlloc(_X64?32:20 /*sizeof(AESCROLLTOPOINT)*/))
     {
       //Test scroll to caret
       dwScrollFlags=0x1|0x10|0x400|0x800 /*AESC_TEST|AESC_POINTCARET|AESC_OFFSETCHARX|AESC_OFFSETCHARY*/;
