@@ -200,6 +200,7 @@ SCRIPTARG* StackGetArgumentByIndex(HARGSTACK *hStack, int nIndex);
 SCRIPTARG* StackGetArgumentByName(HARGSTACK *hStack, const wchar_t *wpArgName, int nArgNameLen);
 void StackFreeArguments(HARGSTACK *hStack);
 UINT_PTR GetVariantInt(VARIANT *vt);
+UINT_PTR GetVariantValue(VARIANT *pvtParameter, BOOL bAnsi);
 int GetHotkeyString(WORD wHotkey, wchar_t *wszString);
 INT_PTR ReadFileContent(wchar_t *wpFile, DWORD dwFlags, int nCodePage, BOOL bBOM, wchar_t **wpContent, UINT_PTR dwBytesMax);
 const wchar_t* GetFileExt(const wchar_t *wpFile, int nFileLen);

@@ -13,6 +13,10 @@
 #include "Resources\Resource.h"
 
 /*
+//Include AEC functions
+#define AEC_FUNCTIONS
+#include "AkelEdit.h"
+
 //Include string functions
 #define WideCharLower
 #define xmemcpy
@@ -69,53 +73,54 @@
 #define STRID_UPDATEINTERVAL            6
 #define STRID_MS                        7
 #define STRID_SCROLL                    8
-#define STRID_SCROLLENDCARET            9
-#define STRID_SCROLLENDVERT             10
-#define STRID_SCROLLENDNO               11
-#define STRID_COMPLETEREOPEN            12
-#define STRID_SETUP                     13
-#define STRID_MSG_CANTEXECCOMMAND       14
-#define STRID_MENUCOPY                  15
-#define STRID_MENUSELECTALL             16
-#define STRID_MENUCLEAR                 17
-#define STRID_INPUT                     18
-#define STRID_STOP                      19
-#define STRID_RUNDLG                    20
-#define STRID_EXEC                      21
-#define STRID_COMMAND                   22
-#define STRID_DIRECTORY                 23
-#define STRID_SOURCE                    24
-#define STRID_TARGET                    25
-#define STRID_NO                        26
-#define STRID_SELDOC                    27
-#define STRID_ALLDOC                    28
-#define STRID_ONLYSEL                   29
-#define STRID_PANEL                     30
-#define STRID_NEWTAB                    33
-#define STRID_CODEPAGE                  34
-#define STRID_AUTODETECT                35
-#define STRID_PATTERN                   36
-#define STRID_MENUMICROSOFTGCC          37
-#define STRID_MENUPATBORLAND            38
-#define STRID_PATTAGS                   39
-#define STRID_MENUTAGFILE               40
-#define STRID_MENUTAGGOTOLINE           41
-#define STRID_MENUTAGGOTOBYTE           42
-#define STRID_MENUTAGGOTOCHAR           43
-#define STRID_APPENDNEXT                44
-#define STRID_NOSCROLL                  45
-#define STRID_WRAP                      46
-#define STRID_HIDEINPUT                 47
-#define STRID_SAVEALL                   48
-#define STRID_HOTKEYS                   49
-#define STRID_NEXTMATCH                 50
-#define STRID_PREVMATCH                 51
-#define STRID_RUNCMD                    52
-#define STRID_RUNCMDDLG                 53
-#define STRID_CODERALIAS                54
-#define STRID_PLUGIN                    55
-#define STRID_OK                        56
-#define STRID_CANCEL                    57
+#define STRID_SCROLLENDAUTO             9 
+#define STRID_SCROLLENDCARET            10 
+#define STRID_SCROLLENDVERT             11
+#define STRID_SCROLLENDNO               12
+#define STRID_COMPLETEREOPEN            13
+#define STRID_SETUP                     14
+#define STRID_MSG_CANTEXECCOMMAND       15
+#define STRID_MENUCOPY                  16
+#define STRID_MENUSELECTALL             17
+#define STRID_MENUCLEAR                 18
+#define STRID_INPUT                     19
+#define STRID_STOP                      20
+#define STRID_RUNDLG                    21
+#define STRID_EXEC                      22
+#define STRID_COMMAND                   23
+#define STRID_DIRECTORY                 24
+#define STRID_SOURCE                    25
+#define STRID_TARGET                    26
+#define STRID_NO                        27
+#define STRID_SELDOC                    28
+#define STRID_ALLDOC                    29
+#define STRID_ONLYSEL                   30
+#define STRID_PANEL                     31
+#define STRID_NEWTAB                    32
+#define STRID_CODEPAGE                  33
+#define STRID_AUTODETECT                34
+#define STRID_PATTERN                   35
+#define STRID_MENUMICROSOFTGCC          36
+#define STRID_MENUPATBORLAND            37
+#define STRID_PATTAGS                   38
+#define STRID_MENUTAGFILE               39
+#define STRID_MENUTAGGOTOLINE           40
+#define STRID_MENUTAGGOTOBYTE           41
+#define STRID_MENUTAGGOTOCHAR           42
+#define STRID_APPENDNEXT                43
+#define STRID_NOSCROLL                  44
+#define STRID_WRAP                      45
+#define STRID_HIDEINPUT                 46
+#define STRID_SAVEALL                   47
+#define STRID_HOTKEYS                   48
+#define STRID_NEXTMATCH                 49
+#define STRID_PREVMATCH                 50
+#define STRID_RUNCMD                    51
+#define STRID_RUNCMDDLG                 52
+#define STRID_CODERALIAS                53
+#define STRID_PLUGIN                    54
+#define STRID_OK                        55
+#define STRID_CANCEL                    56
 
 #define DLLA_LOGSETTINGS            1
 #define DLLA_LOGOUTPUT_EXEC         1
@@ -155,6 +160,7 @@
 #define WSE_NO     0
 #define WSE_CARET  1
 #define WSE_VERT   2
+#define WSE_AUTO   3
 
 //Output exec state
 #define OES_IDLE     0x0
@@ -405,7 +411,7 @@ UINT_PTR dwUpdateTimer=0;
 FILETIME ftCurTime={0};
 DWORD dwWatchUpdateInterval=1000;
 BOOL bWatchCompleteReopen=FALSE;
-DWORD dwWatchScrollEnd=WSE_CARET;
+DWORD dwWatchScrollEnd=WSE_AUTO;
 WNDPROCDATA *NewMainProcData=NULL;
 WNDPROCDATA *NewFrameProcData=NULL;
 
@@ -1562,6 +1568,7 @@ int CALLBACK PropSheetProc(HWND hDlg, UINT uMsg, LPARAM lParam)
 BOOL CALLBACK WatchSetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
   static HWND hWndWatchUpdateInterval;
+  static HWND hWndScrollEndAutoCheck;
   static HWND hWndScrollEndCaretCheck;
   static HWND hWndScrollEndVertCheck;
   static HWND hWndScrollEndNoCheck;
@@ -1570,6 +1577,7 @@ BOOL CALLBACK WatchSetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
   if (uMsg == WM_INITDIALOG)
   {
     hWndWatchUpdateInterval=GetDlgItem(hDlg, IDC_WATCH_SETUP_UPDATEINTERVAL);
+    hWndScrollEndAutoCheck=GetDlgItem(hDlg, IDC_WATCH_SETUP_SCROLLENDAUTO_CHECK);
     hWndScrollEndCaretCheck=GetDlgItem(hDlg, IDC_WATCH_SETUP_SCROLLENDCARET_CHECK);
     hWndScrollEndVertCheck=GetDlgItem(hDlg, IDC_WATCH_SETUP_SCROLLENDVERT_CHECK);
     hWndScrollEndNoCheck=GetDlgItem(hDlg, IDC_WATCH_SETUP_SCROLLENDNO_CHECK);
@@ -1579,6 +1587,7 @@ BOOL CALLBACK WatchSetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
     SetDlgItemTextWide(hDlg, IDC_WATCH_SETUP_UPDATEINTERVAL_GROUP, GetLangStringW(wLangModule, STRID_UPDATEINTERVAL));
     SetDlgItemTextWide(hDlg, IDC_WATCH_SETUP_MS_LABEL, GetLangStringW(wLangModule, STRID_MS));
     SetDlgItemTextWide(hDlg, IDC_WATCH_SETUP_SCROLL_GROUP, GetLangStringW(wLangModule, STRID_SCROLL));
+    SetDlgItemTextWide(hDlg, IDC_WATCH_SETUP_SCROLLENDAUTO_CHECK, GetLangStringW(wLangModule, STRID_SCROLLENDAUTO));
     SetDlgItemTextWide(hDlg, IDC_WATCH_SETUP_SCROLLENDCARET_CHECK, GetLangStringW(wLangModule, STRID_SCROLLENDCARET));
     SetDlgItemTextWide(hDlg, IDC_WATCH_SETUP_SCROLLENDVERT_CHECK, GetLangStringW(wLangModule, STRID_SCROLLENDVERT));
     SetDlgItemTextWide(hDlg, IDC_WATCH_SETUP_SCROLLENDNO_CHECK, GetLangStringW(wLangModule, STRID_SCROLLENDNO));
@@ -1589,7 +1598,9 @@ BOOL CALLBACK WatchSetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
     SendMessage(hWndWatchUpdateInterval, EM_LIMITTEXT, 6, 0);
     SetDlgItemInt(hDlg, IDC_WATCH_SETUP_UPDATEINTERVAL, dwWatchUpdateInterval, FALSE);
 
-    if (dwWatchScrollEnd == WSE_CARET)
+    if (dwWatchScrollEnd == WSE_AUTO)
+      SendMessage(hWndScrollEndAutoCheck, BM_SETCHECK, BST_CHECKED, 0);
+    else if (dwWatchScrollEnd == WSE_CARET)
       SendMessage(hWndScrollEndCaretCheck, BM_SETCHECK, BST_CHECKED, 0);
     else if (dwWatchScrollEnd == WSE_VERT)
       SendMessage(hWndScrollEndVertCheck, BM_SETCHECK, BST_CHECKED, 0);
@@ -1604,7 +1615,9 @@ BOOL CALLBACK WatchSetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
     {
       dwWatchUpdateInterval=GetDlgItemInt(hDlg, IDC_WATCH_SETUP_UPDATEINTERVAL, NULL, FALSE);
 
-      if (SendMessage(hWndScrollEndCaretCheck, BM_GETCHECK, 0, 0) == BST_CHECKED)
+      if (SendMessage(hWndScrollEndAutoCheck, BM_GETCHECK, 0, 0) == BST_CHECKED)
+        dwWatchScrollEnd=WSE_AUTO;
+      else if (SendMessage(hWndScrollEndCaretCheck, BM_GETCHECK, 0, 0) == BST_CHECKED)
         dwWatchScrollEnd=WSE_CARET;
       else if (SendMessage(hWndScrollEndVertCheck, BM_GETCHECK, 0, 0) == BST_CHECKED)
         dwWatchScrollEnd=WSE_VERT;
@@ -1986,6 +1999,8 @@ VOID CALLBACK TimerProc(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime)
         UINT_PTR dwBlockSize;
         UINT_PTR dwNewPointer=0;
         UINT_PTR dwBlockLen;
+        POINT64 ptGlobalMax;
+        POINT64 ptGlobalPos;
 
         bLogOpening=TRUE;
         dwNewPointer=GetFileSize64(fc.hFile);
@@ -1993,6 +2008,15 @@ VOID CALLBACK TimerProc(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime)
 
         if ((dwNewPointer != (UINT_PTR)-1 && dwNewPointer != dwCurPointer) || xmemcmp(&ftNewTime, &ftCurTime, sizeof(FILETIME)))
         {
+          if (dwWatchScrollEnd == WSE_AUTO)
+          {
+            RECT rcDraw;
+
+            SendMessage(hWndEditWatch, AEM_GETRECT, 0, (LPARAM)&rcDraw);
+            SendMessage(hWndEditWatch, AEM_GETSCROLLPOS, (WPARAM)&ptGlobalMax, (LPARAM)&ptGlobalPos);
+            ptGlobalPos.y+=rcDraw.bottom - rcDraw.top;
+          }
+
           if (bWatchCompleteReopen)
           {
             dwCurPointer=dwNewPointer;
@@ -2007,10 +2031,8 @@ VOID CALLBACK TimerProc(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime)
               {
                 SendMessage(hWndEditWatch, EM_SETSEL, (WPARAM)-1, (LPARAM)-1);
               }
-              else if (dwWatchScrollEnd == WSE_VERT)
+              else if (dwWatchScrollEnd == WSE_VERT || (dwWatchScrollEnd == WSE_AUTO && ptGlobalPos.y >= ptGlobalMax.y))
               {
-                POINT64 ptGlobalMax;
-
                 SendMessage(hWndEditWatch, AEM_GETSCROLLPOS, (WPARAM)&ptGlobalMax, (LPARAM)NULL);
                 ptGlobalMax.x=-1;
                 SendMessage(hWndEditWatch, AEM_SETSCROLLPOS, 0, (LPARAM)&ptGlobalMax);
@@ -2049,6 +2071,7 @@ VOID CALLBACK TimerProc(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime)
               {
                 SendMessage(hWndEditWatch, EM_EXSETSEL64, 0, (LPARAM)&cr);
               }
+
               if (dwWatchScrollEnd == WSE_NO)
               {
               }
@@ -2056,10 +2079,8 @@ VOID CALLBACK TimerProc(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime)
               {
                 SendMessage(hWndEditWatch, EM_SETSEL, (WPARAM)-1, (LPARAM)-1);
               }
-              else if (dwWatchScrollEnd == WSE_VERT)
+              else if (dwWatchScrollEnd == WSE_VERT || (dwWatchScrollEnd == WSE_AUTO && ptGlobalPos.y >= ptGlobalMax.y))
               {
-                POINT64 ptGlobalMax;
-
                 SendMessage(hWndEditWatch, AEM_GETSCROLLPOS, (WPARAM)&ptGlobalMax, (LPARAM)NULL);
                 ptGlobalMax.x=-1;
                 SendMessage(hWndEditWatch, AEM_SETSCROLLPOS, 0, (LPARAM)&ptGlobalMax);
@@ -3345,6 +3366,8 @@ const wchar_t* GetLangStringW(LANGID wLangID, int nStringID)
       return L"\x043C\x0441\x002E";
     if (nStringID == STRID_SCROLL)
       return L"\x041F\x0440\x043E\x043A\x0440\x0443\x0442\x043A\x0430";
+    if (nStringID == STRID_SCROLLENDAUTO)
+      return L"\x0410\x0432\x0442\x043E\x043C\x0430\x0442\x0438\x0447\x0435\x0441\x043A\x0430\x044F";
     if (nStringID == STRID_SCROLLENDCARET)
       return L"\x041F\x0435\x0440\x0435\x043C\x0435\x0441\x0442\x0438\x0442\x044C\x0020\x043A\x0430\x0440\x0435\x0442\x043A\x0443\x0020\x0432\x0020\x043A\x043E\x043D\x0435\x0446\x0020\x0438\x0020\x043F\x0440\x043E\x043A\x0440\x0443\x0442\x0438\x0442\x044C\x0020\x043A\x0020\x043D\x0435\x0439";
     if (nStringID == STRID_SCROLLENDVERT)
@@ -3458,6 +3481,8 @@ const wchar_t* GetLangStringW(LANGID wLangID, int nStringID)
       return L"ms.";
     if (nStringID == STRID_SCROLL)
       return L"Scroll";
+    if (nStringID == STRID_SCROLLENDAUTO)
+      return L"Automatic";
     if (nStringID == STRID_SCROLLENDCARET)
       return L"Move caret to the end and scroll to it";
     if (nStringID == STRID_SCROLLENDVERT)

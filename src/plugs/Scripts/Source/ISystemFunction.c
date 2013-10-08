@@ -123,41 +123,13 @@ HRESULT STDMETHODCALLTYPE SystemFunction_AddParameter(ISystemFunction *this, VAR
 {
   SYSPARAMSTACK *hStack=&((IRealSystemFunction *)this)->sf.hSysParamStack;
   SYSPARAMITEM *lpSysParam;
-  CALLBACKITEM *lpSysCallback;
   VARIANT *pvtParameter=&vtParameter;
-  int nUniLen;
-  int nAnsiLen;
 
   if (lpSysParam=StackInsertSysParam(hStack))
   {
     if (pvtParameter->vt == (VT_VARIANT|VT_BYREF))
       pvtParameter=pvtParameter->pvarVal;
-
-    if (pvtParameter->vt == VT_BSTR)
-    {
-      if (bOldWindows)
-      {
-        nUniLen=SysStringLen(pvtParameter->bstrVal);
-        nAnsiLen=WideCharToMultiByte(CP_ACP, 0, pvtParameter->bstrVal, nUniLen, NULL, 0, NULL, NULL);
-        if (lpSysParam->dwValue=(UINT_PTR)GlobalAlloc(GPTR, nAnsiLen + 1))
-          WideCharToMultiByte(CP_ACP, 0, pvtParameter->bstrVal, nUniLen + 1, (char *)lpSysParam->dwValue, nAnsiLen + 1, NULL, NULL);
-      }
-      else lpSysParam->dwValue=(UINT_PTR)pvtParameter->bstrVal;
-    }
-    else if (pvtParameter->vt == VT_DISPATCH)
-    {
-      if (lpSysCallback=StackGetCallbackByObject(&g_hSysCallbackStack, pvtParameter->pdispVal))
-        lpSysParam->dwValue=(UINT_PTR)lpSysCallback->hHandle;
-      else
-        lpSysParam->dwValue=(UINT_PTR)pvtParameter->pdispVal;
-    }
-    else
-    {
-      if (pvtParameter->vt == VT_BOOL)
-        lpSysParam->dwValue=pvtParameter->boolVal?TRUE:FALSE;
-      else
-        lpSysParam->dwValue=GetVariantInt(pvtParameter);
-    }
+    lpSysParam->dwValue=GetVariantValue(pvtParameter, bOldWindows);
     lpSysParam->dwType=pvtParameter->vt;
   }
   else return E_OUTOFMEMORY;

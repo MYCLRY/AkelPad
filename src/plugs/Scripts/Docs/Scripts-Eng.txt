@@ -1,5 +1,5 @@
 *****************************************************************
-***                 Scripts AkelPad plugin v12.8              ***
+***                 Scripts AkelPad plugin v12.9              ***
 *****************************************************************
 
 2013 Shengalts Aleksander aka Instructor (Shengalts@mail.ru)
@@ -353,7 +353,7 @@ Example:
 AkelPad.SetEditWnd
 __________________
 
-Set active edit window handle manually. After setting methods GetEditWnd,
+Set active edit window handle manually. After setting methods GetEditWnd, GetEditDoc,
 GetSelStart, GetSelEnd, SetSel, GetSelText, GetTextRange, ReplaceSel will use this handle.
 
   SetEditWnd(hHandle);

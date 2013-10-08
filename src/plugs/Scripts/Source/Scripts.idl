@@ -127,7 +127,7 @@ library Scripts
     HRESULT SetFrameInfo([in] MYHANDLE lpFrame, [in] int nType, [in] MYHANDLE dwData, [out, retval] BOOL *bResult);
 
     //Send message.
-    HRESULT SendMessage([in] MYHANDLE hWnd, [in] UINT uMsg, [in] WPARAM wParam, [in] LPARAM lParam, [out, retval] MYRETINT *lResult);
+    HRESULT SendMessage([in] MYHANDLE hWnd, [in] UINT uMsg, [in] VARIANT vtwParam, [in] VARIANT vtlParam, [out, retval] MYRETINT *lResult);
 
     //Show message.
     [vararg] HRESULT MessageBox([in] MYHANDLE hWnd, [in] BSTR pText, [in] BSTR pCaption, [in] UINT uType, [in] SAFEARRAY(VARIANT) *psa, [out, retval] int *nResult);

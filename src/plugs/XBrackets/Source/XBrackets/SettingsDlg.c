@@ -24,6 +24,8 @@ extern COLORREF    bracketsColourHighlight[2];
 extern COLORREF    g_CustomColoursHighlight[MAX_CUSTOM_COLOURS];
 extern char        strHtmlFileExtsA[STR_FILEEXTS_SIZE];
 extern wchar_t     strHtmlFileExtsW[STR_FILEEXTS_SIZE];
+extern char        strEscaped1FileExtsA[STR_FILEEXTS_SIZE];
+extern wchar_t     strEscaped1FileExtsW[STR_FILEEXTS_SIZE];
 extern char        strComment1FileExtsA[STR_FILEEXTS_SIZE];
 extern wchar_t     strComment1FileExtsW[STR_FILEEXTS_SIZE];
 extern wchar_t     strPluginFuncMainW[STR_PLUGINFUNC_SIZE];
@@ -397,11 +399,11 @@ void SettingsDlg_OnStPluginStateDblClicked(HWND hDlg)
       //pcsA.bOnStart = FALSE;
       pcsA.lParam = 0;
       pcsA.dwSupport = 0;
-      SendMessage( g_hMainWnd, AKD_DLLCALLA, 0, (LPARAM) &pcsA );
+      SendMessageA( g_hMainWnd, AKD_DLLCALLA, 0, (LPARAM) &pcsA );
     }
     else
     {
-      PLUGINFUNCTION* pfA = (PLUGINFUNCTION *) SendMessage( g_hMainWnd, 
+      PLUGINFUNCTION* pfA = (PLUGINFUNCTION *) SendMessageA( g_hMainWnd, 
         AKD_DLLFINDA, (WPARAM) strPluginFuncMainW, 0 );
       if (pfA) 
       { 
@@ -419,11 +421,11 @@ void SettingsDlg_OnStPluginStateDblClicked(HWND hDlg)
       //pcsW.bOnStart = FALSE;
       pcsW.lParam = 0;
       pcsW.dwSupport = 0;
-      SendMessage( g_hMainWnd, AKD_DLLCALLW, 0, (LPARAM) &pcsW );
+      SendMessageW( g_hMainWnd, AKD_DLLCALLW, 0, (LPARAM) &pcsW );
     }
     else
     {
-      PLUGINFUNCTION* pfW = (PLUGINFUNCTION *) SendMessage( g_hMainWnd,
+      PLUGINFUNCTION* pfW = (PLUGINFUNCTION *) SendMessageW( g_hMainWnd,
         AKD_DLLFINDW, (WPARAM) strPluginFuncMainW, 0 );
       if (pfW)
       {

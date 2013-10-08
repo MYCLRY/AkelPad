@@ -136,7 +136,6 @@ extern STACKSTATUSPART hStatusStack;
 extern HWND hStatus;
 extern HWND hProgress;
 extern int nStatusHeight;
-extern int nStatusParts;
 extern int nProgressWidth;
 
 //Clones
@@ -15714,6 +15713,11 @@ BOOL CALLBACK MdiListDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
       return TRUE;
     }
   }
+  else if (uMsg == WM_DESTROY)
+  {
+    //Destroy resources
+    DestroyMenu(hMenuList);
+  }
   DialogResizeMessages(&drs[0], &rcMdiListMinMaxDialog, &moCur.rcMdiListCurrentDialog, DRM_PAINTSIZEGRIP, hDlg, uMsg, wParam, lParam);
 
   return FALSE;
@@ -17205,7 +17209,7 @@ void SetTextStatusUser(FRAMEDATA *lpFrame, DWORD dwFlags)
 
   for (sp=hStatusStack.first; sp; sp=sp->next)
   {
-    if (sp->dwFormatFlags & dwFlags)
+    if ((sp->dwFormatFlags & dwFlags) || dwFlags == (DWORD)-1)
     {
       TranslateStatusUser(lpFrame, sp->wpFormat, sp->nFormatLen, wbuf, BUFFER_SIZE);
       StatusBar_SetTextWide(hStatus, sp->nIndex, wbuf);
@@ -17561,6 +17565,45 @@ DWORD TranslateStatusUser(FRAMEDATA *lpFrame, const wchar_t *wpString, int nStri
   if (lpFrame && wszBuffer) wszBuffer[i]=L'\0';
   if (sp) sp->dwFormatFlags=dwFlags;
   return i;
+}
+
+int* SetStatusParts(STACKSTATUSPART *lpStatusStack)
+{
+  int *lpSBParts;
+  int nStatusParts=SBP_USER + lpStatusStack->nElements;
+
+  if (lpSBParts=(int *)API_HeapAlloc(hHeap, HEAP_ZERO_MEMORY, nStatusParts * sizeof(int)))
+  {
+    lpSBParts[SBP_POSITION]=110;
+    lpSBParts[SBP_MODIFY]=220;
+    lpSBParts[SBP_INSERT]=250;
+    lpSBParts[SBP_NEWLINE]=280;
+    lpSBParts[SBP_CODEPAGE]=-1;
+
+    //Set user parts
+    if (lpStatusStack->nElements)
+    {
+      STATUSPART *sp;
+      int nPartIndex=SBP_USER;
+      int nPartSize;
+
+      lpSBParts[SBP_CODEPAGE]=560;
+      nPartSize=lpSBParts[SBP_CODEPAGE];
+
+      for (sp=lpStatusStack->first; sp; sp=sp->next)
+      {
+        if (sp->nPartSize == -1)
+        {
+          lpSBParts[nPartIndex++]=-1;
+          break;
+        }
+        nPartSize+=sp->nPartSize;
+        lpSBParts[nPartIndex++]=nPartSize;
+      }
+    }
+    SendMessage(hStatus, SB_SETPARTS, nStatusParts, (LPARAM)lpSBParts);
+  }
+  return lpSBParts;
 }
 
 STATUSPART* StackStatusPartInsert(STACKSTATUSPART *hStack)

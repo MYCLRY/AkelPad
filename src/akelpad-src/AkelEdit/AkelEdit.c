@@ -1,5 +1,5 @@
 /***********************************************************************************
- *                      AkelEdit text control v1.8.5                               *
+ *                      AkelEdit text control v1.8.6                               *
  *                                                                                 *
  * Copyright 2007-2013 by Shengalts Aleksander aka Instructor (Shengalts@mail.ru)  *
  *                                                                                 *
@@ -46,6 +46,10 @@
 #include "Resources\version.h"
 
 /*
+//Include AEC functions
+#define AEC_FUNCTIONS
+#include "AkelEdit.h"
+
 //Include RegExp functions
 #define RE_FUNCTIONS
 #include "RegExpFunc.h"
@@ -295,7 +299,7 @@ BOOL AE_UnregisterClassW(HINSTANCE hInstance)
       bAkelEditClassRegisteredW=FALSE;
     if (UnregisterClassW(AES_RICHEDIT20W, hInstance)) {
       bRichEditClassRegisteredW=FALSE;
-    }
+  }
   }
   return !bAkelEditClassRegisteredW;
 }

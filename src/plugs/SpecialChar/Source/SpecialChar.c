@@ -64,23 +64,25 @@
 #define STRID_HEX                  8
 #define STRID_SPECIAL              9
 #define STRID_SOLIDINDENTLINE      10
-#define STRID_NEWCHAR              11
-#define STRID_DEFAULT              12
-#define STRID_BASICTEXT            13
+#define STRID_INDENTLINESIZE       11
+#define STRID_NEWCHAR              12
+#define STRID_DEFAULT              13
+#define STRID_BASICTEXT            14
 #define STRID_SELTEXT              15
 #define STRID_FONTSTYLE            16
 #define STRID_CODERTHEME           17
 #define STRID_NEWLINE              18
 #define STRID_WRAP                 19
 #define STRID_INDENTLINE           20
-#define STRID_IGNORE               21
-#define STRID_NORMAL               22
-#define STRID_BOLD                 23
-#define STRID_ITALIC               24
-#define STRID_BOLDITALIC           25
-#define STRID_PLUGIN               26
-#define STRID_OK                   27
-#define STRID_CANCEL               28
+#define STRID_EOF                  21
+#define STRID_IGNORE               22
+#define STRID_NORMAL               23
+#define STRID_BOLD                 24
+#define STRID_ITALIC               25
+#define STRID_BOLDITALIC           26
+#define STRID_PLUGIN               27
+#define STRID_OK                   28
+#define STRID_CANCEL               29
 
 #define DLLA_SPECIALCHAR_OLDSET 1
 #define DLLA_SPECIALCHAR_OLDGET 2
@@ -103,12 +105,14 @@
 #define SCO_NULL         5
 #define SCO_WRAP         6
 #define SCO_INDENTLINE   7
-#define SCO_MAX          8
+#define SCO_EOF          8
+#define SCO_MAX          9
 
 #define SC_ERR          -1
 #define SC_NEWLINE      -2
 #define SC_WRAP         -3
 #define SC_INDENTLINE   -4
+#define SC_EOF          -5
 
 #define SCF_BASICENABLE      0x00001
 #define SCF_BASICTEXTCOLOR   0x00004
@@ -116,7 +120,6 @@
 #define SCF_SELENABLE        0x00100
 #define SCF_SELTEXTCOLOR     0x00400
 #define SCF_SELBKCOLOR       0x00800
-#define SCF_SOLIDINDENTLINE  0x10000
 
 typedef struct _SPECIALCHAR {
   struct _SPECIALCHAR *next;
@@ -145,8 +148,14 @@ typedef struct {
 #define UE_FIRSTPIXEL   0x08
 #define UE_UPDATEWINDOW 0x10
 
-#ifndef SPI_GETCLEARTYPE
-  #define SPI_GETCLEARTYPE 0x1048
+#ifndef SPI_GETFONTSMOOTHING
+  #define SPI_GETFONTSMOOTHING 0x004A
+#endif
+#ifndef SPI_GETFONTSMOOTHINGTYPE
+  #define SPI_GETFONTSMOOTHINGTYPE 0x200A
+#endif
+#ifndef FE_FONTSMOOTHINGCLEARTYPE
+  #define FE_FONTSMOOTHINGCLEARTYPE 0x0002
 #endif
 
 //Coder external call
@@ -211,6 +220,7 @@ COLORREF GetColorValueFromStrW(wchar_t *wpColor);
 char* GetColorStrFromValueA(COLORREF crColor, char *szColor);
 wchar_t* GetColorStrFromValueW(COLORREF crColor, wchar_t *wszColor);
 int GetNewLineString(int nNewLine, const wchar_t **wpNewLine);
+BOOL GetClearType();
 void UpdateEdit(HWND hWnd, DWORD dwFlags);
 void UpdateEditAll(DWORD dwFlags);
 
@@ -246,6 +256,8 @@ char *szSpecialChar=NULL;
 wchar_t *wszSpecialCharText=NULL;
 STACKSPECIALCHAR hSpecialCharStack={0};
 SPECIALCHAR *pscIndentLine=NULL;
+int nIndentLineSize=0;
+BOOL bIndentLineSolid=FALSE;
 DWORD dwPaintOptions=0;
 SPECIALCHAR scCoder;
 CODERTHEMEITEM cti[]={{L"SpecialChar_BasicFontStyle", &scCoder.dwBasicFontStyle},
@@ -422,6 +434,8 @@ void __declspec(dllexport) Settings(PLUGINDATA *pd)
               nOldChar=SC_WRAP;
             else if (nOldChar == SCO_INDENTLINE)
               nOldChar=SC_INDENTLINE;
+            else if (nOldChar == SCO_EOF)
+              nOldChar=SC_EOF;
           }
 
           for (pscChar=hSpecialCharStack.first; pscChar; pscChar=pscChar->next)
@@ -469,17 +483,33 @@ void __declspec(dllexport) Settings(PLUGINDATA *pd)
             if (pd->dwSupport & PDS_STRANSI)
             {
               if (pBasicTextColor && *(char *)pBasicTextColor == '#')
+              {
                 pscChar->dwBasicTextColor=GetColorValueFromStrA((char *)pBasicTextColor + 1);
+                pscChar->dwFlags|=SCF_BASICTEXTCOLOR;
+              }
               if (pBasicBkColor && *(char *)pBasicBkColor == '#')
+              {
                 pscChar->dwBasicBkColor=GetColorValueFromStrA((char *)pBasicBkColor + 1);
+                pscChar->dwFlags|=SCF_BASICBKCOLOR;
+              }
             }
             else
             {
               if (pBasicTextColor && *(wchar_t *)pBasicTextColor == L'#')
+              {
                 pscChar->dwBasicTextColor=GetColorValueFromStrW((wchar_t *)pBasicTextColor + 1);
+                pscChar->dwFlags|=SCF_BASICTEXTCOLOR;
+              }
               if (pBasicBkColor && *(wchar_t *)pBasicBkColor == L'#')
+              {
                 pscChar->dwBasicBkColor=GetColorValueFromStrW((wchar_t *)pBasicBkColor + 1);
+                pscChar->dwFlags|=SCF_BASICBKCOLOR;
+              }
             }
+            if (!pBasicTextColor)
+              pscChar->dwFlags&=~SCF_BASICTEXTCOLOR;
+            if (!pBasicBkColor)
+              pscChar->dwFlags&=~SCF_BASICBKCOLOR;
 
             //Selection
             if (bSelEnable != -2)
@@ -504,17 +534,33 @@ void __declspec(dllexport) Settings(PLUGINDATA *pd)
             if (pd->dwSupport & PDS_STRANSI)
             {
               if (pSelTextColor && *(char *)pSelTextColor == '#')
+              {
                 pscChar->dwSelTextColor=GetColorValueFromStrA((char *)pSelTextColor + 1);
+                pscChar->dwFlags|=SCF_SELTEXTCOLOR;
+              }
               if (pSelBkColor && *(char *)pSelBkColor == '#')
+              {
                 pscChar->dwSelBkColor=GetColorValueFromStrA((char *)pSelBkColor + 1);
+                pscChar->dwFlags|=SCF_SELBKCOLOR;
+              }
             }
             else
             {
               if (pSelTextColor && *(wchar_t *)pSelTextColor == L'#')
+              {
                 pscChar->dwSelTextColor=GetColorValueFromStrW((wchar_t *)pSelTextColor + 1);
+                pscChar->dwFlags|=SCF_SELTEXTCOLOR;
+              }
               if (pSelBkColor && *(wchar_t *)pSelBkColor == L'#')
+              {
                 pscChar->dwSelBkColor=GetColorValueFromStrW((wchar_t *)pSelBkColor + 1);
+                pscChar->dwFlags|=SCF_SELBKCOLOR;
+              }
             }
+            if (!pSelTextColor)
+              pscChar->dwFlags&=~SCF_SELTEXTCOLOR;
+            if (!pSelBkColor)
+              pscChar->dwFlags&=~SCF_SELBKCOLOR;
 
             bUpdate=TRUE;
           }
@@ -622,6 +668,8 @@ void __declspec(dllexport) Settings(PLUGINDATA *pd)
               nOldChar=SC_WRAP;
             else if (nOldChar == SCO_INDENTLINE)
               nOldChar=SC_INDENTLINE;
+            else if (nOldChar == SCO_EOF)
+              nOldChar=SC_EOF;
           }
           for (pscChar=hSpecialCharStack.first; pscChar; pscChar=pscChar->next)
           {
@@ -698,6 +746,9 @@ BOOL CALLBACK SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
   static HWND hWndOldCharSpecialRadio;
   static HWND hWndOldCharSpecialCombo;
   static HWND hWndSolidIndentLineCheck;
+  static HWND hWndIndentLineSizeLabel;
+  static HWND hWndIndentLineSizeEdit;
+  static HWND hWndIndentLineSizeSpin;
   static HWND hWndNewCharHexEdit;
   static HWND hWndNewCharHexPreview;
   static HWND hWndNewCharBasicTextCheck;
@@ -715,7 +766,6 @@ BOOL CALLBACK SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
   static SPECIALCHAR scDlgChar;
   static SPECIALCHAR *pscCurChar;
   static int nCurItem;
-  static BOOL bCoderThemeDlg;
   static BOOL bListChanged;
   SPECIALCHAR *pscChar;
   int nIndex;
@@ -737,6 +787,9 @@ BOOL CALLBACK SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     hWndOldCharSpecialRadio=GetDlgItem(hDlg, IDC_OLDCHARSPECIAL_RADIO);
     hWndOldCharSpecialCombo=GetDlgItem(hDlg, IDC_OLDCHARSPECIAL_COMBO);
     hWndSolidIndentLineCheck=GetDlgItem(hDlg, IDC_SOLIDINDENTLINE_CHECK);
+    hWndIndentLineSizeLabel=GetDlgItem(hDlg, IDC_INDENTLINESIZE_LABEL);
+    hWndIndentLineSizeEdit=GetDlgItem(hDlg, IDC_INDENTLINESIZE_EDIT);
+    hWndIndentLineSizeSpin=GetDlgItem(hDlg, IDC_INDENTLINESIZE_SPIN);
     hWndNewCharHexEdit=GetDlgItem(hDlg, IDC_NEWCHARHEX_EDIT);
     hWndNewCharHexPreview=GetDlgItem(hDlg, IDC_NEWCHARHEX_PREVIEW);
     hWndNewCharBasicTextCheck=GetDlgItem(hDlg, IDC_NEWCHARBASICTEXT_CHECK);
@@ -758,6 +811,7 @@ BOOL CALLBACK SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     SetDlgItemTextWide(hDlg, IDC_OLDCHARHEX_RADIO, GetLangStringW(wLangModule, STRID_HEX));
     SetDlgItemTextWide(hDlg, IDC_OLDCHARSPECIAL_RADIO, GetLangStringW(wLangModule, STRID_SPECIAL));
     SetDlgItemTextWide(hDlg, IDC_SOLIDINDENTLINE_CHECK, GetLangStringW(wLangModule, STRID_SOLIDINDENTLINE));
+    SetDlgItemTextWide(hDlg, IDC_INDENTLINESIZE_LABEL, GetLangStringW(wLangModule, STRID_INDENTLINESIZE));
     SetDlgItemTextWide(hDlg, IDC_NEWCHAR_GROUP, GetLangStringW(wLangModule, STRID_NEWCHAR));
     SetDlgItemTextWide(hDlg, IDC_NEWCHARHEX_LABEL, GetLangStringW(wLangModule, STRID_HEX));
     SetDlgItemTextWide(hDlg, IDC_NEWCHARBASICTEXT_CHECK, GetLangStringW(wLangModule, STRID_BASICTEXT));
@@ -772,6 +826,7 @@ BOOL CALLBACK SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     ComboBox_AddStringWide(hWndOldCharSpecialCombo, GetLangStringW(wLangModule, STRID_NEWLINE));
     ComboBox_AddStringWide(hWndOldCharSpecialCombo, GetLangStringW(wLangModule, STRID_WRAP));
     ComboBox_AddStringWide(hWndOldCharSpecialCombo, GetLangStringW(wLangModule, STRID_INDENTLINE));
+    ComboBox_AddStringWide(hWndOldCharSpecialCombo, GetLangStringW(wLangModule, STRID_EOF));
 
     ComboBox_AddStringWide(hWndNewCharFontStyleCombo, GetLangStringW(wLangModule, STRID_IGNORE));
     ComboBox_AddStringWide(hWndNewCharFontStyleCombo, GetLangStringW(wLangModule, STRID_NORMAL));
@@ -779,8 +834,13 @@ BOOL CALLBACK SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     ComboBox_AddStringWide(hWndNewCharFontStyleCombo, GetLangStringW(wLangModule, STRID_ITALIC));
     ComboBox_AddStringWide(hWndNewCharFontStyleCombo, GetLangStringW(wLangModule, STRID_BOLDITALIC));
 
-    bCoderThemeDlg=bCoderTheme;
-    SendMessage(hWndCoderThemeCheck, BM_SETCHECK, bCoderThemeDlg, 0);
+    SendMessage(hWndIndentLineSizeSpin, UDM_SETRANGE, 0, MAKELONG(999, 0));
+    SendMessage(hWndIndentLineSizeSpin, UDM_SETBUDDY, (WPARAM)hWndIndentLineSizeEdit, 0);
+    SetDlgItemInt(hDlg, IDC_INDENTLINESIZE_EDIT, nIndentLineSize, FALSE);
+
+    SendMessage(hWndSolidIndentLineCheck, BM_SETCHECK, bIndentLineSolid, 0);
+
+    SendMessage(hWndCoderThemeCheck, BM_SETCHECK, bCoderTheme, 0);
 
     FreeSpecialCharStack(&hSpecialCharDlgStack);
     StackCopy((stack *)hSpecialCharStack.first, (stack *)hSpecialCharStack.last, (stack **)&hSpecialCharDlgStack.first, (stack **)&hSpecialCharDlgStack.last, sizeof(SPECIALCHAR));
@@ -822,11 +882,17 @@ BOOL CALLBACK SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     if (scDlgChar.nOldChar == SC_INDENTLINE)
     {
       ShowWindow(hWndSolidIndentLineCheck, SW_SHOW);
+      ShowWindow(hWndIndentLineSizeLabel, SW_SHOW);
+      ShowWindow(hWndIndentLineSizeEdit, SW_SHOW);
+      ShowWindow(hWndIndentLineSizeSpin, SW_SHOW);
       EnableWindow(hWndNewCharHexEdit, FALSE);
     }
     else
     {
       ShowWindow(hWndSolidIndentLineCheck, SW_HIDE);
+      ShowWindow(hWndIndentLineSizeLabel, SW_HIDE);
+      ShowWindow(hWndIndentLineSizeEdit, SW_HIDE);
+      ShowWindow(hWndIndentLineSizeSpin, SW_HIDE);
       EnableWindow(hWndNewCharHexEdit, TRUE);
     }
 
@@ -1029,9 +1095,19 @@ BOOL CALLBACK SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
           scDlgChar.nOldChar=-2 - nIndex;
         }
         if (scDlgChar.nOldChar == SC_INDENTLINE)
+        {
           ShowWindow(hWndSolidIndentLineCheck, SW_SHOW);
+          ShowWindow(hWndIndentLineSizeLabel, SW_SHOW);
+          ShowWindow(hWndIndentLineSizeEdit, SW_SHOW);
+          ShowWindow(hWndIndentLineSizeSpin, SW_SHOW);
+        }
         else
+        {
           ShowWindow(hWndSolidIndentLineCheck, SW_HIDE);
+          ShowWindow(hWndIndentLineSizeLabel, SW_HIDE);
+          ShowWindow(hWndIndentLineSizeEdit, SW_HIDE);
+          ShowWindow(hWndIndentLineSizeSpin, SW_HIDE);
+        }
       }
     }
     else if (LOWORD(wParam) == IDC_OLDCHARHEX_EDIT ||
@@ -1053,13 +1129,6 @@ BOOL CALLBACK SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
         EnableWindow(hWndOldCharHexEdit, FALSE);
         EnableWindow(hWndOldCharSpecialCombo, TRUE);
       }
-    }
-    else if (LOWORD(wParam) == IDC_SOLIDINDENTLINE_CHECK)
-    {
-      if (SendMessage(hWndSolidIndentLineCheck, BM_GETCHECK, 0, 0) == BST_CHECKED)
-        scDlgChar.dwFlags|=SCF_SOLIDINDENTLINE;
-      else
-        scDlgChar.dwFlags&=~SCF_SOLIDINDENTLINE;
     }
     else if (LOWORD(wParam) == IDC_NEWCHARHEX_EDIT)
     {
@@ -1185,12 +1254,10 @@ BOOL CALLBACK SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
         }
       }
     }
-    else if (LOWORD(wParam) == IDC_CODERTHEME_CHECK)
-    {
-      bCoderThemeDlg=(int)SendMessage(hWndCoderThemeCheck, BM_GETCHECK, 0, 0);
-    }
     else if (LOWORD(wParam) == IDOK)
     {
+      int i;
+
       if (pscCurChar && scDlgChar.nOldChar == pscCurChar->nOldChar && xmemcmp(scDlgChar.wszName, pscCurChar->wszName, sizeof(SPECIALCHAR) - offsetof(SPECIALCHAR, wszName)))
       {
         //We accept changes for current special char
@@ -1217,9 +1284,24 @@ BOOL CALLBACK SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
         }
         dwSaveFlags|=OF_LISTTEXT;
       }
-      if (bCoderThemeDlg != bCoderTheme)
+      else FreeSpecialCharStack(&hSpecialCharDlgStack);
+
+      i=GetDlgItemInt(hDlg, IDC_INDENTLINESIZE_EDIT, NULL, FALSE);
+      if (nIndentLineSize != i)
       {
-        bCoderTheme=bCoderThemeDlg;
+        nIndentLineSize=i;
+        dwSaveFlags|=OF_SETTINGS;
+      }
+      i=(BOOL)SendMessage(hWndSolidIndentLineCheck, BM_GETCHECK, 0, 0);
+      if (bIndentLineSolid != i)
+      {
+        bIndentLineSolid=i;
+        dwSaveFlags|=OF_SETTINGS;
+      }
+      i=(BOOL)SendMessage(hWndCoderThemeCheck, BM_GETCHECK, 0, 0);
+      if (bCoderTheme != i)
+      {
+        bCoderTheme=i;
         dwSaveFlags|=OF_SETTINGS;
       }
 
@@ -1228,7 +1310,6 @@ BOOL CALLBACK SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
         SaveOptions(dwSaveFlags);
         dwSaveFlags=0;
       }
-
       EndDialog(hDlg, 0);
       UpdateEditAll(UE_DRAWRECT);
       return TRUE;
@@ -1337,7 +1418,7 @@ LRESULT CALLBACK EditParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
           aec.dwFlags=AECLR_ALL;
           SendMessage(pnt->hdr.hwndFrom, AEM_GETCOLORS, 0, (LPARAM)&aec);
           hbrSelBk=CreateSolidBrush(aec.crSelBk);
-          SystemParametersInfoA(SPI_GETCLEARTYPE, 0, &bClearType, 0);
+          bClearType=GetClearType();
           GetCoderColors(pnt->hdr.hwndFrom);
 
           SendMessage(pnt->hdr.hwndFrom, AEM_GETSEL, (WPARAM)NULL, (LPARAM)&aes);
@@ -1345,7 +1426,10 @@ LRESULT CALLBACK EditParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
           nCharHeightNoGap=nCharHeight - (int)SendMessage(pnt->hdr.hwndFrom, AEM_GETLINEGAP, 0, 0);
           nAveCharWidth=(int)SendMessage(pnt->hdr.hwndFrom, AEM_GETCHARSIZE, AECS_AVEWIDTH, 0);
           nSpaceWidth=(int)SendMessage(pnt->hdr.hwndFrom, AEM_GETCHARSIZE, AECS_SPACEWIDTH, 0);
-          nTabStopSize=(int)SendMessage(pnt->hdr.hwndFrom, AEM_GETTABSTOP, 0, 0);
+          if (!nIndentLineSize)
+            nTabStopSize=(int)SendMessage(pnt->hdr.hwndFrom, AEM_GETTABSTOP, 0, 0);
+          else
+            nTabStopSize=nIndentLineSize;
           nPrevLineSpaces=-1;
           nNextLineSpaces=-1;
           nInitTopStartLine=-1;
@@ -1437,7 +1521,7 @@ LRESULT CALLBACK EditParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
 
             for (pscChar=hSpecialCharStack.first; pscChar; pscChar=pscChar->next)
             {
-              if ((nChar == -AELB_EOF && pscChar->nOldChar == L'\0') ||
+              if ((nChar == -AELB_EOF && pscChar->nOldChar == SC_EOF) ||
                   (nChar == -AELB_WRAP && pscChar->nOldChar == SC_WRAP) ||
                   (nChar >= -AELB_RRN && nChar <= -AELB_R && pscChar->nOldChar == SC_NEWLINE) ||
                   (nChar >= 0 && nChar == pscChar->nOldChar))
@@ -1564,85 +1648,6 @@ LRESULT CALLBACK EditParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
               {
                 SendMessage(pnt->hdr.hwndFrom, AEM_POSFROMCHAR, (WPARAM)&pt, (LPARAM)&ciCount);
 
-                if (pscIndentDraw && crIndentColor != (DWORD)-1)
-                {
-                  //Draw indent line
-                  HPEN hPen;
-                  HPEN hPenOld;
-                  POINT64 ptGlobal;
-                  int nTop;
-                  int nBottom;
-                  int nLeft;
-                  int i;
-
-                  hPen=CreatePen(PS_SOLID, 0, crIndentColor);
-                  hPenOld=(HPEN)SelectObject(pnt->hDC, hPen);
-
-                  if (!(pscIndentDraw->dwFlags & SCF_SOLIDINDENTLINE))
-                  {
-                    ptGlobal.x=pt.x;
-                    ptGlobal.y=pt.y;
-                    SendMessage(pnt->hdr.hwndFrom, AEM_CONVERTPOINT, AECPT_CLIENTTOGLOBAL, (LPARAM)&ptGlobal);
-
-                    nTop=pt.y + !(ptGlobal.y % 2);
-                  }
-                  else
-                    nTop=pt.y;
-                  nBottom=pt.y + nCharHeight;
-
-                  if (nChar >= 0)
-                  {
-                    //Inside line
-                    nLeft=pt.x;
-
-                    if (!(pscIndentDraw->dwFlags & SCF_SOLIDINDENTLINE))
-                    {
-                      for (i=nTop; i < nBottom; i+=2)
-                      {
-                        //Draw dot
-                        MoveToEx(pnt->hDC, nLeft, i, NULL);
-                        LineTo(pnt->hDC, nLeft + 1, i + 1);
-                      }
-                    }
-                    else
-                    {
-                      MoveToEx(pnt->hDC, nLeft, nTop, NULL);
-                      LineTo(pnt->hDC, nLeft, nBottom);
-                    }
-                  }
-                  else
-                  {
-                    //Outside line
-                    if (nLineSpaces % nTabStopSize)
-                      nLineSpaces+=nTabStopSize - nLineSpaces % nTabStopSize;
-
-                    while (nLineSpaces < nMaxLineSpaces)
-                    {
-                      if (nLineSpaces)
-                      {
-                        nLeft=(int)((pt.x - ciCount.lpLine->nLineWidth) + nLineSpaces * nSpaceWidth);
-
-                        if (!(pscIndentDraw->dwFlags & SCF_SOLIDINDENTLINE))
-                        {
-                          for (i=nTop; i < nBottom; i+=2)
-                          {
-                            //Draw dot
-                            MoveToEx(pnt->hDC, nLeft, i, NULL);
-                            LineTo(pnt->hDC, nLeft + 1, i + 1);
-                          }
-                        }
-                        else
-                        {
-                          MoveToEx(pnt->hDC, nLeft, nTop, NULL);
-                          LineTo(pnt->hDC, nLeft, nBottom);
-                        }
-                      }
-                      nLineSpaces+=nTabStopSize;
-                    }
-                  }
-                  if (hPenOld) SelectObject(pnt->hDC, hPenOld);
-                  if (hPen) DeleteObject(hPen);
-                }
                 if (pscChar && (crTextColor != (DWORD)-1 || crBkColor != (DWORD)-1))
                 {
                   if (crTextColor != (DWORD)-1 && pscChar->nOldChar == L'\t' && pscChar->nNewChar == L'\0')
@@ -1667,7 +1672,9 @@ LRESULT CALLBACK EditParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
                     if (hPenOld) SelectObject(pnt->hDC, hPenOld);
                     if (hPen) DeleteObject(hPen);
                   }
-                  else if (crTextColor != (DWORD)-1 && pscChar->nOldChar == SC_NEWLINE && pscChar->nNewChar == L'\0')
+                  else if (crTextColor != (DWORD)-1 &&
+                            ((pscChar->nOldChar == SC_NEWLINE && pscChar->nNewChar == L'\0') ||
+                             (pscChar->nOldChar == SC_EOF && pscChar->nNewChar == L'\0')))
                   {
                     //Draw new line identificator
                     HBRUSH hBrush;
@@ -1678,21 +1685,31 @@ LRESULT CALLBACK EditParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
                     int nNewLineLen;
                     RECT rcBrush;
                     SIZE sizeNewLine;
+                    int nPosX=pt.x;
                     int nStrMargin=1;
 
 #if 0
-                    //New line string: "r", "n", "rn", "rrn".
-                    nNewLineLen=GetNewLineString(ciCount.lpLine->nLineBreak, &wpNewLine);
+                    if (pscChar->nOldChar == SC_NEWLINE)
+                    {
+                      //New line string: "r", "n", "rn", "rrn".
+                      nNewLineLen=GetNewLineString(ciCount.lpLine->nLineBreak, &wpNewLine);
+                    }
+                    else
+                    {
+                      //End of file string: "eof".
+                      wpNewLine=L"eof";
+                      nNewLineLen=3;
+                    }
                     GetTextExtentPoint32W(pnt->hDC, wpNewLine, nNewLineLen, &sizeNewLine);
-                    pt.x+=nStrMargin;
+                    nPosX+=nStrMargin;
                     sizeNewLine.cx+=nStrMargin * 2;
 
                     if (!(dwPaintOptions & PAINT_NONEWLINEDRAW) && bCharInSel)
                     {
                       //Selection rectangle.
-                      rcBrush.left=pt.x;
+                      rcBrush.left=nPosX;
                       rcBrush.top=pt.y;
-                      rcBrush.right=pt.x + sizeNewLine.cx + nStrMargin;
+                      rcBrush.right=nPosX + sizeNewLine.cx + nStrMargin;
                       rcBrush.bottom=pt.y + nCharHeight;
                       FillRect(pnt->hDC, &rcBrush, hbrSelBk);
                     }
@@ -1702,14 +1719,14 @@ LRESULT CALLBACK EditParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
                     hPenOld=(HPEN)SelectObject(pnt->hDC, hPen);
                     hBrush=(HBRUSH)GetStockObject(HOLLOW_BRUSH);
                     hBrushOld=(HBRUSH)SelectObject(pnt->hDC, hBrush);
-                    RoundRect(pnt->hDC, pt.x, pt.y, pt.x + sizeNewLine.cx, pt.y + nCharHeightNoGap, sizeNewLine.cx / 3, nCharHeightNoGap / 3);
+                    RoundRect(pnt->hDC, nPosX, pt.y, nPosX + sizeNewLine.cx, pt.y + nCharHeightNoGap, sizeNewLine.cx / 3, nCharHeightNoGap / 3);
                     if (hBrushOld) SelectObject(pnt->hDC, hBrushOld);
                     if (hPenOld) SelectObject(pnt->hDC, hPenOld);
                     if (hPen) DeleteObject(hPen);
 
                     //Draw new line string.
                     crTextColorPrev=SetTextColor(pnt->hDC, crTextColor);
-                    TextOutW(pnt->hDC, pt.x + nStrMargin, pt.y, wpNewLine, nNewLineLen);
+                    TextOutW(pnt->hDC, nPosX + nStrMargin, pt.y, wpNewLine, nNewLineLen);
                     SetTextColor(pnt->hDC, crTextColorPrev);
 #else
                     GetTextExtentPoint32W(pnt->hDC, L"  ", 2, &sizeNewLine);
@@ -1820,6 +1837,85 @@ LRESULT CALLBACK EditParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
                         SelectObject(pnt->hDC, hOldFont);
                     }
                   }
+                }
+                if (pscIndentDraw && crIndentColor != (DWORD)-1)
+                {
+                  //Draw indent line
+                  HPEN hPen;
+                  HPEN hPenOld;
+                  POINT64 ptGlobal;
+                  int nTop;
+                  int nBottom;
+                  int nLeft;
+                  int i;
+
+                  hPen=CreatePen(PS_SOLID, 0, crIndentColor);
+                  hPenOld=(HPEN)SelectObject(pnt->hDC, hPen);
+
+                  if (!bIndentLineSolid)
+                  {
+                    ptGlobal.x=pt.x;
+                    ptGlobal.y=pt.y;
+                    SendMessage(pnt->hdr.hwndFrom, AEM_CONVERTPOINT, AECPT_CLIENTTOGLOBAL, (LPARAM)&ptGlobal);
+
+                    nTop=pt.y + !(ptGlobal.y % 2);
+                  }
+                  else
+                    nTop=pt.y;
+                  nBottom=pt.y + nCharHeight;
+
+                  if (nChar >= 0)
+                  {
+                    //Inside line
+                    nLeft=pt.x;
+
+                    if (!bIndentLineSolid)
+                    {
+                      for (i=nTop; i < nBottom; i+=2)
+                      {
+                        //Draw dot
+                        MoveToEx(pnt->hDC, nLeft, i, NULL);
+                        LineTo(pnt->hDC, nLeft + 1, i + 1);
+                      }
+                    }
+                    else
+                    {
+                      MoveToEx(pnt->hDC, nLeft, nTop, NULL);
+                      LineTo(pnt->hDC, nLeft, nBottom);
+                    }
+                  }
+                  else
+                  {
+                    //Outside line
+                    if (nLineSpaces % nTabStopSize)
+                      nLineSpaces+=nTabStopSize - nLineSpaces % nTabStopSize;
+
+                    while (nLineSpaces < nMaxLineSpaces)
+                    {
+                      if (nLineSpaces)
+                      {
+                        nLeft=(int)((pt.x - ciCount.lpLine->nLineWidth) + nLineSpaces * nSpaceWidth);
+
+                        if (!bIndentLineSolid)
+                        {
+                          for (i=nTop; i < nBottom; i+=2)
+                          {
+                            //Draw dot
+                            MoveToEx(pnt->hDC, nLeft, i, NULL);
+                            LineTo(pnt->hDC, nLeft + 1, i + 1);
+                          }
+                        }
+                        else
+                        {
+                          MoveToEx(pnt->hDC, nLeft, nTop, NULL);
+                          LineTo(pnt->hDC, nLeft, nBottom);
+                        }
+                      }
+                      nLineSpaces+=nTabStopSize;
+                    }
+                  }
+                  if (hPenOld) SelectObject(pnt->hDC, hPenOld);
+                  if (hPen) DeleteObject(hPen);
                 }
               }
             }
@@ -2201,6 +2297,16 @@ int GetNewLineString(int nNewLine, const wchar_t **wpNewLine)
   return 2;
 }
 
+BOOL GetClearType()
+{
+  DWORD dwParam;
+
+  if (SystemParametersInfoA(SPI_GETFONTSMOOTHING, 0, &dwParam, 0) && dwParam == TRUE)
+    if (SystemParametersInfoA(SPI_GETFONTSMOOTHINGTYPE, 0, &dwParam, 0) && dwParam == FE_FONTSMOOTHINGCLEARTYPE)
+      return TRUE;
+  return FALSE;
+}
+
 void UpdateEdit(HWND hWnd, DWORD dwFlags)
 {
   RECT rc;
@@ -2314,6 +2420,8 @@ void ReadOptions(DWORD dwFlags)
     }
 
     //OF_SETTINGS
+    WideOption(hOptions, L"IndentLineSolid", PO_DWORD, (LPBYTE)&bIndentLineSolid, sizeof(DWORD));
+    WideOption(hOptions, L"IndentLineSize", PO_DWORD, (LPBYTE)&nIndentLineSize, sizeof(DWORD));
     WideOption(hOptions, L"CoderTheme", PO_DWORD, (LPBYTE)&bCoderTheme, sizeof(DWORD));
 
     SendMessage(hMainWnd, AKD_ENDOPTIONS, (WPARAM)hOptions, 0);
@@ -2365,6 +2473,8 @@ void SaveOptions(DWORD dwFlags)
     }
     if (dwFlags & OF_SETTINGS)
     {
+      WideOption(hOptions, L"IndentLineSolid", PO_DWORD, (LPBYTE)&bIndentLineSolid, sizeof(DWORD));
+      WideOption(hOptions, L"IndentLineSize", PO_DWORD, (LPBYTE)&nIndentLineSize, sizeof(DWORD));
       WideOption(hOptions, L"CoderTheme", PO_DWORD, (LPBYTE)&bCoderTheme, sizeof(DWORD));
     }
     SendMessage(hMainWnd, AKD_ENDOPTIONS, (WPARAM)hOptions, 0);
@@ -2389,6 +2499,7 @@ const wchar_t* GetLangStringW(LANGID wLangID, int nStringID)
 \"\x041F\x0440\x043E\x0431\x0435\x043B\" \\x20 \\xB7 257 0 0 0 0 0 0\r\
 \"\x0422\x0430\x0431\x0443\x043B\x044F\x0446\x0438\x044F\" \\x09 \\x00 257 0 0 0 0 0 0\r\
 \"\x041D\x043E\x0432\x0430\x044F\x0020\x0441\x0442\x0440\x043E\x043A\x0430\" -2 \\x00 257 0 0 0 0 0 0\r\
+\"\x041A\x043E\x043D\x0435\x0446\x0020\x0444\x0430\x0439\x043B\x0430\" -5 \\x00 257 0 0 0 0 0 0\r\
 \"\x041F\x0435\x0440\x0435\x043D\x043E\x0441\" -3 \\x00 257 0 0 0 0 0 0\r\
 \"\x0412\x0435\x0440\x0442\x0438\x043A\x0430\x043B\x044C\x043D\x0430\x044F\x0020\x0442\x0430\x0431\x0443\x043B\x044F\x0446\x0438\x044F\" \\x0b \\xA6 257 0 0 0 0 0 0\r\
 \"\x041F\x0440\x043E\x0433\x043E\x043D\x0020\x043B\x0438\x0441\x0442\x0430\" \\x0c \\xA7 257 0 0 0 0 0 0\r\
@@ -2412,6 +2523,8 @@ const wchar_t* GetLangStringW(LANGID wLangID, int nStringID)
       return L"\x0421\x043F\x0435\x0446\x0438\x0430\x043B\x044C\x043D\x044B\x0439";
     if (nStringID == STRID_SOLIDINDENTLINE)
       return L"\x0421\x043F\x043B\x043E\x0448\x043D\x0430\x044F\x0020\x043B\x0438\x043D\x0438\x044F\x0020\x043E\x0442\x0441\x0442\x0443\x043F\x0430";
+    if (nStringID == STRID_INDENTLINESIZE)
+      return L"\x0420\x0430\x0437\x043C\x0435\x0440:";
     if (nStringID == STRID_NEWCHAR)
       return L"\x041D\x043E\x0432\x044B\x0439\x0020\x0441\x0438\x043C\x0432\x043E\x043B";
     if (nStringID == STRID_DEFAULT)
@@ -2430,6 +2543,8 @@ const wchar_t* GetLangStringW(LANGID wLangID, int nStringID)
       return L"\x041F\x0435\x0440\x0435\x043D\x043E\x0441";
     if (nStringID == STRID_INDENTLINE)
       return L"\x041B\x0438\x043D\x0438\x044F\x0020\x043E\x0442\x0441\x0442\x0443\x043F\x0430";
+    if (nStringID == STRID_EOF)
+      return L"\x041A\x043E\x043D\x0435\x0446\x0020\x0444\x0430\x0439\x043B\x0430";
     if (nStringID == STRID_IGNORE)
       return L"\x0418\x0433\x043D\x043E\x0440\x0438\x0440\x043E\x0432\x0430\x0442\x044C";
     if (nStringID == STRID_NORMAL)
@@ -2455,6 +2570,7 @@ const wchar_t* GetLangStringW(LANGID wLangID, int nStringID)
 \"Space\" \\x20 \\xB7 257 0 0 0 0 0 0\r\
 \"Tabulation\" \\x09 \\x00 257 0 0 0 0 0 0\r\
 \"New line\" -2 \\x00 257 0 0 0 0 0 0\r\
+\"End of file\" -5 \\x00 257 0 0 0 0 0 0\r\
 \"Wrap\" -3 \\x00 257 0 0 0 0 0 0\r\
 \"Vertical tabulation\" \\x0b \\xA6 257 0 0 0 0 0 0\r\
 \"Form-feed\" \\x0c \\xA7 257 0 0 0 0 0 0\r\
@@ -2478,6 +2594,8 @@ const wchar_t* GetLangStringW(LANGID wLangID, int nStringID)
       return L"Special";
     if (nStringID == STRID_SOLIDINDENTLINE)
       return L"Solid indent line";
+    if (nStringID == STRID_INDENTLINESIZE)
+      return L"Size:";
     if (nStringID == STRID_NEWCHAR)
       return L"New char";
     if (nStringID == STRID_DEFAULT)
@@ -2496,6 +2614,8 @@ const wchar_t* GetLangStringW(LANGID wLangID, int nStringID)
       return L"Wrap";
     if (nStringID == STRID_INDENTLINE)
       return L"Indent line";
+    if (nStringID == STRID_EOF)
+      return L"End of file";
     if (nStringID == STRID_IGNORE)
       return L"Ignore";
     if (nStringID == STRID_NORMAL)

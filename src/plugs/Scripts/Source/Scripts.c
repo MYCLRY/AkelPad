@@ -1308,6 +1308,41 @@ UINT_PTR GetVariantInt(VARIANT *vt)
   return max(dwResult, (UINT_PTR)nResult);
 }
 
+UINT_PTR GetVariantValue(VARIANT *pvtParameter, BOOL bAnsi)
+{
+  CALLBACKITEM *lpSysCallback;
+  UINT_PTR dwValue=0;
+  int nUniLen;
+  int nAnsiLen;
+
+  if (pvtParameter->vt == VT_BSTR)
+  {
+    if (bAnsi)
+    {
+      nUniLen=SysStringLen(pvtParameter->bstrVal);
+      nAnsiLen=WideCharToMultiByte(CP_ACP, 0, pvtParameter->bstrVal, nUniLen, NULL, 0, NULL, NULL);
+      if (dwValue=(UINT_PTR)GlobalAlloc(GPTR, nAnsiLen + 1))
+        WideCharToMultiByte(CP_ACP, 0, pvtParameter->bstrVal, nUniLen + 1, (char *)dwValue, nAnsiLen + 1, NULL, NULL);
+    }
+    else dwValue=(UINT_PTR)pvtParameter->bstrVal;
+  }
+  else if (pvtParameter->vt == VT_DISPATCH)
+  {
+    if (lpSysCallback=StackGetCallbackByObject(&g_hSysCallbackStack, pvtParameter->pdispVal))
+      dwValue=(UINT_PTR)lpSysCallback->hHandle;
+    else
+      dwValue=(UINT_PTR)pvtParameter->pdispVal;
+  }
+  else
+  {
+    if (pvtParameter->vt == VT_BOOL)
+      dwValue=pvtParameter->boolVal?TRUE:FALSE;
+    else
+      dwValue=GetVariantInt(pvtParameter);
+  }
+  return dwValue;
+}
+
 int GetHotkeyString(WORD wHotkey, wchar_t *wszString)
 {
   wchar_t wszKeyText[100];

@@ -412,12 +412,29 @@ HRESULT STDMETHODCALLTYPE Document_SetFrameInfo(IDocument *this, FRAMEDATA *lpFr
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_SendMessage(IDocument *this, HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, INT_PTR *nResult)
+HRESULT STDMETHODCALLTYPE Document_SendMessage(IDocument *this, HWND hWnd, UINT uMsg, VARIANT vtwParam, VARIANT vtlParam, INT_PTR *nResult)
 {
+  VARIANT *pvtwParam=&vtwParam;
+  VARIANT *pvtlParam=&vtlParam;
+  WPARAM wParam;
+  LPARAM lParam;
+
+  if (pvtwParam->vt == (VT_VARIANT|VT_BYREF))
+    pvtwParam=pvtwParam->pvarVal;
+  wParam=GetVariantValue(pvtwParam, bOldWindows);
+
+  if (pvtlParam->vt == (VT_VARIANT|VT_BYREF))
+    pvtlParam=pvtlParam->pvarVal;
+  lParam=GetVariantValue(pvtlParam, bOldWindows);
+
   if (bOldWindows)
+  {
     *nResult=SendMessageA(hWnd, uMsg, wParam, lParam);
-  else
-    *nResult=SendMessageW(hWnd, uMsg, wParam, lParam);
+    if (pvtwParam->vt == VT_BSTR) GlobalFree((HGLOBAL)wParam);
+    if (pvtlParam->vt == VT_BSTR) GlobalFree((HGLOBAL)lParam);
+  }
+  else *nResult=SendMessageW(hWnd, uMsg, wParam, lParam);
+
   return NOERROR;
 }
 

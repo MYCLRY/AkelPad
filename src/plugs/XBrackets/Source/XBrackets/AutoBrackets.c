@@ -1,6 +1,26 @@
 #include "AutoBrackets.h"
 #include "Plugin.h"
 
+
+// ClearType definitions... >>>
+#ifndef SPI_GETCLEARTYPE
+  #define SPI_GETCLEARTYPE 0x1048
+#endif
+
+#ifndef SPI_GETFONTSMOOTHING
+  #define SPI_GETFONTSMOOTHING 0x004A
+#endif
+
+#ifndef SPI_GETFONTSMOOTHINGTYPE
+  #define SPI_GETFONTSMOOTHINGTYPE 0x200A
+#endif
+
+#ifndef FE_FONTSMOOTHINGCLEARTYPE
+  #define FE_FONTSMOOTHINGCLEARTYPE 0x0002
+#endif
+// <<< ...ClearType definitions
+
+
 //#define _verify_ab_
 #undef _verify_ab_
 
@@ -18,7 +38,8 @@ enum TFileType {
 enum TFileType2 {
   tfmNone           = 0x00,
   tfmComment1       = 0x01,
-  tfmHtmlCompatible = 0x02
+  tfmHtmlCompatible = 0x02,
+  tfmEscaped1       = 0x04
 };
 
 enum TBracketType {
@@ -118,6 +139,8 @@ extern BOOL     bBracketsSkipComment1;
 extern COLORREF bracketsColourHighlight[2];
 extern char     strHtmlFileExtsA[STR_FILEEXTS_SIZE];
 extern wchar_t  strHtmlFileExtsW[STR_FILEEXTS_SIZE];
+extern char     strEscaped1FileExtsA[STR_FILEEXTS_SIZE];
+extern wchar_t  strEscaped1FileExtsW[STR_FILEEXTS_SIZE];
 extern char     strComment1FileExtsA[STR_FILEEXTS_SIZE];
 extern wchar_t  strComment1FileExtsW[STR_FILEEXTS_SIZE];
 
@@ -705,7 +728,7 @@ void OnEditHighlightActiveBrackets(void)
     {
       // removing selection
       if (g_bOldWindows)
-        AnyRichEdit_ReplaceSelTextA(hActualEditWnd, "", TRUE);
+        AnyRichEdit_ReplaceSelText(hActualEditWnd, "", TRUE);
       else
         AnyRichEdit_ReplaceSelTextW(hActualEditWnd, L"", TRUE);
     }
@@ -739,21 +762,21 @@ void OnEditHighlightActiveBrackets(void)
             {
               // already in brackets/quotes; exclude them
               pTextA[nSelLen] = 0;
-              AnyRichEdit_ReplaceSelTextA(hActualEditWnd, pTextA + 2, TRUE);
+              AnyRichEdit_ReplaceSelText(hActualEditWnd, pTextA + 2, TRUE);
               nEditEndPos -= nBrPairLen;
             }
             else
             {
               // enclose in brackets/quotes
               lstrcpyA(pTextA + nSelLen + 1, pBrPairA + 1);
-              AnyRichEdit_ReplaceSelTextA(hActualEditWnd, pTextA, TRUE);
+              AnyRichEdit_ReplaceSelText(hActualEditWnd, pTextA, TRUE);
               nEditEndPos += nBrPairLen;
             }
           }
           else // (g_dwOptions[OPT_DWORD_AUTOCOMPLETE_SEL_AUTOBR] == 1)
           {
             lstrcpyA(pTextA + nSelLen + 1, pBrPairA + 1);
-            AnyRichEdit_ReplaceSelTextA(hActualEditWnd, pTextA, TRUE);
+            AnyRichEdit_ReplaceSelText(hActualEditWnd, pTextA, TRUE);
             ++nEditPos;
             ++nEditEndPos;
           }
@@ -913,7 +936,8 @@ void OnEditHighlightActiveBrackets(void)
     }
   }
 
-  if (bPrevCharOK && bNextCharOK && bBracketsSkipEscaped)
+  if (bPrevCharOK && bNextCharOK && 
+      bBracketsSkipEscaped && (nCurrentFileType2 & tfmEscaped1))
   {
     wchar_t szPrefixW[MAX_ESCAPED_PREFIX + 2];
     INT_X   pos;
@@ -1018,7 +1042,7 @@ void OnEditHighlightActiveBrackets(void)
 
     // inserting brackets
     if (g_bOldWindows)
-      AnyRichEdit_ReplaceSelTextA(hActualEditWnd, getBracketsPairA(nBracketType), TRUE);
+      AnyRichEdit_ReplaceSelText(hActualEditWnd, getBracketsPairA(nBracketType), TRUE);
     else
       AnyRichEdit_ReplaceSelTextW(hActualEditWnd, getBracketsPairW(nBracketType), TRUE);
 
@@ -1875,7 +1899,9 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
       return FALSE;
   }
 
-  if (nBracketType != tbtNone && bBracketsSkipEscaped && nCharacterPosition > 0)
+  if ((nBracketType != tbtNone) && 
+      bBracketsSkipEscaped && (nCurrentFileType2 & tfmEscaped1) && 
+      (nCharacterPosition > 0))
   {
     wchar_t szPrefixW[MAX_ESCAPED_PREFIX + 2];
     INT_X pos;
@@ -2085,7 +2111,7 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
         wch = pcwszLine[i];
         if (wch == wchOK)
         {
-          if (bBracketsSkipEscaped && i > 0)
+          if (bBracketsSkipEscaped && (nCurrentFileType2 & tfmEscaped1) && (i > 0))
           {
             INT_X pos;
             INT   len;
@@ -2105,7 +2131,7 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
         }
         else if (wch == wchFail)
         {
-          if (bBracketsSkipEscaped && i > 0)
+          if (bBracketsSkipEscaped && (nCurrentFileType2 & tfmEscaped1) && (i > 0))
           {
             INT_X pos;
             INT   len;
@@ -2436,6 +2462,41 @@ static void adjustFont(const DWORD dwFontStyle, const DWORD dwFontFlags,
   }
 }
 
+static BOOL IsClearTypeEnabled()
+{
+  BOOL bClearType;
+  BOOL bFontSmoothing;
+  UINT nFontSmoothingType;
+
+  bClearType = FALSE;
+  bFontSmoothing = FALSE;
+  nFontSmoothingType = 0;
+
+  if (g_bOldWindows)
+  {
+    SystemParametersInfoA(SPI_GETFONTSMOOTHING, 0, &bFontSmoothing, 0);
+    if (bFontSmoothing)
+    {
+      SystemParametersInfoA(SPI_GETFONTSMOOTHINGTYPE, 0, &nFontSmoothingType, 0);
+    }
+  }
+  else
+  {
+    SystemParametersInfoW(SPI_GETFONTSMOOTHING, 0, &bFontSmoothing, 0);
+    if (bFontSmoothing)
+    {
+      SystemParametersInfoW(SPI_GETFONTSMOOTHINGTYPE, 0, &nFontSmoothingType, 0);
+    }
+  }
+
+  if (bFontSmoothing && (nFontSmoothingType == FE_FONTSMOOTHINGCLEARTYPE))
+  {
+    bClearType = TRUE;
+  }
+
+  return bClearType;
+}
+
 #define mix_color(a, b) (BYTE)((((unsigned int)(a))*3)/8 + (((unsigned int)(b))*5)/8)
 
 /*static*/ void HighlightCharacter(const INT_X nCharacterPosition, const BOOL bHighlight)
@@ -2547,6 +2608,8 @@ static void adjustFont(const DWORD dwFontStyle, const DWORD dwFontFlags,
       LOGFONTA     lfA;
       LOGFONTW     lfW;
       //INT         sel1, sel2;
+      int          nBkModePrev;
+      BOOL         bClearType;
       char         strA[2];
       wchar_t      strW[2];
 
@@ -2555,14 +2618,16 @@ static void adjustFont(const DWORD dwFontStyle, const DWORD dwFontFlags,
       // to repaint a field under the caret
       HideCaret(hActualEditWnd);
 
+      bClearType = IsClearTypeEnabled();
+
       // at first we select a font...
       if (g_bOldWindows)
       {
         HFONT hf;
 
-        hf = (HFONT) SendMessage(g_hMainWnd, AKD_GETFONTA, (WPARAM) hActualEditWnd, (LPARAM) &lfA);
+        hf = (HFONT) SendMessageA(g_hMainWnd, AKD_GETFONTA, (WPARAM) hActualEditWnd, (LPARAM) &lfA);
         if (!hf)
-          hf = (HFONT) SendMessage(g_hMainWnd, AKD_GETFONTA, (WPARAM) NULL, (LPARAM) &lfA);
+          hf = (HFONT) SendMessageA(g_hMainWnd, AKD_GETFONTA, (WPARAM) NULL, (LPARAM) &lfA);
 
         // adjust font style
         adjustFont(chd.dwFontStyle, dwFontFlags, &lfA.lfItalic, &lfA.lfWeight);
@@ -2573,9 +2638,9 @@ static void adjustFont(const DWORD dwFontStyle, const DWORD dwFontFlags,
       {
         HFONT hf;
 
-        hf = (HFONT) SendMessage(g_hMainWnd, AKD_GETFONTW, (WPARAM) hActualEditWnd, (LPARAM) &lfW);
+        hf = (HFONT) SendMessageW(g_hMainWnd, AKD_GETFONTW, (WPARAM) hActualEditWnd, (LPARAM) &lfW);
         if (!hf)
-          hf = (HFONT) SendMessage(g_hMainWnd, AKD_GETFONTW, (WPARAM) NULL, (LPARAM) &lfW);
+          hf = (HFONT) SendMessageW(g_hMainWnd, AKD_GETFONTW, (WPARAM) NULL, (LPARAM) &lfW);
 
         // adjust font style
         adjustFont(chd.dwFontStyle, dwFontFlags, &lfW.lfItalic, &lfW.lfWeight);
@@ -2617,7 +2682,7 @@ static void adjustFont(const DWORD dwFontStyle, const DWORD dwFontFlags,
       hRgn = CreateRectRgn(ptBegin.x, ptBegin.y, ptEnd.x, ptEnd.y);
       hRgnOld = (HRGN) SelectObject(hDC, hRgn);
 
-      SetBkMode(hDC, TRANSPARENT);
+      nBkModePrev = SetBkMode(hDC, TRANSPARENT);
       //bkColor = GetBkColor(hDC);
 
       //if (g_bOldWindows)
@@ -2666,12 +2731,26 @@ static void adjustFont(const DWORD dwFontStyle, const DWORD dwFontFlags,
       {
         if (bHighlight)
         {
+          COLORREF crOldBk = 0;
+
+          if (bClearType)
+          {
+            SetBkMode(hDC, nBkModePrev);
+            crOldBk = SetBkColor(hDC, aecc.crBk);
+          }
+
           strA[0] = AnyRichEdit_GetCharAt(hActualEditWnd, nCharacterPosition);
           strA[1] = 0;
           DrawTextA(hDC, strA, 1, &rect, 0);
 
           if (hFontOld)  SelectObject(hDC, hFontOld);
           DeleteObject(hFont);
+
+          if (bClearType)
+          {
+            SetBkColor(hDC, crOldBk);
+            SetBkMode(hDC, TRANSPARENT);
+          }
 
           if (chd.dwFontStyle == XBR_FONTSTYLE_UNDEFINED)
           {
@@ -2724,12 +2803,26 @@ static void adjustFont(const DWORD dwFontStyle, const DWORD dwFontFlags,
       {
         if (bHighlight)
         {
+          COLORREF crOldBk = 0;
+
+          if (bClearType)
+          {
+            SetBkMode(hDC, nBkModePrev);
+            crOldBk = SetBkColor(hDC, aecc.crBk);
+          }
+
           strW[0] = AnyRichEdit_GetCharAtW(hActualEditWnd, nCharacterPosition);
           strW[1] = 0;
           DrawTextW(hDC, strW, 1, &rect, 0);
 
           if (hFontOld)  SelectObject(hDC, hFontOld);
           DeleteObject(hFont);
+
+          if (bClearType)
+          {
+            SetBkColor(hDC, crOldBk);
+            SetBkMode(hDC, TRANSPARENT);
+          }
 
           if (chd.dwFontStyle == XBR_FONTSTYLE_UNDEFINED)
           {
@@ -2965,7 +3058,8 @@ static int wstr_unsafe_subcmp(const wchar_t* wstr, const wchar_t* wsubstr)
   return (*wsubstr) ? (*wstr - *wsubstr) : 0;
 }
 
-static BOOL wstr_is_comment1_ext(const wchar_t* szExtW)
+static BOOL wstr_is_listed_ext(const wchar_t* szExtW, 
+  wchar_t* szExtListW, char* szExtListA)
 {
   if ( szExtW && szExtW[0] )
   {
@@ -2974,26 +3068,26 @@ static BOOL wstr_is_comment1_ext(const wchar_t* szExtW)
 
     if (g_bOldWindows)
     {
-      len = lstrlenA(strComment1FileExtsA);
-      MultiByteToWideChar(CP_ACP, 0, strComment1FileExtsA, len,
-        strComment1FileExtsW, STR_FILEEXTS_SIZE - 1);
-      strComment1FileExtsW[len] = 0;
+      len = lstrlenA(szExtListA);
+      MultiByteToWideChar(CP_ACP, 0, szExtListA, len,
+        szExtListW, STR_FILEEXTS_SIZE - 1);
+      szExtListW[len] = 0;
     }
     else
     {
-      len = lstrlenW(strComment1FileExtsW);
+      len = lstrlenW(szExtListW);
     }
 
     n = 0;
     i = 0;
     while (i <= len)
     {
-      if ( (strComment1FileExtsW[i]) &&
-           (strComment1FileExtsW[i] != L';') &&
-           (strComment1FileExtsW[i] != L',') &&
-           (strComment1FileExtsW[i] != L' ') )
+      if ( (szExtListW[i]) &&
+           (szExtListW[i] != L';') &&
+           (szExtListW[i] != L',') &&
+           (szExtListW[i] != L' ') )
       {
-        szW[n++] = strComment1FileExtsW[i];
+        szW[n++] = szExtListW[i];
       }
       else
       {
@@ -3009,6 +3103,26 @@ static BOOL wstr_is_comment1_ext(const wchar_t* szExtW)
     }
   }
   return FALSE;
+}
+
+static BOOL wstr_is_comment1_ext(const wchar_t* szExtW)
+{
+  return wstr_is_listed_ext(szExtW, strComment1FileExtsW, strComment1FileExtsA);
+}
+
+static BOOL wstr_is_escaped1_ext(const wchar_t* szExtW)
+{
+  if (g_bOldWindows)
+  {
+    if (strEscaped1FileExtsA[0] == 0)
+      return TRUE;
+  }
+  else
+  {
+    if (strEscaped1FileExtsW[0] == 0)
+      return TRUE;
+  }
+  return wstr_is_listed_ext(szExtW, strEscaped1FileExtsW, strEscaped1FileExtsA);
 }
 
 static BOOL wstr_is_html_compatible(const wchar_t* szExtW)
@@ -3119,7 +3233,7 @@ int getFileType(int* pnCurrentFileType2)
          (wstr_unsafe_cmp(szExtW, L"cxx") == 0) )
     {
       nType = tftC_Cpp;
-      nType2 = tfmComment1;
+      nType2 = tfmComment1 | tfmEscaped1;
     }
     else if ( (wstr_unsafe_cmp(szExtW, L"h") == 0) ||
               (wstr_unsafe_cmp(szExtW, L"hh") == 0) ||
@@ -3127,7 +3241,7 @@ int getFileType(int* pnCurrentFileType2)
               (wstr_unsafe_cmp(szExtW, L"hxx") == 0) )
     {
       nType = tftH_Hpp;
-      nType2 = tfmComment1;
+      nType2 = tfmComment1 | tfmEscaped1;
     }
     else if ( wstr_unsafe_cmp(szExtW, L"pas") == 0 )
     {
@@ -3140,6 +3254,10 @@ int getFileType(int* pnCurrentFileType2)
       if ( wstr_is_comment1_ext(szExtW) )
       {
         nType2 |= tfmComment1;
+      }
+      if ( wstr_is_escaped1_ext(szExtW) )
+      {
+        nType2 |= tfmEscaped1;
       }
       if ( wstr_is_html_compatible(szExtW) )
       {

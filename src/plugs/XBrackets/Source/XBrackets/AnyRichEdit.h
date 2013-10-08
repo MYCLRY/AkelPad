@@ -49,7 +49,7 @@ INT_X   AnyRichEdit_LastVisibleCharIndex(HWND hEd);
 INT     AnyRichEdit_LastVisibleLine(HWND hEd);
 INT_X   AnyRichEdit_LineIndex(HWND hEd, INT nLine); // returns index of the 1st character
 INT     AnyRichEdit_LineLength(HWND hEd, INT_X nCharacterIndex);
-void    AnyRichEdit_ReplaceSelTextA(HWND hEd, const CHAR* cszText, BOOL bCanUndo /* = FALSE */);
+void    AnyRichEdit_ReplaceSelText(HWND hEd, const TCHAR* cszText, BOOL bCanUndo /* = FALSE */);
 BOOL    AnyRichEdit_SetCharFormat(HWND hEd, DWORD dwMask, DWORD dwEffects,
           COLORREF color /* = RGB(0,0,0) */, DWORD dwOptions /* = SCF_SELECTION */);
 DWORD   AnyRichEdit_SetEventMask(HWND hEd, DWORD nEventMask);

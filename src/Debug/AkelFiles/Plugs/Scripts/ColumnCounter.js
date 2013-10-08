@@ -6,11 +6,14 @@
 // Description:
 // First selected line number is a initial number.
 // Each next line will be increased at defined step.
-//  3    3
-//  9    4
-//  2 -> 5
-//  0    6
-//  5    7
+//  3    3     -9    -9     08    08     0x08     0x08
+//  9    4     9     -8     56    09     0x1      0x09
+//  2 -> 5     -2 -> -7     50 -> 10     0x100 -> 0x0a
+//  0    6     0     -6     08    11     0x4      0x0b
+//  5    7     5     -5     78    12     0x2      0x0c
+// If line not contain number, then it is not processed.
+// If selected only single line, then selected number will be increased at defined step.
+// If step equal to zero, then it will be automatically calculated as the difference between second and first number.
 //
 //
 //// ”величение чисел (счетчик) вертикального выделени€.
@@ -20,80 +23,130 @@
 //
 // ќписание:
 // „исло в первой выделенной строке €вл€етс€ начальным числом.
-//  ажда€ последующа€ строка будет увеличина на величину назначенного шага.
-//  3    3
-//  9    4
-//  2 -> 5
-//  0    6
-//  5    7
+//  ажда€ последующа€ строка будет увеличена на величину назначенного шага.
+//  3    3     -9    -9     08    08     0x08     0x08
+//  9    4     9     -8     56    09     0x1      0x09
+//  2 -> 5     -2 -> -7     50 -> 10     0x100 -> 0x0a
+//  0    6     0     -6     08    11     0x4      0x0b
+//  5    7     5     -5     78    12     0x2      0x0c
+// ≈сли строка не содержит числа, то она не обрабатываетс€.
+// ≈сли выделена только одна строка, то выделенное число будет увеличено на величину назначенного шага.
+// ≈сли шаг равен нулю, то он будет вычислен автоматически, как разница между вторым и первым числом.
 
-//Options
-var nStep=1;
-var nMinDigits=0;
+//Arguments
+var nStep=AkelPad.GetArgValue("Step", 1);
+var nMinDigits=AkelPad.GetArgValue("MinDigits", 0);
+var bHexCombine=AkelPad.GetArgValue("HexCombine", false);
 
 //Variables
 var hMainWnd=AkelPad.GetMainWnd();
 var hWndEdit=AkelPad.GetEditWnd();
-var oSys=AkelPad.SystemFunction();
-var pScriptName=WScript.ScriptName;
 var pSelText;
 var pLinesArray;
+var pFirstNumber="";
 var nFirstNumber;
-var bMinus;
+var pCurNumber;
+var nCurNumber;
+var bSingle=false;
+var bMinus=false;
+var bHex=false;
 var nIndex=0;
 var i;
 
-if (hMainWnd)
+if (hWndEdit)
 {
-  if (AkelPad.IsAkelEdit())
+  if (!AkelPad.SendMessage(hWndEdit, 3129 /*AEM_GETLINENUMBER*/, 12 /*AEGL_UNWRAPSELMULTILINE*/, 0))
   {
-    if (AkelPad.SendMessage(hWndEdit, 3125 /*AEM_GETSEL*/, 0, 0))
+    bSingle=true;
+    if (!nStep) nStep=1;
+  }
+  if (AkelPad.SendMessage(hWndEdit, 3127 /*AEM_GETCOLUMNSEL*/, 0, 0) || bSingle)
+  {
+    pSelText=AkelPad.GetSelText();
+
+    if (pLinesArray=pSelText.split("\r"))
     {
-      if (AkelPad.SendMessage(hWndEdit, 3127 /*AEM_GETCOLUMNSEL*/, 0, 0))
+      do
       {
-        pSelText=AkelPad.GetSelText();
-
-        if (pLinesArray=pSelText.split("\r"))
+        if (pLinesArray[nIndex].match(/^\s*(-{0,1}(0x[\da-fA-F]+|\d+))/) && !isNaN(parseInt(RegExp.$1)))
         {
-          nFirstNumber=parseInt(pLinesArray[nIndex]);
-
-          if (!isNaN(nFirstNumber))
+          if (!pFirstNumber || (!nStep && typeof nFirstNumber == "undefined"))
           {
-            if (nFirstNumber < 0)
-              bMinus=true;
-            else
-              bMinus=false;
-            pLinesArray[nIndex]="" + nFirstNumber + pLinesArray[nIndex].replace(/^(0x[\da-f]+|-{0,1}\d+)/i, "");
-            for (i=RegExp.$1.length; i < nMinDigits; ++i)
-              pLinesArray[nIndex]="0" + pLinesArray[nIndex];
+            if (pFirstNumber) nFirstNumber=nCurNumber;
+            pFirstNumber=RegExp.$1;
 
-            while (++nIndex < pLinesArray.length)
+            if (pFirstNumber.substr(0, 1) == "-")
             {
-              if (!isNaN(parseInt(pLinesArray[nIndex])))
-              {
-                if (bMinus)
-                  nFirstNumber=nFirstNumber - nStep;
-                else
-                  nFirstNumber=nFirstNumber + nStep;
-                pLinesArray[nIndex]="" + nFirstNumber + pLinesArray[nIndex].replace(/^(0x[\da-f]+|-{0,1}\d+)/i, "");
-                for (i=RegExp.$1.length; i < nMinDigits; ++i)
-                  pLinesArray[nIndex]="0" + pLinesArray[nIndex];
-              }
+              pFirstNumber=pFirstNumber.substr(1);
+              bMinus=true;
             }
-            pSelText=pLinesArray.join("\r");
-            AkelPad.ReplaceSel(pSelText, true);
+            if (pFirstNumber.substr(0, 2) == "0x")
+            {
+              if (!nMinDigits) nMinDigits=pFirstNumber.length - 2;
+              nCurNumber=parseInt(pFirstNumber);
+              bHex=true;
+            }
+            else if (pFirstNumber.substr(0, 1) == "0" && pFirstNumber.length > 1)
+            {
+              if (!nMinDigits) nMinDigits=pFirstNumber.length;
+              nCurNumber=parseInt(pFirstNumber.replace(/^0+/, ""));
+            }
+            else nCurNumber=parseInt(pFirstNumber);
+
+            if (bMinus) nCurNumber=-nCurNumber;
+            if (!nStep && typeof nFirstNumber != "undefined")
+              nStep=nCurNumber - nFirstNumber;
           }
+          if (bSingle)
+          {
+            if (bHex && bHexCombine)
+            {
+              if (nCurNumber < 0)
+                nCurNumber=parseInt(nCurNumber / (nStep * 2));
+              else
+                nCurNumber*=nStep * 2;
+            }
+            else nCurNumber=nCurNumber + nStep;
+          }
+
+          if (bHex)
+            pCurNumber="" + mod(nCurNumber).toString(16);
+          else
+            pCurNumber="" + mod(nCurNumber);
+          for (i=pCurNumber.length; i < nMinDigits; ++i)
+            pCurNumber="0" + pCurNumber;
+          if (bHex) pCurNumber="0x" + pCurNumber;
+          if (nCurNumber < 0) pCurNumber="-" + pCurNumber;
+          pLinesArray[nIndex]=pLinesArray[nIndex].replace(/^\s*(-{0,1}(0x[\da-fA-F]+|\d+))/, pCurNumber);
+          if (bSingle) break;
+
+          if (bHex && bHexCombine)
+          {
+            if (nCurNumber < 0)
+              nCurNumber=parseInt(nCurNumber / (nStep * 2));
+            else
+              nCurNumber*=nStep * 2;
+          }
+          else nCurNumber=nCurNumber + nStep;
         }
       }
-      else AkelPad.MessageBox(hMainWnd, GetLangString(2), pScriptName, 48 /*MB_ICONEXCLAMATION*/);
+      while (++nIndex < pLinesArray.length)
+
+      pSelText=pLinesArray.join("\r");
+      AkelPad.ReplaceSel(pSelText, true);
     }
-    else AkelPad.MessageBox(hMainWnd, GetLangString(1), pScriptName, 48 /*MB_ICONEXCLAMATION*/);
   }
-  else AkelPad.MessageBox(hMainWnd, GetLangString(0), pScriptName, 48 /*MB_ICONEXCLAMATION*/);
+  else AkelPad.MessageBox(hMainWnd, GetLangString(0), WScript.ScriptName, 48 /*MB_ICONEXCLAMATION*/);
 }
 
-
 //Functions
+function mod(nNumber)
+{
+  if (nNumber < 0)
+    return -nNumber;
+  return nNumber;
+}
+
 function GetLangString(nStringID)
 {
   var nLangID=AkelPad.GetLangId(1 /*LANGID_PRIMARY*/);
@@ -101,19 +154,11 @@ function GetLangString(nStringID)
   if (nLangID == 0x19) //LANG_RUSSIAN
   {
     if (nStringID == 0)
-      return "\u0422\u0440\u0435\u0431\u0443\u0435\u0442\u0441\u044F\u0020\u0041\u006B\u0065\u006C\u0050\u0061\u0064\u0020\u0034\u002E\u0078\u002E\u0078\u0020\u0438\u043B\u0438\u0020\u0432\u044B\u0448\u0435";
-    if (nStringID == 1)
-      return "\u041E\u0442\u0441\u0443\u0442\u0441\u0442\u0432\u0443\u0435\u0442\u0020\u0432\u044B\u0434\u0435\u043B\u0435\u043D\u043D\u044B\u0439\u0020\u0442\u0435\u043A\u0441\u0442\u002E";
-    if (nStringID == 2)
       return "\u0422\u0440\u0435\u0431\u0443\u0435\u0442\u0441\u044F\u0020\u0432\u0435\u0440\u0442\u0438\u043A\u0430\u043B\u044C\u043D\u043E\u0435\u0020\u0432\u044B\u0434\u0435\u043B\u0435\u043D\u0438\u0435\u002E";
   }
   else
   {
     if (nStringID == 0)
-      return "Required AkelPad 4.x.x or higher";
-    if (nStringID == 1)
-      return "No text selected.";
-    if (nStringID == 2)
       return "Required column selection.";
   }
   return "";

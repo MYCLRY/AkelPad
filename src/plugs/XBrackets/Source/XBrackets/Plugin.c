@@ -82,6 +82,9 @@ COLORREF     g_CustomColoursHighlight_0[MAX_CUSTOM_COLOURS] = { 0 };
 char         strHtmlFileExtsA[STR_FILEEXTS_SIZE] = "htm; xml; php\0";
 wchar_t      strHtmlFileExtsW[STR_FILEEXTS_SIZE] = L"htm; xml; php\0";
 wchar_t      strHtmlFileExtsW_0[STR_FILEEXTS_SIZE] = { 0 };
+char         strEscaped1FileExtsA[STR_FILEEXTS_SIZE] = { 0 }; //"cs; java; js; php\0";
+wchar_t      strEscaped1FileExtsW[STR_FILEEXTS_SIZE] = { 0 }; //L"cs; java; js; php\0";
+wchar_t      strEscaped1FileExtsW_0[STR_FILEEXTS_SIZE] = { 0 };
 char         strComment1FileExtsA[STR_FILEEXTS_SIZE] = "cs; java; js; php\0";
 wchar_t      strComment1FileExtsW[STR_FILEEXTS_SIZE] = L"cs; java; js; php\0";
 wchar_t      strComment1FileExtsW_0[STR_FILEEXTS_SIZE] = { 0 };
@@ -146,6 +149,7 @@ static const char* cszOptNamesA[OPT_TOTAL_COUNT] = {
   "HighlightBkRGB",
   "CustomRGB",
   "HtmlFileExts",
+  "Escaped1FileExts",
   "Comment1FileExts",
   "XBrackets"
 };
@@ -169,6 +173,7 @@ static const wchar_t* cszOptNamesW[OPT_TOTAL_COUNT] = {
   L"HighlightBkRGB",
   L"CustomRGB",
   L"HtmlFileExts",
+  L"Escaped1FileExts",
   L"Comment1FileExts",
   L"XBrackets"
 };
@@ -1269,6 +1274,7 @@ void ReadOptions()
   int   i;
 
   strHtmlFileExtsW_0[0] = 0;
+  strEscaped1FileExtsW_0[0] = 0;
   strComment1FileExtsW_0[0] = 0;
   opt_szNextCharOkW_0[0] = 0;
   opt_szPrevCharOkW_0[0] = 0;
@@ -1284,7 +1290,7 @@ void ReadOptions()
   {
     HANDLE hOptions;
 
-    hOptions = (HANDLE) SendMessage(g_hMainWnd,
+    hOptions = (HANDLE) SendMessageA(g_hMainWnd,
       AKD_BEGINOPTIONS, POB_READ, (LPARAM) cszOptNamesA[OPT_XBRACKETS]);
 
     if (hOptions)
@@ -1319,6 +1325,11 @@ void ReadOptions()
       CharLowerA(strHtmlFileExtsA);
       lstrcpyA( (LPSTR) strHtmlFileExtsW_0, strHtmlFileExtsA );
 
+      readOptionStrA(hOptions, cszOptNamesA[OPT_ESCAPED1FILEEXTS], 
+        strEscaped1FileExtsA, STR_FILEEXTS_SIZE - 1);
+      CharLowerA(strEscaped1FileExtsA);
+      lstrcpyA( (LPSTR) strEscaped1FileExtsW_0, strEscaped1FileExtsA );
+
       readOptionStrA(hOptions, cszOptNamesA[OPT_COMMENT1FILEEXTS], 
         strComment1FileExtsA, STR_FILEEXTS_SIZE - 1);
       CharLowerA(strComment1FileExtsA);
@@ -1340,7 +1351,7 @@ void ReadOptions()
         g_dwOptions0[i] = g_dwOptions[i];
       }
 
-      SendMessage(g_hMainWnd, AKD_ENDOPTIONS, (WPARAM) hOptions, 0);
+      SendMessageA(g_hMainWnd, AKD_ENDOPTIONS, (WPARAM) hOptions, 0);
     }
 
   }
@@ -1348,7 +1359,7 @@ void ReadOptions()
   {
     HANDLE hOptions;
 
-    hOptions = (HANDLE) SendMessage(g_hMainWnd,
+    hOptions = (HANDLE) SendMessageW(g_hMainWnd,
       AKD_BEGINOPTIONS, POB_READ, (LPARAM) cszOptNamesW[OPT_XBRACKETS]);
 
     if (hOptions)
@@ -1383,6 +1394,11 @@ void ReadOptions()
       CharLowerW(strHtmlFileExtsW);
       lstrcpyW(strHtmlFileExtsW_0, strHtmlFileExtsW);
 
+      readOptionStrW(hOptions, cszOptNamesW[OPT_ESCAPED1FILEEXTS],
+        strEscaped1FileExtsW, STR_FILEEXTS_SIZE - 1);
+      CharLowerW(strEscaped1FileExtsW);
+      lstrcpyW(strEscaped1FileExtsW_0, strEscaped1FileExtsW);
+
       readOptionStrW(hOptions, cszOptNamesW[OPT_COMMENT1FILEEXTS],
         strComment1FileExtsW, STR_FILEEXTS_SIZE - 1);
       CharLowerW(strComment1FileExtsW);
@@ -1404,7 +1420,7 @@ void ReadOptions()
         g_dwOptions0[i] = g_dwOptions[i];
       }
 
-      SendMessage(g_hMainWnd, AKD_ENDOPTIONS, (WPARAM) hOptions, 0);
+      SendMessageW(g_hMainWnd, AKD_ENDOPTIONS, (WPARAM) hOptions, 0);
     }
 
   }
@@ -1523,17 +1539,23 @@ void ReadOptions()
   }
 }
 
+enum eUpdatedOptionFlags
+{
+  fCustomColours   = 0x01,
+  fStrHtmlExts     = 0x02,
+  fStrEscaped1Exts = 0x04,
+  fStrComment1Exts = 0x08,
+  fStrNextCharOk   = 0x10,
+  fStrPrevCharOk   = 0x20,
+  fStrUsrBrPairs   = 0x40
+};
+
 void SaveOptions()
 {
-  DWORD dwNewOptionsFlags;
-  DWORD dwNewHighlightRGB[2];
-  int   nCmpCustomColours;
-  int   nStrCmpHtmlExts;
-  int   nStrCmpComment1Exts;
-  int   nStrCmpNextCharOk;
-  int   nStrCmpPrevCharOk;
-  int   nStrCmpUsrBrPairs;
-  int   i;
+  DWORD        dwNewOptionsFlags;
+  DWORD        dwNewHighlightRGB[2];
+  unsigned int nUpdatedOptions;
+  int          i;
 
   dwNewHighlightRGB[0] = (DWORD) bracketsColourHighlight[0];
   dwNewHighlightRGB[1] = (DWORD) bracketsColourHighlight[1];
@@ -1564,29 +1586,43 @@ void SaveOptions()
   if (bBracketsSkipComment1) 
     dwNewOptionsFlags |= OPTF_SKIPCOMMENT1;
 
+  nUpdatedOptions = 0;
   if (g_bOldWindows)
   {
-    nStrCmpHtmlExts = lstrcmpiA( (LPCSTR) strHtmlFileExtsW_0, strHtmlFileExtsA );
-    nStrCmpComment1Exts = lstrcmpiA( (LPCSTR) strComment1FileExtsW_0, strComment1FileExtsA );
-    nStrCmpNextCharOk = lstrcmpA( (LPCSTR) opt_szNextCharOkW_0, opt_szNextCharOkA );
-    nStrCmpPrevCharOk = lstrcmpA( (LPCSTR) opt_szPrevCharOkW_0, opt_szPrevCharOkA );
-    nStrCmpUsrBrPairs = lstrcmpA( (LPCSTR) opt_szUserBracketsW_0, opt_szUserBracketsA );
+    if ( lstrcmpiA((LPCSTR) strHtmlFileExtsW_0, strHtmlFileExtsA) != 0 )
+      nUpdatedOptions |= fStrHtmlExts;
+    if ( lstrcmpiA((LPCSTR) strEscaped1FileExtsW_0, strEscaped1FileExtsA) != 0 )
+      nUpdatedOptions |= fStrEscaped1Exts;
+    if ( lstrcmpiA((LPCSTR) strComment1FileExtsW_0, strComment1FileExtsA) != 0 )
+      nUpdatedOptions |= fStrComment1Exts;
+    if ( lstrcmpA((LPCSTR) opt_szNextCharOkW_0, opt_szNextCharOkA) != 0 )
+      nUpdatedOptions |= fStrNextCharOk;
+    if ( lstrcmpA((LPCSTR) opt_szPrevCharOkW_0, opt_szPrevCharOkA) != 0 )
+      nUpdatedOptions |= fStrPrevCharOk;
+    if ( lstrcmpA((LPCSTR) opt_szUserBracketsW_0, opt_szUserBracketsA) != 0 )
+      nUpdatedOptions |= fStrUsrBrPairs;
   }
   else
   {
-    nStrCmpHtmlExts = lstrcmpiW( strHtmlFileExtsW_0, strHtmlFileExtsW );
-    nStrCmpComment1Exts = lstrcmpiW( strComment1FileExtsW_0, strComment1FileExtsW );
-    nStrCmpNextCharOk = lstrcmpW( opt_szNextCharOkW_0, opt_szNextCharOkW );
-    nStrCmpPrevCharOk = lstrcmpW( opt_szPrevCharOkW_0, opt_szPrevCharOkW );
-    nStrCmpUsrBrPairs = lstrcmpW( opt_szUserBracketsW_0, opt_szUserBracketsW );
+    if ( lstrcmpiW(strHtmlFileExtsW_0, strHtmlFileExtsW) != 0 )
+      nUpdatedOptions |= fStrHtmlExts;
+    if ( lstrcmpiW(strEscaped1FileExtsW_0, strEscaped1FileExtsW) != 0 )
+      nUpdatedOptions |= fStrEscaped1Exts;
+    if ( lstrcmpiW(strComment1FileExtsW_0, strComment1FileExtsW) != 0 )
+      nUpdatedOptions |= fStrComment1Exts;
+    if ( lstrcmpW(opt_szNextCharOkW_0, opt_szNextCharOkW) != 0 )
+      nUpdatedOptions |= fStrNextCharOk;
+    if ( lstrcmpW(opt_szPrevCharOkW_0, opt_szPrevCharOkW) != 0 )
+      nUpdatedOptions |= fStrPrevCharOk;
+    if ( lstrcmpW(opt_szUserBracketsW_0, opt_szUserBracketsW) != 0 )
+      nUpdatedOptions |= fStrUsrBrPairs;
   }
 
-  nCmpCustomColours = 0;
   for (i = 0; i < MAX_CUSTOM_COLOURS; i++)
   {
     if (g_CustomColoursHighlight_0[i] != g_CustomColoursHighlight[i])
     {
-      nCmpCustomColours = 1;
+      nUpdatedOptions |= fCustomColours;
       break;
     }
   }
@@ -1601,19 +1637,14 @@ void SaveOptions()
       (dwNewOptionsFlags != opt_dwOptionsFlags0) ||
       (dwNewHighlightRGB[0] != opt_dwHighlightRGB0[0]) ||
       (dwNewHighlightRGB[1] != opt_dwHighlightRGB0[1]) ||
-      (nCmpCustomColours != 0) ||
-      (nStrCmpHtmlExts != 0) ||
-      (nStrCmpComment1Exts != 0) ||
-      (nStrCmpNextCharOk != 0) ||
-      (nStrCmpPrevCharOk != 0) ||
-      (nStrCmpUsrBrPairs != 0))
+      (nUpdatedOptions != 0))
   {
     if (g_bOldWindows)
     {
       HANDLE        hOptions;
       PLUGINOPTIONA poA;
 
-      hOptions = (HANDLE) SendMessage(g_hMainWnd,
+      hOptions = (HANDLE) SendMessageA(g_hMainWnd,
         AKD_BEGINOPTIONS, POB_SAVE, (LPARAM) cszOptNamesA[OPT_XBRACKETS]);
 
       if (hOptions)
@@ -1624,7 +1655,7 @@ void SaveOptions()
           poA.lpData = (BYTE*) &dwNewOptionsFlags;
           poA.dwData = sizeof(DWORD);
           poA.dwType = PO_DWORD;
-          SendMessage(g_hMainWnd, AKD_OPTION, (WPARAM) hOptions, (LPARAM) &poA);
+          SendMessageA(g_hMainWnd, AKD_OPTION, (WPARAM) hOptions, (LPARAM) &poA);
           opt_dwOptionsFlags0 = dwNewOptionsFlags;
         }
         for (i = 0; i < 2; i++)
@@ -1635,65 +1666,74 @@ void SaveOptions()
             poA.lpData = (BYTE*) &dwNewHighlightRGB[i];
             poA.dwData = sizeof(DWORD);
             poA.dwType = PO_BINARY;
-            SendMessage(g_hMainWnd, AKD_OPTION, (WPARAM) hOptions, (LPARAM) &poA);
+            SendMessageA(g_hMainWnd, AKD_OPTION, (WPARAM) hOptions, (LPARAM) &poA);
             opt_dwHighlightRGB0[i] = dwNewHighlightRGB[i];
           }
         }
-        if (nCmpCustomColours != 0)
+        if (nUpdatedOptions & fCustomColours)
         {
           poA.pOptionName = cszOptNamesA[OPT_CUSTOMRGB];
           poA.lpData = (BYTE*) g_CustomColoursHighlight;
           poA.dwData = MAX_CUSTOM_COLOURS*sizeof(COLORREF);
           poA.dwType = PO_BINARY;
-          SendMessage(g_hMainWnd, AKD_OPTION, (WPARAM) hOptions, (LPARAM) &poA);
+          SendMessageA(g_hMainWnd, AKD_OPTION, (WPARAM) hOptions, (LPARAM) &poA);
           for (i = 0; i < MAX_CUSTOM_COLOURS; i++)
           {
             g_CustomColoursHighlight_0[i] = g_CustomColoursHighlight[i];
           }
         }
-        if (nStrCmpHtmlExts != 0)
+        if (nUpdatedOptions & fStrHtmlExts)
         {
           poA.pOptionName = cszOptNamesA[OPT_HTMLFILEEXTS];
           poA.lpData = (BYTE*) strHtmlFileExtsA;
           poA.dwData = (lstrlenA(strHtmlFileExtsA) + 1)*sizeof(char);
           poA.dwType = PO_STRING;
-          SendMessage(g_hMainWnd, AKD_OPTION, (WPARAM) hOptions, (LPARAM) &poA);
+          SendMessageA(g_hMainWnd, AKD_OPTION, (WPARAM) hOptions, (LPARAM) &poA);
           lstrcpyA( (LPSTR) strHtmlFileExtsW_0, strHtmlFileExtsA );
         }
-        if (nStrCmpComment1Exts != 0)
+        if (nUpdatedOptions & fStrEscaped1Exts)
+        {
+          poA.pOptionName = cszOptNamesA[OPT_ESCAPED1FILEEXTS];
+          poA.lpData = (BYTE*) strEscaped1FileExtsA;
+          poA.dwData = (lstrlenA(strEscaped1FileExtsA) + 1)*sizeof(char);
+          poA.dwType = PO_STRING;
+          SendMessageA(g_hMainWnd, AKD_OPTION, (WPARAM) hOptions, (LPARAM) &poA);
+          lstrcpyA( (LPSTR) strEscaped1FileExtsW_0, strEscaped1FileExtsA );
+        }
+        if (nUpdatedOptions & fStrComment1Exts)
         {
           poA.pOptionName = cszOptNamesA[OPT_COMMENT1FILEEXTS];
           poA.lpData = (BYTE*) strComment1FileExtsA;
           poA.dwData = (lstrlenA(strComment1FileExtsA) + 1)*sizeof(char);
           poA.dwType = PO_STRING;
-          SendMessage(g_hMainWnd, AKD_OPTION, (WPARAM) hOptions, (LPARAM) &poA);
+          SendMessageA(g_hMainWnd, AKD_OPTION, (WPARAM) hOptions, (LPARAM) &poA);
           lstrcpyA( (LPSTR) strComment1FileExtsW_0, strComment1FileExtsA );
         }
-        if (nStrCmpUsrBrPairs != 0)
+        if (nUpdatedOptions & fStrUsrBrPairs)
         {
           poA.pOptionName = cszOptNamesA[OPT_COMMON_USER_BRPAIRS];
           poA.lpData = (BYTE*) opt_szUserBracketsA;
           poA.dwData = (lstrlenA(opt_szUserBracketsA) + 1)*sizeof(char);
           poA.dwType = PO_STRING;
-          SendMessage(g_hMainWnd, AKD_OPTION, (WPARAM) hOptions, (LPARAM) &poA);
+          SendMessageA(g_hMainWnd, AKD_OPTION, (WPARAM) hOptions, (LPARAM) &poA);
           lstrcpyA( (LPSTR) opt_szUserBracketsW_0, opt_szUserBracketsA );
         }
-        if (nStrCmpNextCharOk != 0)
+        if (nUpdatedOptions & fStrNextCharOk)
         {
           poA.pOptionName = cszOptNamesA[OPT_AUTOBRACKETS_NEXT_CHAR_OK];
           poA.lpData = (BYTE*) opt_szNextCharOkA;
           poA.dwData = (lstrlenA(opt_szNextCharOkA) + 1)*sizeof(char);
           poA.dwType = PO_STRING;
-          SendMessage(g_hMainWnd, AKD_OPTION, (WPARAM) hOptions, (LPARAM) &poA);
+          SendMessageA(g_hMainWnd, AKD_OPTION, (WPARAM) hOptions, (LPARAM) &poA);
           lstrcpyA( (LPSTR) opt_szNextCharOkW_0, opt_szNextCharOkA );
         }
-        if (nStrCmpPrevCharOk != 0)
+        if (nUpdatedOptions & fStrPrevCharOk)
         {
           poA.pOptionName = cszOptNamesA[OPT_AUTOBRACKETS_PREV_CHAR_OK];
           poA.lpData = (BYTE*) opt_szPrevCharOkA;
           poA.dwData = (lstrlenA(opt_szPrevCharOkA) + 1)*sizeof(char);
           poA.dwType = PO_STRING;
-          SendMessage(g_hMainWnd, AKD_OPTION, (WPARAM) hOptions, (LPARAM) &poA);
+          SendMessageA(g_hMainWnd, AKD_OPTION, (WPARAM) hOptions, (LPARAM) &poA);
           lstrcpyA( (LPSTR) opt_szPrevCharOkW_0, opt_szPrevCharOkA );
         }
         for (i = 0; i < OPT_DWORD_COUNT; i++)
@@ -1704,11 +1744,11 @@ void SaveOptions()
             poA.lpData = (BYTE*) &g_dwOptions[i];
             poA.dwData = sizeof(DWORD);
             poA.dwType = PO_DWORD;
-            SendMessage(g_hMainWnd, AKD_OPTION, (WPARAM) hOptions, (LPARAM) &poA);
+            SendMessageA(g_hMainWnd, AKD_OPTION, (WPARAM) hOptions, (LPARAM) &poA);
             g_dwOptions0[i] = g_dwOptions[i];
           }
         }
-        SendMessage(g_hMainWnd, AKD_ENDOPTIONS, (WPARAM) hOptions, 0);
+        SendMessageA(g_hMainWnd, AKD_ENDOPTIONS, (WPARAM) hOptions, 0);
       }
 
     }
@@ -1717,7 +1757,7 @@ void SaveOptions()
       HANDLE        hOptions;
       PLUGINOPTIONW poW;
 
-      hOptions = (HANDLE) SendMessage(g_hMainWnd,
+      hOptions = (HANDLE) SendMessageW(g_hMainWnd,
         AKD_BEGINOPTIONS, POB_SAVE, (LPARAM) cszOptNamesW[OPT_XBRACKETS]);
 
       if (hOptions)
@@ -1728,7 +1768,7 @@ void SaveOptions()
           poW.lpData = (BYTE*) &dwNewOptionsFlags;
           poW.dwData = sizeof(DWORD);
           poW.dwType = PO_DWORD;
-          SendMessage(g_hMainWnd, AKD_OPTION, (WPARAM) hOptions, (LPARAM) &poW);
+          SendMessageW(g_hMainWnd, AKD_OPTION, (WPARAM) hOptions, (LPARAM) &poW);
           opt_dwOptionsFlags0 = dwNewOptionsFlags;
         }
         for (i = 0; i < 2; i++)
@@ -1739,65 +1779,74 @@ void SaveOptions()
             poW.lpData = (BYTE*) &dwNewHighlightRGB[i];
             poW.dwData = sizeof(DWORD);
             poW.dwType = PO_BINARY;
-            SendMessage(g_hMainWnd, AKD_OPTION, (WPARAM) hOptions, (LPARAM) &poW);
+            SendMessageW(g_hMainWnd, AKD_OPTION, (WPARAM) hOptions, (LPARAM) &poW);
             opt_dwHighlightRGB0[i] = dwNewHighlightRGB[i];
           }
         }
-        if (nCmpCustomColours != 0)
+        if (nUpdatedOptions & fCustomColours)
         {
           poW.pOptionName = cszOptNamesW[OPT_CUSTOMRGB];
           poW.lpData = (BYTE*) g_CustomColoursHighlight;
           poW.dwData = MAX_CUSTOM_COLOURS*sizeof(COLORREF);
           poW.dwType = PO_BINARY;
-          SendMessage(g_hMainWnd, AKD_OPTION, (WPARAM) hOptions, (LPARAM) &poW);
+          SendMessageW(g_hMainWnd, AKD_OPTION, (WPARAM) hOptions, (LPARAM) &poW);
           for (i = 0; i < MAX_CUSTOM_COLOURS; i++)
           {
             g_CustomColoursHighlight_0[i] = g_CustomColoursHighlight[i];
           }
         }
-        if (nStrCmpHtmlExts != 0)
+        if (nUpdatedOptions & fStrHtmlExts)
         {
           poW.pOptionName = cszOptNamesW[OPT_HTMLFILEEXTS];
           poW.lpData = (BYTE*) strHtmlFileExtsW;
           poW.dwData = (lstrlenW(strHtmlFileExtsW) + 1)*sizeof(wchar_t);
           poW.dwType = PO_STRING;
-          SendMessage(g_hMainWnd, AKD_OPTION, (WPARAM) hOptions, (LPARAM) &poW);
+          SendMessageW(g_hMainWnd, AKD_OPTION, (WPARAM) hOptions, (LPARAM) &poW);
           lstrcpyW(strHtmlFileExtsW_0, strHtmlFileExtsW);
         }
-        if (nStrCmpComment1Exts != 0)
+        if (nUpdatedOptions & fStrEscaped1Exts)
+        {
+          poW.pOptionName = cszOptNamesW[OPT_ESCAPED1FILEEXTS];
+          poW.lpData = (BYTE*) strEscaped1FileExtsW;
+          poW.dwData = (lstrlenW(strEscaped1FileExtsW) + 1)*sizeof(wchar_t);
+          poW.dwType = PO_STRING;
+          SendMessageW(g_hMainWnd, AKD_OPTION, (WPARAM) hOptions, (LPARAM) &poW);
+          lstrcpyW(strEscaped1FileExtsW_0, strEscaped1FileExtsW);
+        }
+        if (nUpdatedOptions & fStrComment1Exts)
         {
           poW.pOptionName = cszOptNamesW[OPT_COMMENT1FILEEXTS];
           poW.lpData = (BYTE*) strComment1FileExtsW;
           poW.dwData = (lstrlenW(strComment1FileExtsW) + 1)*sizeof(wchar_t);
           poW.dwType = PO_STRING;
-          SendMessage(g_hMainWnd, AKD_OPTION, (WPARAM) hOptions, (LPARAM) &poW);
+          SendMessageW(g_hMainWnd, AKD_OPTION, (WPARAM) hOptions, (LPARAM) &poW);
           lstrcpyW(strComment1FileExtsW_0, strComment1FileExtsW);
         }
-        if (nStrCmpUsrBrPairs != 0)
+        if (nUpdatedOptions & fStrUsrBrPairs)
         {
           poW.pOptionName = cszOptNamesW[OPT_COMMON_USER_BRPAIRS];
           poW.lpData = (BYTE*) opt_szUserBracketsW;
           poW.dwData = (lstrlenW(opt_szUserBracketsW) + 1)*sizeof(wchar_t);
           poW.dwType = PO_STRING;
-          SendMessage(g_hMainWnd, AKD_OPTION, (WPARAM) hOptions, (LPARAM) &poW);
+          SendMessageW(g_hMainWnd, AKD_OPTION, (WPARAM) hOptions, (LPARAM) &poW);
           lstrcpyW(opt_szUserBracketsW_0, opt_szUserBracketsW);
         }
-        if (nStrCmpNextCharOk != 0)
+        if (nUpdatedOptions & fStrNextCharOk)
         {
           poW.pOptionName = cszOptNamesW[OPT_AUTOBRACKETS_NEXT_CHAR_OK];
           poW.lpData = (BYTE*) opt_szNextCharOkW;
           poW.dwData = (lstrlenW(opt_szNextCharOkW) + 1)*sizeof(wchar_t);
           poW.dwType = PO_STRING;
-          SendMessage(g_hMainWnd, AKD_OPTION, (WPARAM) hOptions, (LPARAM) &poW);
+          SendMessageW(g_hMainWnd, AKD_OPTION, (WPARAM) hOptions, (LPARAM) &poW);
           lstrcpyW(opt_szNextCharOkW_0, opt_szNextCharOkW);
         }
-        if (nStrCmpPrevCharOk != 0)
+        if (nUpdatedOptions & fStrPrevCharOk)
         {
           poW.pOptionName = cszOptNamesW[OPT_AUTOBRACKETS_PREV_CHAR_OK];
           poW.lpData = (BYTE*) opt_szPrevCharOkW;
           poW.dwData = (lstrlenW(opt_szPrevCharOkW) + 1)*sizeof(wchar_t);
           poW.dwType = PO_STRING;
-          SendMessage(g_hMainWnd, AKD_OPTION, (WPARAM) hOptions, (LPARAM) &poW);
+          SendMessageW(g_hMainWnd, AKD_OPTION, (WPARAM) hOptions, (LPARAM) &poW);
           lstrcpyW(opt_szPrevCharOkW_0, opt_szPrevCharOkW);
         }
         for (i = 0; i < OPT_DWORD_COUNT; i++)
@@ -1808,11 +1857,11 @@ void SaveOptions()
             poW.lpData = (BYTE*) &g_dwOptions[i];
             poW.dwData = sizeof(DWORD);
             poW.dwType = PO_DWORD;
-            SendMessage(g_hMainWnd, AKD_OPTION, (WPARAM) hOptions, (LPARAM) &poW);
+            SendMessageW(g_hMainWnd, AKD_OPTION, (WPARAM) hOptions, (LPARAM) &poW);
             g_dwOptions0[i] = g_dwOptions[i];
           }
         }
-        SendMessage(g_hMainWnd, AKD_ENDOPTIONS, (WPARAM) hOptions, 0);
+        SendMessageW(g_hMainWnd, AKD_ENDOPTIONS, (WPARAM) hOptions, 0);
       }
 
     }

@@ -33,9 +33,12 @@
 #define IDC_NEWCHARFONTSTYLE_LABEL      1127
 #define IDC_NEWCHARFONTSTYLE_COMBO      1128
 #define IDC_CODERTHEME_CHECK            1129
+#define IDC_INDENTLINESIZE_EDIT         3609
+#define IDC_INDENTLINESIZE_SPIN         3610
+#define IDC_INDENTLINESIZE_LABEL        -1
 
 // Next default values for new objects
-//
+// 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        11001
