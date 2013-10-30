@@ -2055,31 +2055,19 @@ void StackGetBookmarkRect(WINDOWBOARD *wb, int nLine, RECT *rc)
 {
   RECT rcEdit;
   POINT ptTop;
-  POINT ptBottom;
   int nLineIndex;
+  int nCharHeight;
 
   GetClientRect(wb->hWndEdit, &rcEdit);
 
   if ((nLineIndex=(int)SendMessage(wb->hWndEdit, EM_LINEINDEX, nLine, 0)) >= 0)
   {
     GetPosFromChar(wb->hWndEdit, nLineIndex, &ptTop);
-
-    if ((nLineIndex=(int)SendMessage(wb->hWndEdit, EM_LINEINDEX, nLine + 1, 0)) >= 0)
-    {
-      GetPosFromChar(wb->hWndEdit, nLineIndex, &ptBottom);
-
-      rc->left=rcEdit.left;
-      rc->top=ptTop.y;
-      rc->right=wb->nBoardWidth;
-      rc->bottom=ptBottom.y;
-    }
-    else
-    {
-      rc->left=rcEdit.left;
-      rc->top=ptTop.y;
-      rc->right=wb->nBoardWidth;
-      rc->bottom=rcEdit.bottom;
-    }
+    nCharHeight=(int)SendMessage(wb->hWndEdit, AEM_GETCHARSIZE, AECS_HEIGHT, 0);
+    rc->left=rcEdit.left;
+    rc->top=ptTop.y;
+    rc->right=wb->nBoardWidth;
+    rc->bottom=min(ptTop.y + nCharHeight, rcEdit.bottom);
   }
   else
   {

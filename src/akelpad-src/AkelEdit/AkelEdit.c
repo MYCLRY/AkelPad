@@ -299,7 +299,7 @@ BOOL AE_UnregisterClassW(HINSTANCE hInstance)
       bAkelEditClassRegisteredW=FALSE;
     if (UnregisterClassW(AES_RICHEDIT20W, hInstance)) {
       bRichEditClassRegisteredW=FALSE;
-  }
+    }
   }
   return !bAkelEditClassRegisteredW;
 }
@@ -4118,6 +4118,8 @@ LRESULT CALLBACK AE_EditProc(AKELEDIT *ae, UINT uMsg, WPARAM wParam, LPARAM lPar
             //Timer
             ae->dwMouseMoveTimer=SetTimer(ae->hWndEdit, AETIMERID_MOUSEMOVE, 100, NULL);
             AE_SetMouseCapture(ae, AEMSC_MOUSEMARKER);
+
+            ae->dwInitMarkerPos=ae->popt->dwColumnMarkerPos;
           }
         }
         //Start margin selection capture
@@ -10637,6 +10639,8 @@ BOOL AE_HighlightFindQuoteRE(AKELEDIT *ae, const AECHARINDEX *ciChar, DWORD dwSe
           if (lpQuoteItem->dwFlags & AEHLF_REGEXP)
           {
             lpREGroupStack=(STACKREGROUP *)lpQuoteItem->lpREGroupStack;
+            if (dwSearchType & AEHF_FINDFIRSTCHAR)
+              AE_PatReset(lpREGroupStack);
 
             if (AE_PatExec(lpREGroupStack, lpREGroupStack->first, &ciCount, &ciMaxLine))
             {
@@ -10658,6 +10662,7 @@ BOOL AE_HighlightFindQuoteRE(AKELEDIT *ae, const AECHARINDEX *ciChar, DWORD dwSe
               }
               return TRUE;
             }
+            else AE_PatReset(lpREGroupStack);
           }
         }
         AEC_IndexInc(&ciCount);
@@ -14160,6 +14165,8 @@ void AE_PaintCheckHighlightCloseItem(AKELEDIT *ae, AETEXTOUT *to, AEHLPAINT *hlp
             }
           }
         }
+        if (hlp->qm.lpQuote->dwFlags & AEHLF_REGEXP)
+          AE_PatReset((STACKREGROUP *)hlp->qm.lpQuote->lpREGroupStack);
         hlp->dwPaintType&=~AEHPT_QUOTE;
         hlp->qm.lpQuote=NULL;
       }
@@ -19420,6 +19427,18 @@ BOOL AE_KeyDown(AKELEDIT *ae, int nVk, BOOL bAlt, BOOL bShift, BOOL bControl)
       ae->nCaretHorzIndent=nCaretHorzIndent;
     }
     return TRUE;
+  }
+  if (nVk == VK_ESCAPE)
+  {
+    if (ae->nCurrentCursor == AECC_MARKER && ae->dwMouseMoveTimer)
+    {
+      AE_ColumnMarkerSet(ae, ae->popt->dwColumnMarkerType, (int)ae->dwInitMarkerPos, TRUE);
+
+      KillTimer(ae->hWndEdit, ae->dwMouseMoveTimer);
+      ae->dwMouseMoveTimer=0;
+      AE_ReleaseMouseCapture(ae, AEMSC_MOUSEMOVE|AEMSC_MOUSEMARKER);
+      return TRUE;
+    }
   }
   return FALSE;
 }

@@ -88,8 +88,9 @@ var STRID_TEMPLATE1    =28;
 var STRID_TEMPLATE2    =29;
 var STRID_TEMPLATE3    =30;
 
-//Maximum selection length
+//Limits
 var PUTFIND_MAXSEL  =16384;
+var FINDALL_MAXLINE =200;
 
 //Dialog messages
 var AKDLG_PUTFIND   =1025;  //WM_USER + 1
@@ -1657,6 +1658,7 @@ function SearchReplace()
       }
       else if (nButton == BT_FINDALL)
       {
+        var lpIndex=AkelPad.MemAlloc(_X64?24:12 /*sizeof(AECHARINDEX)*/);
         var lpMatches=[];
         var pLine;
         var nTextLen=0;
@@ -1721,12 +1723,16 @@ function SearchReplace()
             i=lpMatches.length;
             lpMatches[i]=[];
             lpMatches[i].nIndex=nSelStart + lpArray.index;
-            lpMatches[i].nLine=AkelPad.SendMessage(hWndEditCur, 1078 /*EM_EXLINEFROMCHAR*/, 0, lpMatches[i].nIndex);
-            lpMatches[i].nLineBeginIndex=AkelPad.SendMessage(hWndEditCur, 187 /*EM_LINEINDEX*/, lpMatches[i].nLine, 0);
-            lpMatches[i].nLineEndIndex=lpMatches[i].nLineBeginIndex + AkelPad.SendMessage(hWndEditCur, 193 /*EM_LINELENGTH*/, lpMatches[i].nLineBeginIndex, 0);
+            AkelPad.SendMessage(hWndEditCur, 3137 /*AEM_RICHOFFSETTOINDEX*/, lpMatches[i].nIndex, lpIndex);
+            lpMatches[i].nLine=AkelPad.MemRead(lpIndex + 0 /*offsetof(AECHARINDEX, nLine)*/, 3 /*DT_DWORD*/);
+            lpMatches[i].nLineUnwrap=AkelPad.SendMessage(hWndEditCur, 3143 /*AEM_GETUNWRAPLINE*/, lpMatches[i].nLine, 0);
+            AkelPad.SendMessage(hWndEditCur, 3130 /*AEM_GETINDEX*/, 18 /*AEGI_WRAPLINEBEGIN*/, lpIndex);
+            lpMatches[i].nLineBeginIndex=AkelPad.SendMessage(hWndEditCur, 3136 /*AEM_INDEXTORICHOFFSET*/, 0, lpIndex);
+            AkelPad.SendMessage(hWndEditCur, 3130 /*AEM_GETINDEX*/, 19 /*AEGI_WRAPLINEEND*/, lpIndex);
+            lpMatches[i].nLineEndIndex=AkelPad.SendMessage(hWndEditCur, 3136 /*AEM_INDEXTORICHOFFSET*/, 0, lpIndex);
 
-            pLine=(nDirection & DN_ALLFILES?" (" + lpFrameCur + " ":"(") + (lpMatches[i].nLine + 1) + "," + (lpMatches[i].nIndex - lpMatches[i].nLineBeginIndex + 1) + ") ";
-            nTextLen+=pLine.length + (lpMatches[i].nLineEndIndex - lpMatches[i].nLineBeginIndex) + 1;
+            pLine=(nDirection & DN_ALLFILES?" (" + lpFrameCur + " ":"(") + (lpMatches[i].nLineUnwrap + 1) + "," + (lpMatches[i].nIndex - lpMatches[i].nLineBeginIndex + 1) + ") ";
+            nTextLen+=pLine.length + min(lpMatches[i].nLineEndIndex - lpMatches[i].nLineBeginIndex, FINDALL_MAXLINE) + 1;
 
             if (i % 50 == 0)
             {
@@ -1772,10 +1778,10 @@ function SearchReplace()
                   if (!hWndOutput) break;
                 }
                 if (!hWndPluginEdit)
-                  pLine=(nDirection & DN_ALLFILES?" (" + lpFrameCur + " ":"(") + (lpMatches[i].nLine + 1) + "," + (lpMatches[i].nIndex - lpMatches[i].nLineBeginIndex + 1) + ") ";
+                  pLine=(nDirection & DN_ALLFILES?" (" + lpFrameCur + " ":"(") + (lpMatches[i].nLineUnwrap + 1) + "," + (lpMatches[i].nIndex - lpMatches[i].nLineBeginIndex + 1) + ") ";
                 else
                   pLine="";
-                pLine+=AkelPad.GetTextRange(lpMatches[i].nLineBeginIndex, lpMatches[i].nLineEndIndex) + "\n";
+                pLine+=AkelPad.GetTextRange(lpMatches[i].nLineBeginIndex, lpMatches[i].nLineBeginIndex + min(lpMatches[i].nLineEndIndex - lpMatches[i].nLineBeginIndex, FINDALL_MAXLINE)) + "\n";
                 AkelPad.MemCopy(lpMemText + nTextCount * 2 /*sizeof(wchar_t)*/, pLine, 1 /*DT_UNICODE*/);
                 nTextCount+=pLine.length;
               }
@@ -1825,6 +1831,7 @@ function SearchReplace()
           }
           hWndOutput=0;
         }
+        AkelPad.MemFree(lpIndex);
       }
     }
     catch (oError)
@@ -2111,6 +2118,16 @@ function HIWORD(dwNumber)
 function MAKELONG(a, b)
 {
   return (a & 0xffff) | ((b & 0xffff) << 16);
+}
+
+function max(a, b)
+{
+  return a >= b?a:b;
+}
+
+function min(a, b)
+{
+  return a <= b?a:b;
 }
 
 function ScaleInit(hDC, hWnd)

@@ -1088,9 +1088,9 @@ HRESULT STDMETHODCALLTYPE Document_Exec(IDocument *this, BSTR wpCmdLine, BSTR wp
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_Command(IDocument *this, int nCommand, INT_PTR *nResult)
+HRESULT STDMETHODCALLTYPE Document_Command(IDocument *this, int nCommand, LPARAM lParam, INT_PTR *nResult)
 {
-  *nResult=SendMessage(hMainWnd, WM_COMMAND, (WPARAM)nCommand, 0);
+  *nResult=SendMessage(hMainWnd, WM_COMMAND, (WPARAM)nCommand, lParam);
   return NOERROR;
 }
 

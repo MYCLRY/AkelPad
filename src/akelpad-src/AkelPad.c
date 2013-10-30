@@ -4405,7 +4405,7 @@ LRESULT CALLBACK MainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     }
     else if (wCommand == IDM_EDIT_DELLINE)
     {
-      DoNonMenuDelLine(lpFrameCurrent->ei.hWndEdit);
+      DoNonMenuDelLine(lpFrameCurrent->ei.hWndEdit, (BOOL)lParam);
     }
     else if (wCommand == IDM_EDIT_SELJUMPCARET)
     {

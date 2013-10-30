@@ -190,7 +190,7 @@ library Scripts
     HRESULT Exec([in] BSTR wpCmdLine, [in, defaultvalue(L"")] BSTR wpWorkDir, [in, defaultvalue(0)] int nWait, [out, retval] DWORD *dwExit);
 
     //Send internal command.
-    HRESULT Command([in] int nCommand, [out, retval] MYRETINT *nResult);
+    HRESULT Command([in] int nCommand, [in, defaultvalue(0)] MYINT nSelEnd, [out, retval] MYRETINT *nResult);
 
     //Set font.
     HRESULT Font([in] BSTR wpFaceName, [in] DWORD dwFontStyle, [in] int nPointSize);

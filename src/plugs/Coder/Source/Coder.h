@@ -12,33 +12,35 @@
 #define STRID_GENERAL               11
 #define STRID_CODER_NOTRUNNING      12
 #define STRID_LOADFIRST             13
-#define STRID_CACHE_ENABLE          51
-#define STRID_DEFAULTALIAS_ENABLE   52
-#define STRID_VARTHEME_NAME         53
-#define STRID_VARTHEME_SAVE         54
-#define STRID_VARTHEME_DELETE       55
-#define STRID_VARTHEME_RETURN       56
-#define STRID_VARTHEME_GLOBAL       57
-#define STRID_VARTHEME_LINK         58
-#define STRID_MENU_ADDITEM          59
-#define STRID_MENU_MODITEM          60
-#define STRID_MENU_MOVEUPITEM       61
-#define STRID_MENU_MOVEDOWNITEM     62
-#define STRID_MENU_DELITEM          63
-#define STRID_MENU_CLEARITEM        64
-#define STRID_VARIABLE              65
-#define STRID_VALUE                 66
-#define STRID_COLOR                 67
-#define STRID_SYNTAXFILE            68
-#define STRID_VARTHEMENAME          69
-#define STRID_ADDVAR                70
-#define STRID_EDITVAR               71
-#define STRID_LOSTPROMPT            72
-#define STRID_OVERWRITEPROMPT       73
-#define STRID_DELETEPROMPT          74
-#define STRID_VARMISSING            75
-#define STRID_UNKNOWNSYNTAXFILE     76
-#define STRID_UNKNOWNVARTHEME       77
+#define STRID_CACHE_NONE            51
+#define STRID_CACHE_FAST            52
+#define STRID_CACHE_SMART           53
+#define STRID_DEFAULTALIAS_ENABLE   54
+#define STRID_VARTHEME_NAME         55
+#define STRID_VARTHEME_SAVE         56
+#define STRID_VARTHEME_DELETE       57
+#define STRID_VARTHEME_RETURN       58
+#define STRID_VARTHEME_GLOBAL       59
+#define STRID_VARTHEME_LINK         60
+#define STRID_MENU_ADDITEM          61
+#define STRID_MENU_MODITEM          62
+#define STRID_MENU_MOVEUPITEM       63
+#define STRID_MENU_MOVEDOWNITEM     64
+#define STRID_MENU_DELITEM          65
+#define STRID_MENU_CLEARITEM        66
+#define STRID_VARIABLE              67
+#define STRID_VALUE                 68
+#define STRID_COLOR                 69
+#define STRID_SYNTAXFILE            70
+#define STRID_VARTHEMENAME          71
+#define STRID_ADDVAR                72
+#define STRID_EDITVAR               73
+#define STRID_LOSTPROMPT            74
+#define STRID_OVERWRITEPROMPT       75
+#define STRID_DELETEPROMPT          76
+#define STRID_VARMISSING            77
+#define STRID_UNKNOWNSYNTAXFILE     78
+#define STRID_UNKNOWNVARTHEME       79
 
 #define DLLA_CODER_SETEXTENSION     1
 #define DLLA_CODER_CLEARCACHE       2
@@ -113,6 +115,11 @@
 
 #define LVSI_LINK_SYNTAXFILE 0
 #define LVSI_LINK_VARTHEME   1
+
+//Use cache
+#define UC_NONE  0
+#define UC_FAST  1
+#define UC_SMART 2
 
 //Save cache
 #define SC_NONE        0x0
@@ -335,6 +342,8 @@ typedef struct _SYNTAXFILE {
   DWORD dwTagMarkFontStyle;
   DWORD dwTagMarkTextColor;
   DWORD dwTagMarkBkColor;
+  FILETIME ftTimeStamp;
+  BOOL bExists;
   BOOL bCache;
 } SYNTAXFILE;
 

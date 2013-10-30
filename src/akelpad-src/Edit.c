@@ -2967,7 +2967,7 @@ void DoHelpAbout()
   API_DialogBox(hLangLib, MAKEINTRESOURCEW(IDD_ABOUT), hMainWnd, (DLGPROC)AboutDlgProc);
 }
 
-void DoNonMenuDelLine(HWND hWnd)
+void DoNonMenuDelLine(HWND hWnd, BOOL bAllWrap)
 {
   AECHARRANGE cr;
   POINT64 ptGlobal;
@@ -2975,9 +2975,17 @@ void DoNonMenuDelLine(HWND hWnd)
 
   if (IsReadOnly(hWnd)) return;
 
-  cr.ciMin=crCurSel.ciMin;
-  cr.ciMax=crCurSel.ciMax;
-  cr.ciMin.nCharInLine=0;
+  if (bAllWrap)
+  {
+    AEC_WrapLineBeginEx(&crCurSel.ciMin, &cr.ciMin);
+    AEC_WrapLineEndEx(&crCurSel.ciMax, &cr.ciMax);
+  }
+  else
+  {
+    cr.ciMin=crCurSel.ciMin;
+    cr.ciMax=crCurSel.ciMax;
+    cr.ciMin.nCharInLine=0;
+  }
   if (!AEC_NextLineEx(&cr.ciMax, &cr.ciMax))
   {
     //Last line
@@ -8599,9 +8607,9 @@ BOOL AutodetectMultibyte(DWORD dwLangID, const unsigned char *pBuffer, UINT_PTR 
 
   if (dwLangID == LANG_RUSSIAN)
   {
-    xstrcpyA(szANSIwatermark, "\xE0\xE1\xE2\xE5\xE8\xED\xEE\xEF\xF0\xF2\xC0\xC1\xC2\xC5\xC8\xCD\xCE\xCF\xD2");  //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
-    xstrcpyA(szKOIwatermark,  "\xC1\xC2\xD7\xC5\xC9\xCE\xCF\xD2\xD4\xE1\xE2\xF7\xE5\xE9\xEE\xEF\xF0\xF2\xF4");  //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
-    xstrcpyA(szOEMwatermark,  "\xAE\xA5\xA0\xA8\xAA\xAC\xAD\xE2\x8E\x45\x80\x88\x8A\x8C\x8D\x92\xB0\xB1\xB2\xB3\xBA\xDB\xCD");  //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Eï¿½ï¿½ï¿½ï¿½ï¿½ï¿½         Graphic simbols: \xB0\xB1\xB2\xB3\xBA\xDB\xCD
+    xstrcpyA(szANSIwatermark, "\xE0\xE1\xE2\xE5\xE8\xED\xEE\xEF\xF0\xF2\xC0\xC1\xC2\xC5\xC8\xCD\xCE\xCF\xD2");  //àáâåèíîïðòÀÁÂÅÈÍÎÏ?
+    xstrcpyA(szKOIwatermark,  "\xC1\xC2\xD7\xC5\xC9\xCE\xCF\xD2\xD4\xE1\xE2\xF7\xE5\xE9\xEE\xEF\xF0\xF2\xF4");  //ÁÂ×ÅÉÎÏÒÔáâ÷åéîïðò?
+    xstrcpyA(szOEMwatermark,  "\xAE\xA5\xA0\xA8\xAA\xAC\xAD\xE2\x8E\x45\x80\x88\x8A\x8C\x8D\x92\xB0\xB1\xB2\xB3\xBA\xDB\xCD");  //îåàèêìíòÎEÀÈÊÌÍÒ         Graphic simbols: \xB0\xB1\xB2\xB3\xBA\xDB\xCD
     xstrcpyA(szUTF8watermark, "\xD0\xD1");
   }
   else if (IsLangEasternEurope(dwLangID))
@@ -13450,6 +13458,15 @@ DWORD TranslateMessageAll(DWORD dwType, LPMSG lpMsg)
   if ((dwType & TMSG_HOTKEY) && (nHotkeyStatus=TranslateMessageHotkey(&hPluginsStack, lpMsg)) > 0)
     return TMSG_HOTKEY;
 
+  if (lpFrameCurrent->ei.hWndEdit)
+  {
+    if (lpMsg->message == WM_KEYDOWN && lpMsg->wParam == VK_ESCAPE)
+    {
+      //Escape cancel column marker movement
+      if (SendMessage(lpFrameCurrent->ei.hWndEdit, AEM_GETMOUSESTATE, AEMS_CAPTURE, 0) & AEMSC_MOUSEMARKER)
+        dwType&=~TMSG_ACCELERATOR;
+    }
+  }
   if ((dwType & TMSG_ACCELERATOR) && nHotkeyStatus == 0 && TranslateAcceleratorWide(hMainWnd, hMainAccel, lpMsg))
     return TMSG_ACCELERATOR;
 

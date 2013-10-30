@@ -1,5 +1,5 @@
 *****************************************************************
-***                 Scripts AkelPad plugin v12.9              ***
+***                 Scripts AkelPad plugin v13.0              ***
 *****************************************************************
 
 2013 Shengalts Aleksander aka Instructor (Shengalts@mail.ru)
@@ -1014,11 +1014,13 @@ _______________
 
 Call AkelPad internal command.
 
-  Command(nCmd);
+  Command(nCmd[, nParam]);
 
 Arguments
   nCmd
     Internal command number.
+  nParam
+    Parameter passed to internal command. Only some commands support additional parameter, for example, 4113 /*IDM_FILE_SILENTPRINT*/. See description of commands in AkelDLL.h.
 
 Return Value
   Number. Depend on command.

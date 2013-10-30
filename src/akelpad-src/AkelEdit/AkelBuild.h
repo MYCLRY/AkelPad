@@ -666,6 +666,7 @@ typedef struct _AKELEDIT {
   BOOL bMButtonDown;
   BOOL bMButtonUp;
   int nMButtonMoveBeforeScroll;
+  DWORD dwInitMarkerPos;
 
   //OLE Drag'n'Drop
   AEIDropTargetCallbackVtbl idtVtbl;

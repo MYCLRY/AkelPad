@@ -146,7 +146,10 @@ CAspellModule::~CAspellModule()
 		FreeLibrary(hInst);
 	hInst=NULL;
 }
-
+static void DECLSPEC_NORETURN WINAPI ExitProcess_Hooked(UINT code)
+{
+	throw new Excp(NULL);
+}
 BOOL CALLCONV CAspellModule::LoadModule(LPCWSTR path)
 {
 	if(theModule)
@@ -160,6 +163,7 @@ BOOL CALLCONV CAspellModule::LoadModule(LPCWSTR path)
 		theModule=NULL;
 		return FALSE;
 	}
+	PatchIat(GetModuleHandle(L"msvcrt.dll"),"KERNEL32.DLL","ExitProcess",(PVOID)ExitProcess_Hooked,(PVOID*)&rt.oldExitProcess);
 	return TRUE;
 }
 
@@ -167,6 +171,12 @@ void CALLCONV CAspellModule::UnLoadModule()
 {
 	if(theModule)
 	{
+		if(rt.oldExitProcess)
+		{
+			_ExitProcess_t trash;
+			PatchIat(GetModuleHandle(L"msvcrt.dll"),"KERNEL32.DLL","ExitProcess",(PVOID)rt.oldExitProcess,(PVOID*)&trash);
+			rt.oldExitProcess = NULL;
+		}
 		delete theModule;
 		theModule=NULL;
 	}

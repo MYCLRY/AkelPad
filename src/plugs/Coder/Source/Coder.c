@@ -33,6 +33,7 @@
 
 //Include string functions
 #define WideCharLower
+#define xmemcmp
 #define xmemcpy
 #define xmemset
 #define xstrcmpW
@@ -135,14 +136,14 @@ DWORD dwSaveFlags=0;
 BOOL bInitHighLight=FALSE;
 int nInitCodeFold=0;
 BOOL bInitAutoComplete=FALSE;
-BOOL bUseCache=TRUE;
+DWORD dwUseCache=UC_FAST;
 DWORD dwSaveCache=SC_NONE;
 BOOL bDefaultAliasEnable=FALSE;
 wchar_t wszDefaultAlias[MAX_PATH]=L".cpp";
 HSTACK hSyntaxFilesStack={0};
 HSTACK hManualStack={0};
 STACKVARTHEME hVarThemesStack={0};
-VARTHEME hVarThemeGlobal = { 0 };
+VARTHEME hVarThemeGlobal;
 SYNTAXFILE *lpLoadSyntaxFile=NULL;
 VARTHEME *lpVarThemeActive=NULL;
 VARINFO *lpVarInfoFastCheck=NULL;
@@ -1101,7 +1102,7 @@ int CALLBACK PropSheetProc(HWND hDlg, UINT uMsg, LPARAM lParam)
 
 BOOL CALLBACK GeneralSetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-  static HWND hWndCacheEnable;
+  static HWND hWndCacheCombo;
   static HWND hWndDefaultAliasEnable;
   static HWND hWndDefaultAliasEdit;
   static HWND hWndVarThemeName;
@@ -1119,7 +1120,7 @@ BOOL CALLBACK GeneralSetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lP
   if (uMsg == WM_INITDIALOG)
   {
     SendMessage(hDlg, WM_SETICON, (WPARAM)ICON_BIG, (LPARAM)hMainIcon);
-    hWndCacheEnable=GetDlgItem(hDlg, IDC_GENERAL_CACHE_ENABLE);
+    hWndCacheCombo=GetDlgItem(hDlg, IDC_GENERAL_CACHE);
     hWndDefaultAliasEnable=GetDlgItem(hDlg, IDC_GENERAL_DEFAULTALIAS_ENABLE);
     hWndDefaultAliasEdit=GetDlgItem(hDlg, IDC_GENERAL_DEFAULTALIAS_EDIT);
     hWndVarThemeName=GetDlgItem(hDlg, IDC_GENERAL_VARTHEME_NAME);
@@ -1128,7 +1129,6 @@ BOOL CALLBACK GeneralSetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lP
     hWndVarThemeDelete=GetDlgItem(hDlg, IDC_GENERAL_VARTHEME_DELETE);
     hWndVarThemeList=GetDlgItem(hDlg, IDC_GENERAL_VARTHEME_LIST);
 
-    SetDlgItemTextWide(hDlg, IDC_GENERAL_CACHE_ENABLE, GetLangStringW(wLangModule, STRID_CACHE_ENABLE));
     SetDlgItemTextWide(hDlg, IDC_GENERAL_DEFAULTALIAS_ENABLE, GetLangStringW(wLangModule, STRID_DEFAULTALIAS_ENABLE));
     SetDlgItemTextWide(hDlg, IDC_GENERAL_VARTHEME_NAME_LABEL, GetLangStringW(wLangModule, STRID_VARTHEME_NAME));
     SetDlgItemTextWide(hDlg, IDC_GENERAL_VARTHEME_SAVE, GetLangStringW(wLangModule, STRID_VARTHEME_SAVE));
@@ -1138,8 +1138,12 @@ BOOL CALLBACK GeneralSetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lP
     SendMessage(hWndVarThemeList, LVM_SETEXTENDEDLISTVIEWSTYLE, LVS_EX_GRIDLINES, LVS_EX_GRIDLINES);
     EnableWindow(hWndVarThemeSave, FALSE);
     EnableWindow(hWndVarThemeDelete, FALSE);
-    if (bUseCache)
-      SendMessage(hWndCacheEnable, BM_SETCHECK, BST_CHECKED, 0);
+
+    ComboBox_AddStringWide(hWndCacheCombo, GetLangStringW(wLangModule, STRID_CACHE_NONE));
+    ComboBox_AddStringWide(hWndCacheCombo, GetLangStringW(wLangModule, STRID_CACHE_FAST));
+    ComboBox_AddStringWide(hWndCacheCombo, GetLangStringW(wLangModule, STRID_CACHE_SMART));
+    SendMessage(hWndCacheCombo, CB_SETCURSEL, dwUseCache, 0);
+
     if (bDefaultAliasEnable)
       SendMessage(hWndDefaultAliasEnable, BM_SETCHECK, BST_CHECKED, 0);
     else
@@ -1597,10 +1601,13 @@ BOOL CALLBACK GeneralSetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lP
         }
       }
     }
-    else if (LOWORD(wParam) == IDC_GENERAL_CACHE_ENABLE)
+    else if (LOWORD(wParam) == IDC_GENERAL_CACHE)
     {
-      bUseCache=(BOOL)SendMessage(hWndCacheEnable, BM_GETCHECK, 0, 0);
-      SendMessage(hWndPropSheet, PSM_CHANGED, (WPARAM)hDlg, 0);
+      if (HIWORD(wParam) == CBN_SELCHANGE)
+      {
+        dwUseCache=(DWORD)SendMessage(hWndCacheCombo, CB_GETCURSEL, 0, 0);
+        SendMessage(hWndPropSheet, PSM_CHANGED, (WPARAM)hDlg, 0);
+      }
     }
     else if (LOWORD(wParam) == IDC_GENERAL_DEFAULTALIAS_ENABLE)
     {
@@ -2358,6 +2365,9 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
 
   if ((dwFileSize=GetFileSize(hFile, NULL)) != INVALID_FILE_SIZE)
   {
+    xmemset(&lpSyntaxFile->ftTimeStamp, 0, sizeof(FILETIME));
+    GetFileTime(hFile, NULL, NULL, &lpSyntaxFile->ftTimeStamp);
+
     if (dwFileSize >= 2)
     {
       if (wszText=wpText=(wchar_t *)GlobalAlloc(GPTR, dwFileSize + 2))
@@ -3695,7 +3705,7 @@ void StackRequestSyntaxFile(SYNTAXFILE *lpSyntaxFile)
 
 SYNTAXFILE* StackAddSyntaxFile(HSTACK *hStack, const wchar_t *wpFile)
 {
-  SYNTAXFILE *lpElement = NULL;
+  SYNTAXFILE *lpElement;
 
   if (!StackInsertBefore((stack **)&hStack->first, (stack **)&hStack->last, NULL, (stack **)&lpElement, sizeof(SYNTAXFILE)))
     xstrcpynW(lpElement->wszSyntaxFileName, wpFile, MAX_PATH);
@@ -3704,8 +3714,8 @@ SYNTAXFILE* StackAddSyntaxFile(HSTACK *hStack, const wchar_t *wpFile)
 
 SYNTAXFILE* StackPushSortSyntaxFile(HSTACK *hStack, const wchar_t *wpFile, int nUpDown)
 {
-  SYNTAXFILE *lpElement = NULL;
-  SYNTAXFILE *lpNewElement = NULL;
+  SYNTAXFILE *lpElement;
+  SYNTAXFILE *lpNewElement;
   int i;
 
   if (nUpDown != 1 && nUpDown != -1) return NULL;
@@ -3760,7 +3770,7 @@ SYNTAXFILE* StackGetSyntaxFileByTheme(HSTACK *hStack, HANDLE hTheme)
 
 SYNTAXFILE* StackGetSyntaxFileByIndex(HSTACK *hStack, int nIndex)
 {
-  SYNTAXFILE *lpElement = NULL;
+  SYNTAXFILE *lpElement;
 
   StackGetElement((stack *)hStack->first, (stack *)hStack->last, (stack **)&lpElement, nIndex);
   return lpElement;
@@ -4078,7 +4088,7 @@ VARTHEME* StackGetVarThemeByName(STACKVARTHEME *hStack, const wchar_t *wpVarThem
 
 VARTHEME* StackGetVarThemeByIndex(STACKVARTHEME *hStack, int nIndex)
 {
-  VARTHEME *lpElement = NULL;
+  VARTHEME *lpElement;
 
   StackGetElement((stack *)hStack->first, (stack *)hStack->last, (stack **)&lpElement, nIndex);
   return lpElement;
@@ -4872,6 +4882,7 @@ void ReadSyntaxFiles()
 {
   WIN32_FIND_DATAW wfd;
   SYNTAXFILE *lpSyntaxFile;
+  SYNTAXFILE* lpNextSyntaxFile;
   VARTHEME *lpVarTheme;
   WILDCARDINFO *lpWildElement;
   HINIFILE hIniFile=NULL;
@@ -4888,7 +4899,7 @@ void ReadSyntaxFiles()
   DWORD b;
 
   //Open cache file
-  if (bUseCache)
+  if (dwUseCache)
   {
     xprintfW(wszBuffer, L"%s\\cache", wszCoderDir);
     hIniFile=(HINIFILE)SendMessage(hMainWnd, AKD_INIOPENW, POB_READ, (LPARAM)wszBuffer);
@@ -4904,9 +4915,23 @@ void ReadSyntaxFiles()
         if (lpSyntaxFile=StackAddSyntaxFile(&hSyntaxFilesStack, lpKey->wszKey))
         {
           lpSyntaxFile->bCache=TRUE;
-          wpCount=lpKey->wszString;
 
           //Parse line
+          //bat.coder=3B9F9A0001CE66CC:"*.bat" "*.cmd"
+          for (wpCount=lpKey->wszString; *wpCount && *wpCount != L'\"'; ++wpCount)
+          {
+            if (*wpCount == L':')
+            {
+              if (wpCount - lpKey->wszString == 16)
+              {
+                lpSyntaxFile->ftTimeStamp.dwLowDateTime=(DWORD)hex2decW(lpKey->wszString, 8);
+                lpSyntaxFile->ftTimeStamp.dwHighDateTime=(DWORD)hex2decW(lpKey->wszString + 8, 8);
+                ++wpCount;
+              }
+              break;
+            }
+          }
+
           for (;;)
           {
             lpWildElement=NULL;
@@ -4933,6 +4958,64 @@ void ReadSyntaxFiles()
       }
     }
     SendMessage(hMainWnd, AKD_INICLOSE, (WPARAM)hIniFile, 0);
+
+    if (dwUseCache == UC_SMART)
+    {
+      //Scan for added/modified/removed *.coder files
+      xprintfW(wszBuffer, L"%s\\*.coder", wszCoderDir);
+      if ((hSearch=FindFirstFileWide(wszBuffer, &wfd)) != INVALID_HANDLE_VALUE)
+      {
+        do
+        {
+          for (lpSyntaxFile=(SYNTAXFILE *)hSyntaxFilesStack.first; lpSyntaxFile; lpSyntaxFile=lpSyntaxFile->next)
+          {
+            if (!xstrcmpiW(wfd.cFileName, lpSyntaxFile->wszSyntaxFileName))
+            {
+              lpSyntaxFile->bExists=TRUE;
+
+              if (xmemcmp(&wfd.ftLastWriteTime, &lpSyntaxFile->ftTimeStamp, sizeof(FILETIME)))
+              {
+                //Syntax file was modified
+                lpSyntaxFile->bCache=FALSE;
+
+                StackFreeWildcard(&lpSyntaxFile->hWildcardStack);
+                StackLoadSyntaxFile(&hSyntaxFilesStack, lpSyntaxFile);
+                dwSaveCache|=SC_SAVE;
+              }
+              break;
+            }
+          }
+
+          if (!lpSyntaxFile)
+          {
+            //New file, adding to the cache
+            if (lpSyntaxFile=StackAddSyntaxFile(&hSyntaxFilesStack, wfd.cFileName))
+            {
+              lpSyntaxFile->bCache=FALSE;
+              lpSyntaxFile->bExists=TRUE;
+
+              StackLoadSyntaxFile(&hSyntaxFilesStack, lpSyntaxFile);
+              dwSaveCache|=SC_SAVE;
+            }
+          }
+        }
+        while (FindNextFileWide(hSearch, &wfd));
+
+        FindClose(hSearch);
+      }
+
+      //Exclude non-existed (removed) files form the cache
+      for (lpSyntaxFile=(SYNTAXFILE *)hSyntaxFilesStack.first; lpSyntaxFile; lpSyntaxFile=lpNextSyntaxFile)
+      {
+        lpNextSyntaxFile=lpSyntaxFile->next;
+        if (!lpSyntaxFile->bExists)
+        {
+          StackFreeWildcard(&lpSyntaxFile->hWildcardStack);
+          StackDelete((stack**)&hSyntaxFilesStack.first, (stack**)&hSyntaxFilesStack.last, (stack*)lpSyntaxFile);
+          dwSaveCache|=SC_SAVE|SC_CLEAR;
+        }
+      }
+    }
   }
   else
   {
@@ -5008,15 +5091,15 @@ void ReadSyntaxFiles()
 
 void SaveCache(DWORD dwFlags)
 {
-  if (bUseCache && (dwFlags & SC_SAVE))
+  if (dwUseCache && (dwFlags & SC_SAVE))
   {
     SYNTAXFILE *lpSyntaxFile;
     WILDCARDINFO *lpWildElement;
     INIVALUEW iv;
     HINIFILE hIniFile;
     HINISECTION hIniSection;
-    wchar_t *wszWildcards;
-    int nWildcardsLen;
+    wchar_t *wszStr;
+    int nStrLen;
 
     //Open cache file
     xprintfW(wszBuffer, L"%s\\cache", wszCoderDir);
@@ -5033,30 +5116,31 @@ void SaveCache(DWORD dwFlags)
       for (lpSyntaxFile=(SYNTAXFILE *)hSyntaxFilesStack.first; lpSyntaxFile; lpSyntaxFile=lpSyntaxFile->next)
       {
         //Get file types
-        for (nWildcardsLen=0, lpWildElement=lpSyntaxFile->hWildcardStack.first; lpWildElement; lpWildElement=lpWildElement->next)
+        for (nStrLen=0, lpWildElement=lpSyntaxFile->hWildcardStack.first; lpWildElement; lpWildElement=lpWildElement->next)
         {
-          nWildcardsLen+=(DWORD)xprintfW(NULL, L"\"%s\" ", lpWildElement->wpWildcard) - 1;
+          nStrLen+=(int)xprintfW(NULL, L"\"%s\" ", lpWildElement->wpWildcard) - 1;
         }
-        if (wszWildcards=(wchar_t *)GlobalAlloc(GMEM_FIXED, (nWildcardsLen + 2) * sizeof(wchar_t)))
+        if (wszStr=(wchar_t *)GlobalAlloc(GMEM_FIXED, (17 + nStrLen + 2) * sizeof(wchar_t)))
         {
-          for (nWildcardsLen=0, lpWildElement=lpSyntaxFile->hWildcardStack.first; lpWildElement; lpWildElement=lpWildElement->next)
+          nStrLen=(int)xprintfW(wszStr, L"%08X%08X:", lpSyntaxFile->ftTimeStamp.dwLowDateTime, lpSyntaxFile->ftTimeStamp.dwHighDateTime);
+
+          for (lpWildElement=lpSyntaxFile->hWildcardStack.first; lpWildElement; lpWildElement=lpWildElement->next)
           {
-            nWildcardsLen+=(DWORD)xprintfW(wszWildcards + nWildcardsLen, L"\"%s\" ", lpWildElement->wpWildcard);
+            nStrLen+=(int)xprintfW(wszStr + nStrLen, L"\"%s\" ", lpWildElement->wpWildcard);
           }
-          if (nWildcardsLen) --nWildcardsLen;
-          wszWildcards[nWildcardsLen]=L'\0';
+          if (nStrLen) --nStrLen;
+          wszStr[nStrLen]=L'\0';
         }
 
         //Save extentions
-        xprintfW(wszBuffer, L"%s", lpSyntaxFile->wszSyntaxFileName);
         iv.pSection=L"Cache";
-        iv.pKey=wszBuffer;
+        iv.pKey=lpSyntaxFile->wszSyntaxFileName;
         iv.dwType=INI_STRINGUNICODE;
-        iv.lpData=(LPBYTE)wszWildcards;
-        iv.dwData=(nWildcardsLen + 1) * sizeof(wchar_t);
+        iv.lpData=(LPBYTE)wszStr;
+        iv.dwData=(nStrLen + 1) * sizeof(wchar_t);
         SendMessage(hMainWnd, AKD_INISETVALUEW, (WPARAM)hIniFile, (LPARAM)&iv);
 
-        GlobalFree((HGLOBAL)wszWildcards);
+        GlobalFree((HGLOBAL)wszStr);
       }
       SendMessage(hMainWnd, AKD_INICLOSE, (WPARAM)hIniFile, 0);
     }
@@ -5069,7 +5153,7 @@ void ClearCache(BOOL bForceNewCache)
   if (nInitMain)
   {
     HWND hWndCurEdit=GetCurEdit();
-    BOOL bTmp=FALSE;
+    int nTmp=UC_NONE;
 
     //Free syntax files
     StackFreeSyntaxFiles(&hSyntaxFilesStack);
@@ -5092,14 +5176,14 @@ void ClearCache(BOOL bForceNewCache)
     //Read syntax files
     if (bForceNewCache)
     {
-      bTmp=bUseCache;
-      bUseCache=FALSE;
+      nTmp=dwUseCache;
+      dwUseCache=UC_NONE;
     }
     ReadOptions(OF_HIGHLIGHT|OF_CODEFOLD|OF_AUTOCOMPLETE);
     ReadSyntaxFiles();
     if (bForceNewCache)
     {
-      bUseCache=bTmp;
+      dwUseCache=nTmp;
     }
 
     //Update edit rectangle
@@ -5213,7 +5297,7 @@ void ReadOptions(DWORD dwFlags)
     }
     if (dwFlags & OF_GENERAL_SETTINGS)
     {
-      WideOption(hOptions, L"UseCache", PO_DWORD, (LPBYTE)&bUseCache, sizeof(DWORD));
+      WideOption(hOptions, L"UseCache", PO_DWORD, (LPBYTE)&dwUseCache, sizeof(DWORD));
       WideOption(hOptions, L"DefaultAliasEnable", PO_DWORD, (LPBYTE)&bDefaultAliasEnable, sizeof(DWORD));
       WideOption(hOptions, L"DefaultAlias", PO_STRING, (LPBYTE)wszDefaultAlias, MAX_PATH * sizeof(wchar_t));
     }
@@ -5276,7 +5360,7 @@ void SaveOptions(DWORD dwFlags)
     }
     if (dwFlags & OF_GENERAL_SETTINGS)
     {
-      WideOption(hOptions, L"UseCache", PO_DWORD, (LPBYTE)&bUseCache, sizeof(DWORD));
+      WideOption(hOptions, L"UseCache", PO_DWORD, (LPBYTE)&dwUseCache, sizeof(DWORD));
       WideOption(hOptions, L"DefaultAliasEnable", PO_DWORD, (LPBYTE)&bDefaultAliasEnable, sizeof(DWORD));
       WideOption(hOptions, L"DefaultAlias", PO_STRING, (LPBYTE)wszDefaultAlias, (lstrlenW(wszDefaultAlias) + 1) * sizeof(wchar_t));
     }
@@ -5320,8 +5404,12 @@ const wchar_t* GetLangStringW(LANGID wLangID, int nStringID)
       return L"\x0043\x006F\x0064\x0065\x0072\x0020\x043F\x043B\x0430\x0433\x0438\x043D\x0020\x043D\x0435\x0020\x0437\x0430\x043F\x0443\x0449\x0435\x043D.";
     if (nStringID == STRID_LOADFIRST)
       return L"\x0417\x0430\x0433\x0440\x0443\x0437\x0438\x0442\x0435\x0020\x0441\x043F\x0435\x0440\x0432\x0430 %s.";
-    if (nStringID == STRID_CACHE_ENABLE)
-      return L"\x0418\x0441\x043F\x043E\x043B\x044C\x0437\x043E\x0432\x0430\x0442\x044C\x0020\x043A\x044D\x0448";
+    if (nStringID == STRID_CACHE_NONE)
+      return L"\x0411\x0435\x0437\x0020\x043A\x044D\x0448\x0430";
+    if (nStringID == STRID_CACHE_FAST)
+      return L"\x0411\x044B\x0441\x0442\x0440\x044B\x0439\x0020\x043A\x044D\x0448";
+    if (nStringID == STRID_CACHE_SMART)
+      return L"\x0423\x043C\x043D\x044B\x0439\x0020\x043A\x044D\x0448";
     if (nStringID == STRID_DEFAULTALIAS_ENABLE)
       return L"\x041F\x0441\x0435\x0432\x0434\x043E\x043D\x0438\x043C\x0020\x0434\x043B\x044F\x0020\x043D\x0435\x0438\x0437\x0432\x0435\x0441\x0442\x043D\x043E\x0433\x043E\x0020\x0444\x0430\x0439\x043B\x0430 ";
     if (nStringID == STRID_VARTHEME_NAME)
@@ -5518,8 +5606,12 @@ const wchar_t* GetLangStringW(LANGID wLangID, int nStringID)
       return L"Coder plugin isn't running.";
     if (nStringID == STRID_LOADFIRST)
       return L"Load %s first.";
-    if (nStringID == STRID_CACHE_ENABLE)
-      return L"Use cache";
+    if (nStringID == STRID_CACHE_NONE)
+      return L"Without cache";
+    if (nStringID == STRID_CACHE_FAST)
+      return L"Fast cache";
+    if (nStringID == STRID_CACHE_SMART)
+      return L"Smart cache";
     if (nStringID == STRID_DEFAULTALIAS_ENABLE)
       return L"Alias for unknown file ";
     if (nStringID == STRID_VARTHEME_NAME)

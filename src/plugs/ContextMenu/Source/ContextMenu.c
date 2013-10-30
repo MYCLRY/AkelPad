@@ -510,6 +510,7 @@ HWND hMainWnd;
 HWND hMdiClient;
 HMENU hMainMenu;
 HMENU hNewMainMenu;
+HMENU hMenuWindow;
 HMENU hMenuRecentFiles;
 HMENU hMenuLanguage;
 HMENU hPopupEdit;
@@ -3686,7 +3687,7 @@ void SetMainMenu(POPUPMENU *hMenuStack, HMENU hMenu, BOOL bDrawMenuBar)
       if (nMDI == WMD_SDI || nMDI == WMD_PMDI)
         SetMenu(hMainWnd, hMainMenu);
       else if (nMDI == WMD_MDI)
-        SendMessage(hMdiClient, WM_MDISETMENU, (WPARAM)hMainMenu, (LPARAM)GetSubMenu(hMainMenu, 4));
+        SendMessage(hMdiClient, WM_MDISETMENU, (WPARAM)hMainMenu, (LPARAM)hMenuWindow);
 
       DestroyMenu(hMenuStack->hMainMenu);
       hMenuStack->hMainMenu=NULL;
@@ -3705,7 +3706,7 @@ void DeleteMainMenu(POPUPMENU *hMenuStack)
     }
     else if (nMDI == WMD_MDI)
     {
-      SendMessage(hMdiClient, WM_MDISETMENU, (WPARAM)hMainMenu, (LPARAM)GetSubMenu(hMainMenu, 4));
+      SendMessage(hMdiClient, WM_MDISETMENU, (WPARAM)hMainMenu, (LPARAM)hMenuWindow);
       DrawMenuBar(hMainWnd);
     }
   }
@@ -4733,7 +4734,7 @@ int StructMethodParameters(STACKEXTPARAM *hParamStack, unsigned char *lpStruct)
 
 EXTPARAM* GetMethodParameter(STACKEXTPARAM *hParamStack, int nIndex)
 {
-  EXTPARAM *lpParameter = NULL;
+  EXTPARAM *lpParameter;
 
   if (!StackGetElement((stack *)hParamStack->first, (stack *)hParamStack->last, (stack **)&lpParameter, nIndex))
     return lpParameter;
@@ -6461,6 +6462,7 @@ void InitCommon(PLUGINDATA *pd)
   bAkelEdit=pd->bAkelEdit;
   nMDI=pd->nMDI;
   wLangModule=PRIMARYLANGID(pd->wLangModule);
+  hMenuWindow=GetSubMenu(hMainMenu, MENU_MDI_POSITION);
   hPopupEdit=GetSubMenu(pd->hPopupMenu, MENU_POPUP_EDIT);
   hPopupCodepage=GetSubMenu(pd->hPopupMenu, MENU_POPUP_CODEPAGE);
   hPopupOpenCodepage=GetSubMenu(hPopupCodepage, MENU_POPUP_CODEPAGE_OPEN);

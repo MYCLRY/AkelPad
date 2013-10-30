@@ -358,7 +358,7 @@ BOOL CALLBACK CodeFoldDockDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lP
   {
     FRAMEDATA *lpFrame=(FRAMEDATA *)SendMessage(hMainWnd, AKD_FRAMEFINDW, FWF_CURRENT, 0);
 
-    if (lpLastPostUpdateFrame == (FRAMEDATA *)lParam && lpFrame == (FRAMEDATA *)lParam)
+    if (lpLastPostUpdateFrame && lpLastPostUpdateFrame == (FRAMEDATA *)lParam && lpFrame == (FRAMEDATA *)lParam)
     {
       //UpdateEditAll(UE_FIRSTPIXEL);
       UpdateEdit(lpFrame->ei.hWndEdit, UE_FIRSTPIXEL);
@@ -2653,8 +2653,7 @@ FOLDWINDOW* FillLevelsStack(FOLDWINDOW *lpFoldWindow, STACKLEVEL *hLevelStack, H
     if (lpFoldWindow=StackInsertFoldWindow(&hFoldWindowsStack))
     {
       lpFoldWindow->hWndEdit=hWnd;
-      if (nMDI == WMD_PMDI)
-        lpFoldWindow->hDocEdit=(AEHDOC)SendMessage(hWnd, AEM_GETDOCUMENT, 0, 0);
+      lpFoldWindow->hDocEdit=(AEHDOC)SendMessage(hWnd, AEM_GETDOCUMENT, 0, 0);
 
       //Associate data
       {
@@ -2672,8 +2671,7 @@ FOLDWINDOW* FillLevelsStack(FOLDWINDOW *lpFoldWindow, STACKLEVEL *hLevelStack, H
           else if (lpFoldMasterWindow=StackInsertFoldWindow(&hFoldWindowsStack))
           {
             lpFoldMasterWindow->hWndEdit=hWndMaster;
-            if (nMDI == WMD_PMDI)
-              lpFoldMasterWindow->hDocEdit=(AEHDOC)SendMessage(hWndMaster, AEM_GETDOCUMENT, 0, 0);
+            lpFoldMasterWindow->hDocEdit=(AEHDOC)SendMessage(hWndMaster, AEM_GETDOCUMENT, 0, 0);
             lpFoldMasterWindow->pfwd=&lpFoldMasterWindow->fwd;
             lpFoldMasterWindow->pfwd->lpSyntaxFile=lpSyntaxFile;
             lpFoldMasterWindow->pfwd->lpFoldStack=(HSTACK *)SendMessage(hWndMaster, AEM_GETFOLDSTACK, 0, 0);
@@ -3575,6 +3573,16 @@ FOLDWINDOW* SetActiveEdit(HWND hWndEdit, HWND hWndTreeView, DWORD dwFlags)
           SetFocus(hMainWnd);
         SendMessage(hMainWnd, AKD_DOCK, DK_HIDE, (LPARAM)dkCodeFoldDlg);
       }
+    }
+  }
+
+  if (lpFoldWindow && lpLastPostUpdateFrame && lpFoldWindow->hDocEdit == lpLastPostUpdateFrame->ei.hDocEdit)
+  {
+    dwLastPostUpdateFlags=dwLastPostUpdateFlags & ~dwFlags;
+    if (!dwLastPostUpdateFlags)
+    {
+      lpLastPostUpdateFrame=NULL;
+      dwLastPostUpdateFlags=0;
     }
   }
   return lpFoldWindow;

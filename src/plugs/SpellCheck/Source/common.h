@@ -63,11 +63,8 @@
 #include <richedit.h>
 //! Common Dialogs
 #include <commdlg.h>
-
-//Include AEC functions
 //! Akelpad's will
 #include "AkelEdit.h"
-
 #include "AkelDLL.h"
 //! Resources
 #include "resource.h"
@@ -327,6 +324,7 @@ void CALLCONV DoSuggestion(PLUGINDATA *pd);
 			}	\
 		}
 
+typedef void(WINAPI * _ExitProcess_t)(UINT);
 struct runtime
 {
 	//! Common vars. Declared public here. Refrenced as external elsewhere.
@@ -362,6 +360,7 @@ struct runtime
 	//1 - delay
 	//-1 - not draw next tick
 #endif
+	_ExitProcess_t oldExitProcess;
 };
 
 extern "C" struct runtime rt;
@@ -374,6 +373,21 @@ extern "C" struct runtime rt;
 
 #define IS_ACTIVE() (rt.EditProcData!=NULL)
 
-
+HRESULT PatchIat(
+	HMODULE Module,
+	PSTR ImportedModuleName,
+	PSTR ImportedProcName,
+	PVOID AlternateProc,
+	PVOID *OldProc
+	);
+#define WRAPCALL(stat,estat) {try{stat;}catch(Excp*e){estat;delete e;}}
+class Excp{
+public:
+	LPVOID dummy;
+	Excp(LPVOID dum)
+	{
+		dummy=dum;
+	}
+};
 #endif //__COMMON_H__
 
