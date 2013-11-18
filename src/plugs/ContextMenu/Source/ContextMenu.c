@@ -2436,6 +2436,10 @@ BOOL CreateContextMenu(POPUPMENU *hMenuStack, const wchar_t *wpText, int nType)
   DWORD dwAction=0;
   DWORD dwNewFlags;
   DWORD dwSetFlags=0;
+  int nFlagCountNoSDI=0;
+  int nFlagCountNoMDI=0;
+  int nFlagCountNoPMDI=0;
+  int nFlagCountNoFileExist=0;
   int nPrevSeparator=0;
   BOOL bMethod;
   BOOL bMainMenuParent;
@@ -2495,7 +2499,15 @@ BOOL CreateContextMenu(POPUPMENU *hMenuStack, const wchar_t *wpText, int nType)
       {
         dwNewFlags=(DWORD)xatoiW(wpSetArg + 4, &wpSetArg);
 
-        if (dwNewFlags & CCMS_NOFILEEXIST)
+        if ((dwNewFlags & CCMS_NOSDI) && (dwSetFlags & CCMS_NOSDI))
+          ++nFlagCountNoSDI;
+        if ((dwNewFlags & CCMS_NOMDI) && (dwSetFlags & CCMS_NOMDI))
+          ++nFlagCountNoMDI;
+        if ((dwNewFlags & CCMS_NOPMDI) && (dwSetFlags & CCMS_NOPMDI))
+          ++nFlagCountNoPMDI;
+        if ((dwNewFlags & CCMS_NOFILEEXIST) && (dwSetFlags & CCMS_NOFILEEXIST))
+          ++nFlagCountNoFileExist;
+        if ((dwNewFlags & CCMS_NOFILEEXIST) && !(dwSetFlags & CCMS_NOFILEEXIST))
         {
           wchar_t wszPath[MAX_PATH];
           wchar_t *wpFileName;
@@ -2513,6 +2525,7 @@ BOOL CreateContextMenu(POPUPMENU *hMenuStack, const wchar_t *wpText, int nType)
           }
         }
         dwSetFlags|=dwNewFlags;
+
         if (IsFlagOn(dwSetFlags, CCMS_NOICONS))
           bUseIcons=FALSE;
         if (IsFlagOn(dwSetFlags, CCMS_NOSDI|CCMS_NOMDI|CCMS_NOPMDI|CCMS_NOFILEEXIST))
@@ -2521,7 +2534,30 @@ BOOL CreateContextMenu(POPUPMENU *hMenuStack, const wchar_t *wpText, int nType)
       }
       else if (!xstrcmpnW(L"UNSET(", wpSetArg, (UINT_PTR)-1))
       {
-        dwSetFlags&=~xatoiW(wpSetArg + 6, &wpSetArg);
+        dwNewFlags=(DWORD)xatoiW(wpSetArg + 6, &wpSetArg);
+
+        if ((dwNewFlags & CCMS_NOSDI) && (dwSetFlags & CCMS_NOSDI))
+        {
+          if (nFlagCountNoSDI > 0 && --nFlagCountNoSDI >= 0)
+            dwNewFlags&=~CCMS_NOSDI;
+        }
+        if ((dwNewFlags & CCMS_NOMDI) && (dwSetFlags & CCMS_NOMDI))
+        {
+          if (nFlagCountNoMDI > 0 && --nFlagCountNoMDI >= 0)
+            dwNewFlags&=~CCMS_NOMDI;
+        }
+        if ((dwNewFlags & CCMS_NOPMDI) && (dwSetFlags & CCMS_NOPMDI))
+        {
+          if (nFlagCountNoPMDI > 0 && --nFlagCountNoPMDI >= 0)
+            dwNewFlags&=~CCMS_NOPMDI;
+        }
+        if ((dwNewFlags & CCMS_NOFILEEXIST) && (dwSetFlags & CCMS_NOFILEEXIST))
+        {
+          if (nFlagCountNoFileExist > 0 && --nFlagCountNoFileExist >= 0)
+            dwNewFlags&=~CCMS_NOFILEEXIST;
+        }
+        dwSetFlags&=~dwNewFlags;
+
         if (!IsFlagOn(dwSetFlags, CCMS_NOICONS))
           bUseIcons=TRUE;
         if (IsFlagOn(dwSetFlags, CCMS_NOSDI|CCMS_NOMDI|CCMS_NOPMDI|CCMS_NOFILEEXIST))

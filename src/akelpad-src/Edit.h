@@ -384,6 +384,8 @@ typedef struct {
   wchar_t wszDateInsertFormat[128];
   wchar_t wszAkelUpdaterOptions[MAX_PATH];
   wchar_t wszUrlCommand[MAX_PATH];
+  wchar_t wszTabNameFind[MAX_PATH];
+  wchar_t wszTabNameRep[MAX_PATH];
 
   //Menu settings
   BOOL bOnTop;
@@ -470,7 +472,7 @@ typedef struct _EXTPARAM {
   struct _EXTPARAM *next;
   struct _EXTPARAM *prev;
   DWORD dwType;            //See EXTPARAM_* defines.
-  int nNumber;             //External parameter number.
+  INT_PTR nNumber;         //External parameter number.
   char *pString;           //External parameter string (Ansi).
   wchar_t *wpString;       //External parameter string (Unicode).
   char *pExpanded;         //External parameter expanded string - without %variables% (Ansi).

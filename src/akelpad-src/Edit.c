@@ -3766,6 +3766,10 @@ void ReadOptions(MAINOPTIONS *mo, FRAMEDATA *fd)
       bSaveManual=TRUE;
     if (!ReadOption(&oh, L"UrlCommand", MOT_STRING, mo->wszUrlCommand, sizeof(mo->wszUrlCommand)))
       bSaveManual=TRUE;
+    if (!ReadOption(&oh, L"TabNameFind", MOT_STRING, mo->wszTabNameFind, sizeof(mo->wszTabNameFind)))
+      bSaveManual=TRUE;
+    if (!ReadOption(&oh, L"TabNameRep", MOT_STRING, mo->wszTabNameRep, sizeof(mo->wszTabNameRep)))
+      bSaveManual=TRUE;
 
     //Frame data
     ReadOption(&oh, L"TabStopSize", MOT_DWORD, &fd->nTabStopSize, sizeof(DWORD));
@@ -3998,6 +4002,11 @@ BOOL SaveOptions(MAINOPTIONS *mo, FRAMEDATA *fd, int nSaveSettings, BOOL bForceW
     goto Error;
   if (!SaveOption(&oh, L"UrlCommand", MOT_STRING|MOT_MAINOFFSET|MOT_MANUAL, (void *)offsetof(MAINOPTIONS, wszUrlCommand), BytesInString(mo->wszUrlCommand)))
     goto Error;
+  if (!SaveOption(&oh, L"TabNameFind", MOT_STRING|MOT_MAINOFFSET|MOT_MANUAL, (void *)offsetof(MAINOPTIONS, wszTabNameFind), BytesInString(mo->wszTabNameFind)))
+    goto Error;
+  if (!SaveOption(&oh, L"TabNameRep", MOT_STRING|MOT_MAINOFFSET|MOT_MANUAL, (void *)offsetof(MAINOPTIONS, wszTabNameRep), BytesInString(mo->wszTabNameRep)))
+    goto Error;
+
   bSaveManual=FALSE;
 
   //Frame data
@@ -18406,13 +18415,16 @@ DWORD CallMethod(const wchar_t *wpMethod, const wchar_t *wpUrlLink)
     if (dwAction == EXTACT_COMMAND)
     {
       int nCommand=0;
+      LPARAM lParam=0;
 
       if (lpParameter=GetMethodParameter(&hParamStack, 1))
-        nCommand=lpParameter->nNumber;
+        nCommand=(int)lpParameter->nNumber;
+      if (lpParameter=GetMethodParameter(&hParamStack, 2))
+        lParam=lpParameter->nNumber;
 
       if (nCommand)
       {
-        SendMessage(hMainWnd, WM_COMMAND, nCommand, 0);
+        SendMessage(hMainWnd, WM_COMMAND, nCommand, lParam);
       }
     }
     else if (dwAction == EXTACT_CALL)
@@ -18454,7 +18466,7 @@ DWORD CallMethod(const wchar_t *wpMethod, const wchar_t *wpUrlLink)
       if (lpParameter=GetMethodParameter(&hParamStack, 2))
         wpWorkDir=lpParameter->wpExpanded;
       if (lpParameter=GetMethodParameter(&hParamStack, 3))
-        bWait=lpParameter->nNumber;
+        bWait=(BOOL)lpParameter->nNumber;
 
       if (wpCmdLine)
       {
@@ -18483,9 +18495,9 @@ DWORD CallMethod(const wchar_t *wpMethod, const wchar_t *wpUrlLink)
       if (lpParameter=GetMethodParameter(&hParamStack, 1))
         wpFile=lpParameter->wpExpanded;
       if (lpParameter=GetMethodParameter(&hParamStack, 2))
-        nCodePage=lpParameter->nNumber;
+        nCodePage=(int)lpParameter->nNumber;
       if (lpParameter=GetMethodParameter(&hParamStack, 3))
-        bBOM=lpParameter->nNumber;
+        bBOM=(BOOL)lpParameter->nNumber;
 
       if (dwAction == EXTACT_OPENFILE)
       {
@@ -18521,9 +18533,9 @@ DWORD CallMethod(const wchar_t *wpMethod, const wchar_t *wpUrlLink)
       if (lpParameter=GetMethodParameter(&hParamStack, 1))
         wpFaceName=lpParameter->wpExpanded;
       if (lpParameter=GetMethodParameter(&hParamStack, 2))
-        dwFontStyle=lpParameter->nNumber;
+        dwFontStyle=(DWORD)lpParameter->nNumber;
       if (lpParameter=GetMethodParameter(&hParamStack, 3))
-        nPointSize=lpParameter->nNumber;
+        nPointSize=(int)lpParameter->nNumber;
 
       if (nPointSize)
       {
@@ -18551,9 +18563,9 @@ DWORD CallMethod(const wchar_t *wpMethod, const wchar_t *wpUrlLink)
       TEXTRECODE tr={0};
 
       if (lpParameter=GetMethodParameter(&hParamStack, 1))
-        tr.nCodePageFrom=lpParameter->nNumber;
+        tr.nCodePageFrom=(int)lpParameter->nNumber;
       if (lpParameter=GetMethodParameter(&hParamStack, 2))
-        tr.nCodePageTo=lpParameter->nNumber;
+        tr.nCodePageTo=(int)lpParameter->nNumber;
       RecodeTextW(lpFrameCurrent, NULL, 0, &tr.nCodePageFrom, &tr.nCodePageTo);
     }
     else if (dwAction == EXTACT_INSERT)
@@ -18571,7 +18583,7 @@ DWORD CallMethod(const wchar_t *wpMethod, const wchar_t *wpUrlLink)
         if (lpParameter=GetMethodParameter(&hParamStack, 1))
           wpText=lpParameter->wpExpanded;
         if (lpParameter=GetMethodParameter(&hParamStack, 2))
-          bEscSequences=lpParameter->nNumber;
+          bEscSequences=(BOOL)lpParameter->nNumber;
 
         if (bEscSequences)
         {
@@ -18657,7 +18669,7 @@ void ParseMethodParameters(STACKEXTPARAM *hParamStack, const wchar_t *wpText, co
       ++hParamStack->nElements;
 
       lpParameter->dwType=EXTPARAM_INT;
-      lpParameter->nNumber=(int)xatoiW(wpParamBegin, NULL);
+      lpParameter->nNumber=xatoiW(wpParamBegin, NULL);
     }
   }
 
@@ -20912,13 +20924,35 @@ void UpdateTitle(FRAMEDATA *lpFrame)
     if ((nItem=GetTabItemFromParam(hTab, (LPARAM)lpFrame)) != -1)
     {
       wchar_t wszTabName[MAX_PATH];
+      wchar_t wszTabNameAmp[MAX_PATH];
+
+      if (*moCur.wszTabNameFind)
+      {
+        PATREPLACE pr;
+
+        pr.wpStr=wpFileName;
+        pr.wpMaxStr=pr.wpStr + xstrlenW(pr.wpStr);
+        pr.wpPat=moCur.wszTabNameFind;
+        pr.wpMaxPat=pr.wpPat + xstrlenW(pr.wpPat);
+        pr.wpRep=moCur.wszTabNameRep;
+        pr.wpMaxRep=pr.wpRep + xstrlenW(pr.wpRep);
+        pr.dwOptions=REPE_ISMATCH;
+        pr.wpDelim=NULL;
+        pr.wpNewLine=NULL;
+        pr.wszResult=wszTabName;
+        PatReplace(&pr);
+
+        if (!pr.nReplaceCount)
+          xstrcpynW(wszTabName, wpFileName, MAX_PATH);
+      }
+      else xstrcpynW(wszTabName, wpFileName, MAX_PATH);
 
       //Replace "&" with "&&"
-      FixAmpW(wpFileName, wszTabName, MAX_PATH);
+      FixAmpW(wszTabName, wszTabNameAmp, MAX_PATH);
 
       //Set tab text
       tcItem.mask=TCIF_TEXT|TCIF_IMAGE;
-      tcItem.pszText=wszTabName;
+      tcItem.pszText=wszTabNameAmp;
       tcItem.iImage=nIconIndex;
       TabCtrl_SetItemWide(hTab, nItem, &tcItem);
     }
