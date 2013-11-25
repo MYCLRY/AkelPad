@@ -8616,9 +8616,9 @@ BOOL AutodetectMultibyte(DWORD dwLangID, const unsigned char *pBuffer, UINT_PTR 
 
   if (dwLangID == LANG_RUSSIAN)
   {
-    xstrcpyA(szANSIwatermark, "\xE0\xE1\xE2\xE5\xE8\xED\xEE\xEF\xF0\xF2\xC0\xC1\xC2\xC5\xC8\xCD\xCE\xCF\xD2");  //אבגוטםמןנעְֱֲֵָֽ־ֿ?
-    xstrcpyA(szKOIwatermark,  "\xC1\xC2\xD7\xC5\xC9\xCE\xCF\xD2\xD4\xE1\xE2\xF7\xE5\xE9\xEE\xEF\xF0\xF2\xF4");  //ֱֲ׳ֵֹ־ֿׂװבגקוימןנע?
-    xstrcpyA(szOEMwatermark,  "\xAE\xA5\xA0\xA8\xAA\xAC\xAD\xE2\x8E\x45\x80\x88\x8A\x8C\x8D\x92\xB0\xB1\xB2\xB3\xBA\xDB\xCD");  //מואטךלםע־EְָÊּֽׂ         Graphic simbols: \xB0\xB1\xB2\xB3\xBA\xDB\xCD
+    xstrcpyA(szANSIwatermark, "\xE0\xE1\xE2\xE5\xE8\xED\xEE\xEF\xF0\xF2\xC0\xC1\xC2\xC5\xC8\xCD\xCE\xCF\xD2");  //אבגוטםת@נעְֱֲֵָֽ־ֿ?
+    xstrcpyA(szKOIwatermark,  "\xC1\xC2\xD7\xC5\xC9\xCE\xCF\xD2\xD4\xE1\xE2\xF7\xE5\xE9\xEE\xEF\xF0\xF2\xF4");  //ֱֲ׳ֵֹ־ֿׂװבגקוימEE
+    xstrcpyA(szOEMwatermark,  "\xAE\xA5\xA0\xA8\xAA\xAC\xAD\xE2\x8E\x45\x80\x88\x8A\x8C\x8D\x92\xB0\xB1\xB2\xB3\xBA\xDB\xCD");  //üDאטEûQ־EְָÊּֽׂ         Graphic simbols: \xB0\xB1\xB2\xB3\xBA\xDB\xCD
     xstrcpyA(szUTF8watermark, "\xD0\xD1");
   }
   else if (IsLangEasternEurope(dwLangID))
@@ -18038,10 +18038,23 @@ void StackFontItemsFree(HSTACK *hStack)
 
 wchar_t* GetCommandLineParamsWide(unsigned char *pCmdParams)
 {
+  wchar_t *wpCmd=wszCmdLine;
+  wchar_t *wpMaxCmd=wszCmdLine + COMMANDLINE_SIZE;
+
+  if (nCmdLineBeginLen)
+  {
+    wpCmd+=xstrcpynW(wpCmd, wpCmdLineBegin, wpMaxCmd - wpCmd);
+    wpCmd+=xstrcpynW(wpCmd, L" ", wpMaxCmd - wpCmd);
+  }
   if (bOldWindows)
-    xprintfW(wszCmdLine, L"%s %.%dS %s", wpCmdLineBegin, COMMANDLINE_SIZE, pCmdParams, wpCmdLineEnd);
+    wpCmd+=xprintfW(wpCmd, L"%.%dS", wpMaxCmd - wpCmd, pCmdParams);
   else
-    xprintfW(wszCmdLine, L"%s %.%ds %s", wpCmdLineBegin, COMMANDLINE_SIZE, pCmdParams, wpCmdLineEnd);
+    wpCmd+=xprintfW(wpCmd, L"%.%ds", wpMaxCmd - wpCmd, pCmdParams);
+  if (nCmdLineEndLen)
+  {
+    wpCmd+=xstrcpynW(wpCmd, L" ", wpMaxCmd - wpCmd);
+    wpCmd+=xstrcpynW(wpCmd, wpCmdLineEnd, wpMaxCmd - wpCmd);
+  }
   return wszCmdLine;
 }
 
