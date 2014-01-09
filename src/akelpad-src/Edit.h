@@ -5,9 +5,9 @@
 //// Defines
 
 #ifdef _WIN64
-  #define APP_ABOUT_VERSIONW        L"AkelPad 4.8.6 (x64)"
+  #define APP_ABOUT_VERSIONW        L"AkelPad 4.8.7 (x64)"
 #else
-  #define APP_ABOUT_VERSIONW        L"AkelPad 4.8.6 (x86)"
+  #define APP_ABOUT_VERSIONW        L"AkelPad 4.8.7 (x86)"
 #endif
 #ifdef AKELPAD_DLLBUILD
   #define APP_MAIN_CLASSA            "AkelPad4 Library"
@@ -243,11 +243,6 @@
 
 //STARTUPINFO flags
 #define STARTF_NOMUTEX  0x00001000
-
-//nMainOnFinish type
-#define MOF_NONE        0
-#define MOF_QUERYEND    1
-#define MOF_DESTROY     2
 
 //Main option type
 #define MOT_DWORD       0x01  //32-bit number.
@@ -1065,7 +1060,7 @@ FONTITEM* StackFontItemInsert(HSTACK *hStack, const LOGFONTW *lfFont);
 FONTITEM* StackFontItemGet(HSTACK *hStack, const LOGFONTW *lfFont);
 void StackFontItemsFree(HSTACK *hStack);
 
-wchar_t* GetCommandLineParamsWide(unsigned char *pCmdParams);
+wchar_t* GetCommandLineParamsWide(const unsigned char *pCmdParams, wchar_t **wppCmdParamsStart, wchar_t **wppCmdParamsEnd);
 char* GetCommandLineParamsA();
 wchar_t* GetCommandLineParamsW();
 int GetCommandLineArg(const wchar_t *wpCmdLine, wchar_t *wszArg, int nArgMax, const wchar_t **wpNextArg, BOOL bParseAsNotepad);

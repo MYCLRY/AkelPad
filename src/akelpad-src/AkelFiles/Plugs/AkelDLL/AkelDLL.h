@@ -8,7 +8,7 @@
   #define MAKE_IDENTIFIER(a, b, c, d)  ((DWORD)MAKELONG(MAKEWORD(a, b), MAKEWORD(c, d)))
 #endif
 
-#define AKELDLL MAKE_IDENTIFIER(1, 9, 0, 6)
+#define AKELDLL MAKE_IDENTIFIER(1, 9, 1, 0)
 
 
 //// Defines
@@ -61,6 +61,11 @@
 #define PCLE_END     0x02  //Stop parsing command line parameters.
 #define PCLE_ONLOAD  0x04  //Done parsing command line parameters on program load (used internally).
 
+//MI_ONFINISH type
+#define MOF_NONE        0
+#define MOF_QUERYEND    1 //Processing WM_CLOSE or WM_QUERYENDSESSION message.
+#define MOF_DESTROY     2 //Processing AKDN_MAIN_ONFINISH message.
+
 //Autodetect flags
 #define ADT_BINARY_ERROR        0x00000001  //Check if file is binary.
 #define ADT_REG_CODEPAGE        0x00000002  //If last open code page found in registry, then it will be
@@ -98,7 +103,8 @@
 #define EOD_STREAMIN             -16        //Error in EM_STREAMIN.
 #define EOD_DOCUMENTS_LIMIT      -17        //Documents limit reached in MDI mode.
 #define EOD_MSGNO                -20        //File is skipped.
-#define EOD_MSGCANCEL            -21        //User press cancel.
+#define EOD_MSGCANCELCREATE      -21        //User press cancel in message "Create new file?".
+#define EOD_MSGCANCELBINARY      -22        //User press cancel in message "Binary file. Continue?".
 
 //Save document flags
 #define SD_UPDATE            0x00000001  //Update file info.
@@ -112,6 +118,7 @@
 #define ESD_CODEPAGE_ERROR  -4  //Code page isn't implemented.
 #define ESD_STOP            -5  //Stopped from AKDN_SAVEDOCUMENT_START.
 #define ESD_STREAMOUT       -6  //Error in EM_STREAMOUT.
+#define ESD_NOWINDOW        -7  //No window to save from.
 
 //Code pages int
 #define CP_UNICODE_UTF16LE  1200
@@ -202,6 +209,9 @@
 #define MI_LANGMODULEW               52   //Return: copied chars. (wchar_t *)lParam - buffer that receives language module string.
 #define MI_LANGIDSYSTEM              53   //Return: system language ID.
 #define MI_LANGIDMODULE              54   //Return: language module language ID.
+//Execution
+#define MI_ONSTART                   90   //Return: TRUE - execution is between AKDN_MAIN_ONSTART and AKDN_MAIN_ONSTART_FINISH, FALSE - elsewhere.
+#define MI_ONFINISH                  91   //Return: see MOF_* defines.
 //Compile
 #define MI_X64                       101  //Return: TRUE - x64 version, FALSE - x86 version.
 #define MI_AKELEDITSTATICBUILD       102  //Return: TRUE - AkelEdit is compiled statically, FALSE - AkelEdit is compiled as standalone library.

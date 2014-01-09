@@ -256,6 +256,8 @@ wchar_t *wpCmdLineEnd=NULL;
 int nCmdLineEndLen=0;
 BOOL bCmdLineChanged=FALSE;
 const wchar_t *wpCmdLine=NULL;
+wchar_t *wpCmdParamsStart=NULL;
+wchar_t *wpCmdParamsEnd=NULL;
 DWORD dwCmdLineOptions=0;
 BOOL bCmdLineQuitAsEnd=FALSE;
 
@@ -324,6 +326,7 @@ BOOL bMenuPopupCodepage=TRUE;
 BOOL bMenuRecentFiles=FALSE;
 BOOL bMenuLanguage=FALSE;
 BOOL bMainOnStart=FALSE;
+BOOL bMainCheckIdle=FALSE;
 int nMainOnFinish=MOF_NONE;
 BOOL bEditOnFinish=FALSE;
 BOOL bFirstTabOnFinish=FALSE;
@@ -530,11 +533,11 @@ DWORD __declspec(dllexport) Translate(MSG *lpMsg)
 {
   DWORD dwResult=TranslateMessageAll(TMSG_ALL, lpMsg);
 
-  if (bMainOnStart)
+  if (bMainCheckIdle)
   {
     if (GetQueueStatus(QS_ALLINPUT) == 0)
     {
-      bMainOnStart=FALSE;
+      bMainCheckIdle=FALSE;
       SendMessage(hMainWnd, AKDN_MAIN_ONSTART_IDLE, 0, 0);
     }
   }
@@ -934,7 +937,7 @@ EXTERN_C int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPTSTR lpCmd
   xmemcpy(&moCur, &moInit, sizeof(MAINOPTIONS));
 
   //Command line
-  wpCmdLine=GetCommandLineParamsWide(mc.pCmdLine);
+  wpCmdLine=GetCommandLineParamsWide(mc.pCmdLine, &wpCmdParamsStart, &wpCmdParamsEnd);
 
   //Get startup info
   #ifndef AKELPAD_DLLBUILD
@@ -978,7 +981,9 @@ EXTERN_C int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPTSTR lpCmd
           goto Quit;
       }
 
-      SendCmdLine(hWndFriend, wpCmdLine, TRUE, TRUE);
+      //Send command line parameters without CmdLineBegin and CmdLineEnd
+      *wpCmdParamsEnd=L'\0';
+      SendCmdLine(hWndFriend, wpCmdParamsStart, TRUE, TRUE);
       goto Quit;
     }
   }
@@ -1188,11 +1193,11 @@ EXTERN_C int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE hPrev, LPTSTR lpCmd
     {
       TranslateMessageAll(TMSG_ALL, &msg);
 
-      if (bMainOnStart)
+      if (bMainCheckIdle)
       {
         if (GetQueueStatus(QS_ALLINPUT) == 0)
         {
-          bMainOnStart=FALSE;
+          bMainCheckIdle=FALSE;
           SendMessage(hMainWnd, AKDN_MAIN_ONSTART_IDLE, 0, 0);
         }
       }
@@ -1635,6 +1640,8 @@ LRESULT CALLBACK MainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
       wchar_t *wpFileName;
       int i=0;
 
+      bMainOnStart=TRUE;
+
       //Allocate and read search string
       if (moCur.nSearchStrings)
       {
@@ -1802,7 +1809,8 @@ LRESULT CALLBACK MainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
       #endif
 
       SendMessage(hMainWnd, AKDN_MAIN_ONSTART_FINISH, 0, 0);
-      bMainOnStart=TRUE;
+      bMainOnStart=FALSE;
+      bMainCheckIdle=TRUE;
       return 0;
     }
     else if (uMsg == AKDN_FRAME_ACTIVATE)
@@ -2163,7 +2171,7 @@ LRESULT CALLBACK MainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     }
     if (uMsg == AKD_GETMAININFO)
     {
-      if (wParam < MI_X64)
+      if (wParam < MI_ONSTART)
       {
         if (wParam == MI_AKELDIRA)
           return xstrcpynA((void *)lParam, szExeDir, MAX_PATH);
@@ -2221,6 +2229,10 @@ LRESULT CALLBACK MainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
       }
       else
       {
+        if (wParam == MI_ONSTART)
+          return bMainOnStart;
+        if (wParam == MI_ONFINISH)
+          return nMainOnFinish;
         if (wParam == MI_X64)
         {
           #ifdef _WIN64

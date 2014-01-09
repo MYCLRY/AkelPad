@@ -340,7 +340,7 @@
         <td>Defines <a href=#ch7>regular expression</a> replace pattern for tab name in MDI/PMDI mode. Used with TabNameFind.
           <br>
           <br>Example:
-          <br>TabNameFind=(.{20})[^.]{3,}(.*)
+          <br>TabNameFind=(.{20})[^.]{4,}(.*)
           <br>TabNameRep=\1..\2
           <br>
           <br>By default: "".
@@ -1799,6 +1799,10 @@
     <tr>
       <td>(<i>pattern</i>)</td>
       <td>A subexpression that matches <i>pattern</i> and captures the match. The captured match can be retrieved from the resulting collection using the <b>\0</b>...<b>\9</b> backreferences. To match parentheses characters "(" or ")", use '\(' or '\)'.</td>
+    </tr>
+    <tr>
+      <td>(?^<i>pattern</i>)</td>
+      <td>A subexpression that matches negative <i>pattern</i> and captures the match. Pattern must be of fixed length.</td>
     </tr>
     <tr>
       <td>(?:<i>pattern</i>)</td>

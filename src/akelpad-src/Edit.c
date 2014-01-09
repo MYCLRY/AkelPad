@@ -58,6 +58,8 @@ extern wchar_t *wpCmdLineEnd;
 extern int nCmdLineEndLen;
 extern BOOL bCmdLineChanged;
 extern const wchar_t *wpCmdLine;
+extern wchar_t *wpCmdParamsStart;
+extern wchar_t *wpCmdParamsEnd;
 extern DWORD dwCmdLineOptions;
 extern BOOL bCmdLineQuitAsEnd;
 
@@ -125,7 +127,8 @@ extern HMENU hMenuWindow;
 extern BOOL bMenuPopupCodepage;
 extern BOOL bMenuRecentFiles;
 extern BOOL bMenuLanguage;
-extern BOOL bMainOnStart;
+extern BOOL bMainStarting;
+extern BOOL bMainCheckIdle;
 extern int nMainOnFinish;
 extern BOOL bEditOnFinish;
 extern BOOL bFirstTabOnFinish;
@@ -4342,7 +4345,7 @@ int OpenDocument(HWND hWnd, const wchar_t *wpFile, DWORD dwFlags, int nCodePage,
       xprintfW(wszMsg, wbuf, wszFile);
       if (API_MessageBox(hMainWnd, wszMsg, APP_MAIN_TITLEW, MB_OKCANCEL|MB_ICONEXCLAMATION) == IDCANCEL)
       {
-        nResult=EOD_MSGCANCEL;
+        nResult=EOD_MSGCANCELCREATE;
         goto End;
       }
     }
@@ -4446,7 +4449,7 @@ int OpenDocument(HWND hWnd, const wchar_t *wpFile, DWORD dwFlags, int nCodePage,
               xprintfW(wszMsg, wbuf, wszFile);
               if (API_MessageBox(hMainWnd, wszMsg, APP_MAIN_TITLEW, MB_OKCANCEL|MB_ICONEXCLAMATION|MB_DEFBUTTON2) == IDCANCEL)
               {
-                nResult=EOD_MSGCANCEL;
+                nResult=EOD_MSGCANCELBINARY;
                 break;
               }
             }
@@ -5071,6 +5074,8 @@ int SaveDocument(HWND hWnd, const wchar_t *wpFile, int nCodePage, BOOL bBOM, DWO
   }
   if (!hWnd)
     hWnd=lpFrameCurrent->ei.hWndEdit;
+  if (!hWnd)
+    return ESD_NOWINDOW;
   GetFullName(wpFile, wszFile, MAX_PATH, &nFileLen);
   nStreamOffset=GetFileStreamOffset(wszFile, nFileLen);
 
@@ -8616,8 +8621,8 @@ BOOL AutodetectMultibyte(DWORD dwLangID, const unsigned char *pBuffer, UINT_PTR 
 
   if (dwLangID == LANG_RUSSIAN)
   {
-    xstrcpyA(szANSIwatermark, "\xE0\xE1\xE2\xE5\xE8\xED\xEE\xEF\xF0\xF2\xC0\xC1\xC2\xC5\xC8\xCD\xCE\xCF\xD2");  //珮粢竟ⅰﾀﾁﾂﾅﾈﾍﾎﾏ?
-    xstrcpyA(szKOIwatermark,  "\xC1\xC2\xD7\xC5\xC9\xCE\xCF\xD2\xD4\xE1\xE2\xF7\xE5\xE9\xEE\xEF\xF0\xF2\xF4");  //ﾁﾂﾗﾅﾉﾎﾏﾒﾔ矮鴃・・
+    xstrcpyA(szANSIwatermark, "\xE0\xE1\xE2\xE5\xE8\xED\xEE\xEF\xF0\xF2\xC0\xC1\xC2\xC5\xC8\xCD\xCE\xCF\xD2");  //珮粢竟ⅰﾀﾁﾂﾅﾈﾍﾎﾏﾒ
+    xstrcpyA(szKOIwatermark,  "\xC1\xC2\xD7\xC5\xC9\xCE\xCF\xD2\xD4\xE1\xE2\xF7\xE5\xE9\xEE\xEF\xF0\xF2\xF4");  //ﾁﾂﾗﾅﾉﾎﾏﾒﾔ矮鴃・
     xstrcpyA(szOEMwatermark,  "\xAE\xA5\xA0\xA8\xAA\xAC\xAD\xE2\x8E\x45\x80\x88\x8A\x8C\x8D\x92\xB0\xB1\xB2\xB3\xBA\xDB\xCD");  //鮱琲・炅ﾎEﾀﾈﾊﾌﾍﾒ         Graphic simbols: \xB0\xB1\xB2\xB3\xBA\xDB\xCD
     xstrcpyA(szUTF8watermark, "\xD0\xD1");
   }
@@ -9792,7 +9797,7 @@ void SaveComboboxSearch(HWND hWndFind, HWND hWndReplace)
 {
   wchar_t wszRegKey[MAX_PATH];
   wchar_t wszRegValue[32];
-  wchar_t *wszData;
+  wchar_t *wszRegData;
   HWND hWnd;
   HKEY hKey;
   int nSize;
@@ -9814,11 +9819,11 @@ void SaveComboboxSearch(HWND hWndFind, HWND hWndReplace)
     {
       ++nSize;
 
-      if (wszData=AllocWideStr(nSize + 1))
+      if (wszRegData=AllocWideStr(nSize + 1))
       {
-        ComboBox_GetLBTextWide(hWnd, i, wszData);
-        RegSetValueExWide(hKey, wszRegValue, 0, REG_SZ, (LPBYTE)wszData, nSize * sizeof(wchar_t));
-        FreeWideStr(wszData);
+        ComboBox_GetLBTextWide(hWnd, i, wszRegData);
+        RegSetValueExWide(hKey, wszRegValue, 0, REG_SZ, (LPBYTE)wszRegData, nSize * sizeof(wchar_t));
+        FreeWideStr(wszRegData);
         continue;
       }
     }
@@ -11370,10 +11375,12 @@ int RecentFilesRead(RECENTFILESTACK *hStack)
 {
   wchar_t wszRegKey[MAX_PATH];
   wchar_t wszRegValue[32];
+  wchar_t *wszRegData;
   const wchar_t *wpCount;
   HKEY hKey;
   DWORD dwType;
   DWORD dwSize;
+  DWORD dwDataMax;
   DWORD dwSaveTime;
   int i=0;
 
@@ -11400,42 +11407,52 @@ int RecentFilesRead(RECENTFILESTACK *hStack)
   {
     RecentFilesZero(hStack);
 
-    for (i=0; i < moCur.nRecentFiles; ++i)
+    dwDataMax=BUFFER_SIZE;
+    if (wszRegData=AllocWideStr(dwDataMax))
     {
-      xprintfW(wszRegValue, L"file%d", i);
-      dwSize=BUFFER_SIZE * sizeof(wchar_t);
-      if (RegQueryValueExWide(hKey, wszRegValue, NULL, &dwType, (LPBYTE)wbuf, &dwSize) != ERROR_SUCCESS)
-        break;
-      if (!*wbuf || dwType != REG_MULTI_SZ)
-        break;
-
-      if (lpRecentFile=RecentFilesInsert(hStack, -1))
+      for (i=0; i < moCur.nRecentFiles; ++i)
       {
-        //File
-        wpCount=wbuf;
-        lpRecentFile->nFileLen=(int)xstrcpynW(lpRecentFile->wszFile, wpCount, MAX_PATH);
-        wpCount+=lpRecentFile->nFileLen + 1;
+        xprintfW(wszRegValue, L"file%d", i);
+        if (RegQueryValueExWide(hKey, wszRegValue, NULL, &dwType, NULL, &dwSize) != ERROR_SUCCESS)
+          break;
 
-        //Codepage
-        if (*wpCount)
+        if (dwSize / sizeof(wchar_t) + 1 > dwDataMax)
         {
-          lpRecentFile->nCodePage=(int)xatoiW(wpCount, NULL);
-          wpCount+=xstrlenW(wpCount) + 1;
+          FreeWideStr(wszRegData);
+          dwDataMax=dwSize / sizeof(wchar_t) + 1;
+          if (!(wszRegData=AllocWideStr(dwDataMax)))
+            break;
         }
+        RegQueryValueExWide(hKey, wszRegValue, NULL, &dwType, (LPBYTE)wszRegData, &dwSize);
+        if (!*wszRegData || dwType != REG_MULTI_SZ)
+          break;
+        wszRegData[dwSize / sizeof(wchar_t)]=L'\0';
 
-        //Position
-        if (*wpCount)
+        if (lpRecentFile=RecentFilesInsert(hStack, -1))
         {
-          lpRecentFile->cpMin=lpRecentFile->cpMax=xatoiW(wpCount, &wpCount);
-          if (*wpCount == L'-')
-            lpRecentFile->cpMax=xatoiW(++wpCount, NULL);
-          wpCount+=xstrlenW(wpCount) + 1;
-        }
+          //File
+          wpCount=wszRegData;
+          lpRecentFile->nFileLen=(int)xstrcpynW(lpRecentFile->wszFile, wpCount, MAX_PATH);
+          wpCount+=lpRecentFile->nFileLen + 1;
 
-        //Parameters
-        if (*wpCount)
-        {
-          do
+          //Codepage
+          if (*wpCount)
+          {
+            lpRecentFile->nCodePage=(int)xatoiW(wpCount, NULL);
+            wpCount+=xstrlenW(wpCount) + 1;
+          }
+
+          //Position
+          if (*wpCount)
+          {
+            lpRecentFile->cpMin=lpRecentFile->cpMax=xatoiW(wpCount, &wpCount);
+            if (*wpCount == L'-')
+              lpRecentFile->cpMax=xatoiW(++wpCount, NULL);
+            wpCount+=xstrlenW(wpCount) + 1;
+          }
+
+          //Parameters
+          if (*wpCount)
           {
             for (wpParamName=wpCount; *wpCount; ++wpCount)
             {
@@ -11453,12 +11470,13 @@ int RecentFilesRead(RECENTFILESTACK *hStack)
                   if (lpRecentFileParam->pParamValue=AllocWideStr(nParamValueLen + 1))
                     xstrcpynW(lpRecentFileParam->pParamValue, wpParamValue, nParamValueLen + 1);
                 }
+                wpParamName=wpCount + 1;
               }
             }
           }
-          while (*++wpCount);
         }
       }
+      FreeWideStr(wszRegData);
     }
   }
   RegCloseKey(hKey);
@@ -11469,16 +11487,17 @@ void RecentFilesSave(RECENTFILESTACK *hStack)
 {
   wchar_t wszRegKey[MAX_PATH];
   wchar_t wszRegValue[32];
+  wchar_t *wszRegData;
   wchar_t wchNull=L'\0';
   HKEY hKey;
-  int nStrLen;
+  int nDataLen;
   DWORD dwSaveTime;
   int i=0;
 
   //Params
   RECENTFILE *lpRecentFile;
   RECENTFILEPARAM *lpRecentFileParam;
-  DWORD dwSize;
+  DWORD dwParamsLen;
   wchar_t *wszRecentFileParams=NULL;
 
   //Save recent files array
@@ -11491,25 +11510,41 @@ void RecentFilesSave(RECENTFILESTACK *hStack)
     xprintfW(wszRegValue, L"file%d", i++);
 
     //Alloc params
-    for (dwSize=0, lpRecentFileParam=(RECENTFILEPARAM *)lpRecentFile->lpParamsStack.first; lpRecentFileParam; lpRecentFileParam=lpRecentFileParam->next)
+    for (dwParamsLen=0, lpRecentFileParam=(RECENTFILEPARAM *)lpRecentFile->lpParamsStack.first; lpRecentFileParam; lpRecentFileParam=lpRecentFileParam->next)
     {
-      dwSize+=(DWORD)xprintfW(NULL, L"%s=%s%c", lpRecentFileParam->pParamName, lpRecentFileParam->pParamValue, wchNull) - 1;
+      dwParamsLen+=(DWORD)xprintfW(NULL, L"%s=%s%c", lpRecentFileParam->pParamName, lpRecentFileParam->pParamValue, wchNull) - 1;
     }
-    if (dwSize)
+    if (dwParamsLen)
     {
-      if (wszRecentFileParams=AllocWideStr(dwSize + 1))
+      if (wszRecentFileParams=AllocWideStr(dwParamsLen + 1))
       {
-        for (dwSize=0, lpRecentFileParam=(RECENTFILEPARAM *)lpRecentFile->lpParamsStack.first; lpRecentFileParam; lpRecentFileParam=lpRecentFileParam->next)
+        for (dwParamsLen=0, lpRecentFileParam=(RECENTFILEPARAM *)lpRecentFile->lpParamsStack.first; lpRecentFileParam; lpRecentFileParam=lpRecentFileParam->next)
         {
-          dwSize+=(DWORD)xprintfW(wszRecentFileParams + dwSize, L"%s=%s%c", lpRecentFileParam->pParamName, lpRecentFileParam->pParamValue, wchNull);
+          dwParamsLen+=(DWORD)xprintfW(wszRecentFileParams + dwParamsLen, L"%s=%s%c", lpRecentFileParam->pParamName, lpRecentFileParam->pParamValue, wchNull);
         }
       }
     }
 
     //Set value
-    nStrLen=(int)xprintfW(wbuf, L"%s%c%d%c%Id-%Id%c%s", lpRecentFile->wszFile, wchNull, lpRecentFile->nCodePage, wchNull, lpRecentFile->cpMin, lpRecentFile->cpMax, wchNull, wszRecentFileParams);
-    if (RegSetValueExWide(hKey, wszRegValue, 0, REG_MULTI_SZ, (LPBYTE)wbuf, (nStrLen + 1) * sizeof(wchar_t)) != ERROR_SUCCESS)
-      break;
+    for (wszRegData=NULL;;)
+    {
+      nDataLen=(int)xprintfW(wszRegData, L"%s%c%d%c%Id-%Id%c", lpRecentFile->wszFile, wchNull, lpRecentFile->nCodePage, wchNull, lpRecentFile->cpMin, lpRecentFile->cpMax, wchNull);
+      if (!wszRegData)
+        wszRegData=AllocWideStr(nDataLen + dwParamsLen);
+      else
+        break;
+    }
+    if (wszRegData)
+    {
+      xmemcpy(wszRegData + nDataLen, wszRecentFileParams, dwParamsLen * sizeof(wchar_t));
+      wszRegData[nDataLen + dwParamsLen]=L'\0';
+
+      if (RegSetValueExWide(hKey, wszRegValue, 0, REG_MULTI_SZ, (LPBYTE)wszRegData, (nDataLen + dwParamsLen + 1) * sizeof(wchar_t)) != ERROR_SUCCESS)
+      {
+        //Too long string
+      }
+      FreeWideStr(wszRegData);
+    }
 
     //Free params
     if (wszRecentFileParams)
@@ -18036,7 +18071,7 @@ void StackFontItemsFree(HSTACK *hStack)
 
 //// Command line functions
 
-wchar_t* GetCommandLineParamsWide(unsigned char *pCmdParams)
+wchar_t* GetCommandLineParamsWide(const unsigned char *pCmdParams, wchar_t **wppCmdParamsStart, wchar_t **wppCmdParamsEnd)
 {
   wchar_t *wpCmd=wszCmdLine;
   wchar_t *wpMaxCmd=wszCmdLine + COMMANDLINE_SIZE;
@@ -18046,10 +18081,14 @@ wchar_t* GetCommandLineParamsWide(unsigned char *pCmdParams)
     wpCmd+=xstrcpynW(wpCmd, wpCmdLineBegin, wpMaxCmd - wpCmd);
     wpCmd+=xstrcpynW(wpCmd, L" ", wpMaxCmd - wpCmd);
   }
+
+  if (wppCmdParamsStart) *wppCmdParamsStart=wpCmd;
   if (bOldWindows)
     wpCmd+=xprintfW(wpCmd, L"%.%dS", wpMaxCmd - wpCmd, pCmdParams);
   else
     wpCmd+=xprintfW(wpCmd, L"%.%ds", wpMaxCmd - wpCmd, pCmdParams);
+  if (wppCmdParamsEnd) *wppCmdParamsEnd=wpCmd;
+
   if (nCmdLineEndLen)
   {
     wpCmd+=xstrcpynW(wpCmd, L" ", wpMaxCmd - wpCmd);
@@ -18295,11 +18334,8 @@ int ParseCmdLine(const wchar_t **wppCmdLine, int nType)
         if (nType == PCL_ONLOAD) return PCLE_ONLOAD;
 
         //Process actions
-        if (lpFrameCurrent->ei.hWndEdit)
-        {
-          if (dwCallMethod=CallMethod(wszCmdArg, L""))
-            return dwCallMethod;
-        }
+        if (dwCallMethod=CallMethod(wszCmdArg, L""))
+          return dwCallMethod;
         continue;
       }
       if (!*wszCmdArg) continue;
@@ -18542,44 +18578,50 @@ DWORD CallMethod(const wchar_t *wpMethod, const wchar_t *wpUrlLink)
       int nPointSize=0;
       HDC hDC;
 
-      ExpandMethodParameters(&hParamStack, lpFrameCurrent->wszFile, wszExeDir, wpUrlLink);
-      if (lpParameter=GetMethodParameter(&hParamStack, 1))
-        wpFaceName=lpParameter->wpExpanded;
-      if (lpParameter=GetMethodParameter(&hParamStack, 2))
-        dwFontStyle=(DWORD)lpParameter->nNumber;
-      if (lpParameter=GetMethodParameter(&hParamStack, 3))
-        nPointSize=(int)lpParameter->nNumber;
+      if (lpFrameCurrent->ei.hWndEdit)
+      {
+        ExpandMethodParameters(&hParamStack, lpFrameCurrent->wszFile, wszExeDir, wpUrlLink);
+        if (lpParameter=GetMethodParameter(&hParamStack, 1))
+          wpFaceName=lpParameter->wpExpanded;
+        if (lpParameter=GetMethodParameter(&hParamStack, 2))
+          dwFontStyle=(DWORD)lpParameter->nNumber;
+        if (lpParameter=GetMethodParameter(&hParamStack, 3))
+          nPointSize=(int)lpParameter->nNumber;
 
-      if (nPointSize)
-      {
-        if (hDC=GetDC(lpFrameCurrent->ei.hWndEdit))
+        if (nPointSize)
         {
-          lpFrameCurrent->lf.lfHeight=-MulDiv(nPointSize, GetDeviceCaps(hDC, LOGPIXELSY), 72);
-          ReleaseDC(lpFrameCurrent->ei.hWndEdit, hDC);
+          if (hDC=GetDC(lpFrameCurrent->ei.hWndEdit))
+          {
+            lpFrameCurrent->lf.lfHeight=-MulDiv(nPointSize, GetDeviceCaps(hDC, LOGPIXELSY), 72);
+            ReleaseDC(lpFrameCurrent->ei.hWndEdit, hDC);
+          }
         }
+        if (dwFontStyle != FS_NONE)
+        {
+          lpFrameCurrent->lf.lfWeight=(dwFontStyle == FS_FONTBOLD || dwFontStyle == FS_FONTBOLDITALIC)?FW_BOLD:FW_NORMAL;
+          lpFrameCurrent->lf.lfItalic=(dwFontStyle == FS_FONTITALIC || dwFontStyle == FS_FONTBOLDITALIC)?TRUE:FALSE;
+        }
+        if (*wpFaceName != L'\0')
+        {
+          xstrcpynW(lpFrameCurrent->lf.lfFaceName, wpFaceName, LF_FACESIZE);
+        }
+        SetChosenFont(lpFrameCurrent->ei.hWndEdit, &lpFrameCurrent->lf);
+        UpdateMappedPrintWidth(lpFrameCurrent);
+        UpdateStatusUser(lpFrameCurrent, CSB_FONTPOINT|CSB_MARKER);
       }
-      if (dwFontStyle != FS_NONE)
-      {
-        lpFrameCurrent->lf.lfWeight=(dwFontStyle == FS_FONTBOLD || dwFontStyle == FS_FONTBOLDITALIC)?FW_BOLD:FW_NORMAL;
-        lpFrameCurrent->lf.lfItalic=(dwFontStyle == FS_FONTITALIC || dwFontStyle == FS_FONTBOLDITALIC)?TRUE:FALSE;
-      }
-      if (*wpFaceName != L'\0')
-      {
-        xstrcpynW(lpFrameCurrent->lf.lfFaceName, wpFaceName, LF_FACESIZE);
-      }
-      SetChosenFont(lpFrameCurrent->ei.hWndEdit, &lpFrameCurrent->lf);
-      UpdateMappedPrintWidth(lpFrameCurrent);
-      UpdateStatusUser(lpFrameCurrent, CSB_FONTPOINT|CSB_MARKER);
     }
     else if (dwAction == EXTACT_RECODE)
     {
       TEXTRECODE tr={0};
 
-      if (lpParameter=GetMethodParameter(&hParamStack, 1))
-        tr.nCodePageFrom=(int)lpParameter->nNumber;
-      if (lpParameter=GetMethodParameter(&hParamStack, 2))
-        tr.nCodePageTo=(int)lpParameter->nNumber;
-      RecodeTextW(lpFrameCurrent, NULL, 0, &tr.nCodePageFrom, &tr.nCodePageTo);
+      if (lpFrameCurrent->ei.hWndEdit)
+      {
+        if (lpParameter=GetMethodParameter(&hParamStack, 1))
+          tr.nCodePageFrom=(int)lpParameter->nNumber;
+        if (lpParameter=GetMethodParameter(&hParamStack, 2))
+          tr.nCodePageTo=(int)lpParameter->nNumber;
+        RecodeTextW(lpFrameCurrent, NULL, 0, &tr.nCodePageFrom, &tr.nCodePageTo);
+      }
     }
     else if (dwAction == EXTACT_INSERT)
     {
@@ -18590,7 +18632,7 @@ DWORD CallMethod(const wchar_t *wpMethod, const wchar_t *wpUrlLink)
       DWORD dwCaret=(DWORD)-1;
       BOOL bEscSequences=FALSE;
 
-      if (!IsReadOnly(lpFrameCurrent->ei.hWndEdit))
+      if (lpFrameCurrent->ei.hWndEdit && !IsReadOnly(lpFrameCurrent->ei.hWndEdit))
       {
         ExpandMethodParameters(&hParamStack, lpFrameCurrent->wszFile, wszExeDir, wpUrlLink);
         if (lpParameter=GetMethodParameter(&hParamStack, 1))
