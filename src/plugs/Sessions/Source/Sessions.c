@@ -52,6 +52,7 @@
 
 //Include wide functions
 #define AppendMenuWide
+#define CallWindowProcWide
 #define ComboBox_AddStringWide
 #define ComboBox_FindStringExactWide
 #define ComboBox_GetLBTextWide
@@ -59,6 +60,7 @@
 #define CreateDialogWide
 #define CreateDirectoryWide
 #define CreateFileWide
+#define DefWindowProcWide
 #define DeleteFileWide
 #define DialogBoxParamWide
 #define DialogBoxWide
@@ -73,6 +75,7 @@
 #define GetMessageWide
 #define GetOpenFileNameWide
 #define GetWindowLongPtrWide
+#define GetWindowTextLengthWide
 #define GetWindowTextWide
 #define IsDialogMessageWide
 #define ListBox_AddStringWide
@@ -85,62 +88,74 @@
 #define SetWindowTextWide
 #define TabCtrl_GetItemWide
 #define TranslateAcceleratorWide
+#define TreeView_GetItemWide
+#define TreeView_InsertItemWide
+#define TreeView_SetItemWide
 #include "WideFunc.h"
 //*/
 
 //Defines
-#define STRID_SESSION            1
-#define STRID_OPEN               2
-#define STRID_UPDATE             3
-#define STRID_SAVE               4
-#define STRID_EDIT               5
-#define STRID_COPY               6
-#define STRID_RENAME             7
-#define STRID_DELETE             8
-#define STRID_MENU_OPEN          9
-#define STRID_MENU_ACTIVATE      10
-#define STRID_MENU_CLOSE         11
-#define STRID_MENU_ADD           12
-#define STRID_MENU_MOVEDOWN      13
-#define STRID_MENU_MOVEUP        14
-#define STRID_MENU_DELETE        15
-#define STRID_MENU_DELETEOLD     16
-#define STRID_NEWNAME            17
-#define STRID_SETTINGS           18
-#define STRID_SAVESESSIONS       19
-#define STRID_PROGRAMDIR         20
-#define STRID_APPDATA            21
-#define STRID_OPENONSTART        22
-#define STRID_SAVEONEXIT         23
-#define STRID_DIALOGTYPE         24
-#define STRID_MODALDIALOG        25
-#define STRID_MODELESSDIALOG     26
-#define STRID_DOCKABLEDIALOG     27
-#define STRID_AUTOLOAD           28
-#define STRID_SAVEDATA           29
-#define STRID_SAVEACTIVE         30
-#define STRID_SAVECODEPAGE       31
-#define STRID_SAVESELECTION      32
-#define STRID_SAVEWORDWRAP       33
-#define STRID_SAVEREADONLY       34
-#define STRID_SAVEOVERTYPE       35
-#define STRID_SAVEBOOKMARKS      36
-#define STRID_SAVEALIAS          37
-#define STRID_SAVEFOLDS          38
-#define STRID_SAVEMARKS          39
-#define STRID_PLUGIN             40
-#define STRID_OK                 41
-#define STRID_CANCEL             42
-#define STRID_CLOSE              43
-#define STRID_CURRENTSESSION     44
-#define STRID_ALREADY_EXIST      45
-#define STRID_RENAME_ERROR       46
-#define STRID_SESSION_CHANGED    47
-#define STRID_CONFIRM_DELETE     48
-#define STRID_RESTARTPROGRAM     49
-#define STRID_SDI_ISNTSUPPORTED  50
-#define STRID_FILTER             51
-#define STRID_DROPTOCURRENT      52
+#define STRID_PARSEMSG_NOOPENBRACKET  1
+#define STRID_PARSEMSG_NOCLOSEBRACKET 2
+#define STRID_SESSION                 3
+#define STRID_OPEN                    4
+#define STRID_UPDATE                  5
+#define STRID_SAVE                    6
+#define STRID_EDIT                    7
+#define STRID_COPY                    8
+#define STRID_RENAME                  9
+#define STRID_DELETE                  10
+#define STRID_ADDDIR                  11
+#define STRID_ITEMNAME                12
+#define STRID_ITEMFILE                13
+#define STRID_MENU_OPEN               14
+#define STRID_MENU_ACTIVATE           15
+#define STRID_MENU_CLOSE              16
+#define STRID_MENU_ADDCURFILE         17
+#define STRID_MENU_ADDFILE            18
+#define STRID_MENU_ADDDIR             19
+#define STRID_MENU_RENAME             20
+#define STRID_MENU_MOVEDOWN           21
+#define STRID_MENU_MOVEUP             22
+#define STRID_MENU_DELETE             23
+#define STRID_MENU_DELETEOLD          24
+#define STRID_NEWNAME                 25
+#define STRID_SETTINGS                26
+#define STRID_SAVESESSIONS            27
+#define STRID_PROGRAMDIR              28
+#define STRID_APPDATA                 29
+#define STRID_OPENONSTART             30
+#define STRID_SAVEONEXIT              31
+#define STRID_SHOWPATH                32
+#define STRID_DIALOGTYPE              33
+#define STRID_MODALDIALOG             34
+#define STRID_MODELESSDIALOG          35
+#define STRID_DOCKABLEDIALOG          36
+#define STRID_AUTOLOAD                37
+#define STRID_SAVEDATA                38
+#define STRID_SAVEACTIVE              39
+#define STRID_SAVECODEPAGE            40
+#define STRID_SAVESELECTION           41
+#define STRID_SAVEWORDWRAP            42
+#define STRID_SAVEREADONLY            43
+#define STRID_SAVEOVERTYPE            44
+#define STRID_SAVEBOOKMARKS           45
+#define STRID_SAVEALIAS               46
+#define STRID_SAVEFOLDS               47
+#define STRID_SAVEMARKS               48
+#define STRID_PLUGIN                  49
+#define STRID_OK                      50
+#define STRID_CANCEL                  51
+#define STRID_CLOSE                   52
+#define STRID_CURRENTSESSION          53
+#define STRID_ALREADY_EXIST           54
+#define STRID_RENAME_ERROR            55
+#define STRID_SESSION_CHANGED         56
+#define STRID_CONFIRM_DELETE          57
+#define STRID_RESTARTPROGRAM          58
+#define STRID_SDI_ISNTSUPPORTED       59
+#define STRID_FILTER                  60
+#define STRID_DROPTOCURRENT           61
 
 #define DLLA_SESSIONS_OPEN          1
 #define DLLA_SESSIONS_SAVE          2
@@ -154,6 +169,11 @@
 
 #define BUFFER_SIZE 8192
 
+//Folder flags
+#define FLDF_OPEN     0x1
+#define FLDF_CLOSE    0x2
+
+//Save directory
 #define SDIR_PROGRAM      1
 #define SDIR_APPDATA      2
 
@@ -194,6 +214,15 @@
 typedef struct _SESSIONITEM {
   struct _SESSIONITEM *next;
   struct _SESSIONITEM *prev;
+  struct _SESSIONITEM *parent;
+  struct _SESSIONITEM *firstChild;
+  struct _SESSIONITEM *lastChild;
+  DWORD dwFolderFlags;
+  HTREEITEM hItem;
+  DWORD dwState;
+  BOOL bMoving;
+  BOOL bDeleting;
+  wchar_t wszName[MAX_PATH];
   wchar_t wszItemFile[MAX_PATH];
   wchar_t wszItemExpFile[MAX_PATH];
   int nTabActive;
@@ -213,6 +242,7 @@ typedef struct _SESSIONITEM {
 typedef struct {
   SESSIONITEM *first;
   SESSIONITEM *last;
+  int nElements;
 } STACKSESSIONITEM;
 
 typedef struct _SESSION {
@@ -222,6 +252,15 @@ typedef struct _SESSION {
   STACKSESSIONITEM hItemsStack;
   BOOL bModified;
 } SESSION;
+
+typedef struct {
+  SESSION *first;
+  SESSION *last;
+} STACKSESSION;
+
+//Add session item
+#define ASI_FIRST   ((SESSIONITEM *)(INT_PTR)1)
+#define ASI_LAST    ((SESSIONITEM *)(INT_PTR)2)
 
 //LineBoard external call
 typedef struct {
@@ -300,7 +339,8 @@ DWORD WINAPI ThreadProc(LPVOID lpParameter);
 LRESULT CALLBACK MainDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
 BOOL CALLBACK SettingsDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
 BOOL CALLBACK InputBoxDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
-LRESULT CALLBACK NewListBoxProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+BOOL CALLBACK ItemEditDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
+LRESULT CALLBACK NewTreeViewProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 LRESULT CALLBACK NewMainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
 BOOL LoadSessionFile(SESSION *ss);
@@ -313,27 +353,43 @@ void SaveCurrentSession(const wchar_t *wpSessionName);
 BOOL DeleteSessionFile(const wchar_t *wpSessionName);
 int SaveSessionPrompt();
 
-void FillSessions(HSTACK *hStack);
-SESSION* AddEmptySession(HSTACK *hStack, const wchar_t *wpSessionName);
-SESSION* AddCurrentSession(HSTACK *hStack, const wchar_t *wpSessionName);
-SESSION* GetSession(HSTACK *hStack, const wchar_t *wpSessionName);
+void LoadSessions(STACKSESSION *hStack);
+SESSION* AddEmptySession(STACKSESSION *hStack, const wchar_t *wpSessionName);
+SESSION* AddCurrentSession(STACKSESSION *hStack, const wchar_t *wpSessionName);
+SESSION* GetSession(STACKSESSION *hStack, const wchar_t *wpSessionName);
+void CopySessionLevel(SESSIONITEM *siFirstSource, SESSIONITEM *siLastSource, SESSIONITEM **psiFirstTarget, SESSIONITEM **psiLastTarget, SESSIONITEM *siTargetParent);
 void CopySession(SESSION *ssSource, SESSION *ssTarget);
 void OpenSession(STACKSESSIONITEM *hStack);
 void CloseSession(STACKSESSIONITEM *hStack);
-void DeleteSession(HSTACK *hStack, SESSION *ss);
-void FreeSessions(HSTACK *hStack);
+void DeleteSession(STACKSESSION *hStack, SESSION *ss);
+void FreeSessions(STACKSESSION *hStack);
 
-SESSIONITEM* AddSessionItem(SESSION *ss);
-SESSIONITEM* GetSessionItem(SESSION *ss, int nIndex);
-void MoveSessionItem(SESSION *ss, int nOldIndex, int nNewIndex);
-void OpenSessionItem(SESSIONITEM *si);
-BOOL CloseSessionItem(FRAMEDATA *lpFrame, BOOL bSingle);
-void DeleteSessionItem(SESSION *ss, int nIndex);
-void FreeSessionItems(SESSION *ss);
+SESSIONITEM* StackAddItem(SESSION *ss, SESSIONITEM *siParent, SESSIONITEM *siAfterThis);
+int StackItemIndex(SESSION *ss, SESSIONITEM *si);
+SESSIONITEM* StackNextItem(SESSIONITEM *siItem, SESSIONITEM *siRoot);
+SESSIONITEM* StackNextItemNoChild(SESSIONITEM *si);
+SESSIONITEM* StackPrevItem(SESSIONITEM *siItem, SESSIONITEM *siRoot);
+SESSIONITEM* StackPrevItemNoChild(SESSIONITEM *si);
+void StackDeleteItem(SESSION *ss, SESSIONITEM *siItem);
+void StackFreeItems(SESSION *ss);
 
-void FillSessionsList(HSTACK *hStack, HWND hWnd);
-void FillItemsList(STACKSESSIONITEM *hStack, HWND hWnd);
-void FillItemsListCurrent(HWND hWnd);
+void OpenItem(SESSIONITEM *si);
+BOOL CloseItem(FRAMEDATA *lpFrame, BOOL bSingle);
+BOOL SelectItem(HWND hWnd, SESSIONITEM *si, BOOL bSelect);
+
+void ComboFillSessions(STACKSESSION *hStack, HWND hWnd);
+int MoveComboBoxItem(HWND hWnd, int nOldIndex, int nNewIndex);
+int UpdateComboBoxDropWidth(HWND hWnd);
+
+void TreeFillItemsCurrent(HWND hWndTreeView);
+void TreeAddItem(HWND hWndTreeView, SESSIONITEM *si, HTREEITEM hInsertAfter, DWORD dwState);
+void TreeAddChild(HWND hWndTreeView, SESSION *ss, SESSIONITEM *si);
+BOOL TreeMoveItem(HWND hWndTreeView, HTREEITEM hItemCaret, SESSION *ss, SESSIONITEM *siItem, SESSIONITEM *siParent, SESSIONITEM *siAfterThis);
+BOOL TreeDeleteItem(HWND hWndTreeView, HTREEITEM hItem);
+void TreeUpdateItem(HWND hWndTreeView, HTREEITEM hItem);
+LPARAM TreeItemParam(HWND hWndTreeView, HTREEITEM hItem);
+HTREEITEM TreeCursorItem(HWND hWndTreeView);
+void ClearTreeView(HWND hWndTreeView, BOOL bRedraw);
 
 int GetCollapsedFoldsString(HSTACK *hFoldsStack, wchar_t *wszString);
 int SetCollapsedFoldsString(HWND hWnd, HSTACK *hFoldsStack, const wchar_t *wpString);
@@ -341,21 +397,17 @@ int TranslateFileString(const wchar_t *wpString, wchar_t *wszBuffer, int nBuffer
 INT_PTR EscapeString(const wchar_t *wpInput, INT_PTR nInputLen, wchar_t *wszOutput);
 INT_PTR UnescapeString(const wchar_t *wpInput, INT_PTR nInputLen, wchar_t *wszOutput);
 INT_PTR GetEscapeParam(const wchar_t *wpText, const wchar_t **wpParamStart, const wchar_t **wpParamEnd, const wchar_t **wpTextNext);
+BOOL NextLine(const wchar_t **wppText);
+void SkipSpaces(const wchar_t **wppText);
 
-int UpdateListBoxHScroll(HWND hWnd);
-int UpdateComboBoxDropWidth(HWND hWnd);
-int MoveListBoxItem(HWND hWnd, int nOldIndex, int nNewIndex);
-int MoveComboBoxItem(HWND hWnd, int nOldIndex, int nNewIndex);
-int GetListBoxSelItems(HWND hWnd, int **lpSelItems);
-void FreeListBoxSelItems(int **lpSelItems);
-BOOL IsPathFullA(char *pPath);
-BOOL IsPathFullW(wchar_t *wpPath);
-int GetBaseNameA(const char *pFile, char *szBaseName, int nBaseNameMaxLen);
-int GetBaseNameW(const wchar_t *wpFile, wchar_t *wszBaseName, int nBaseNameMaxLen);
+BOOL IsPathFull(const wchar_t *wpPath);
+const wchar_t* GetFileName(const wchar_t *wpFile, int nFileLen);
+int GetBaseName(const wchar_t *wpFile, wchar_t *wszBaseName, int nBaseNameMaxLen);
 BOOL CreateDirectoryRecursive(const wchar_t *wpPath);
 void DropFiles(HDROP hDrop, HWND hWndItemsList);
 int IsFile(const wchar_t *wpFile);
 LRESULT SendToDoc(AEHDOC hDocEdit, HWND hWndEdit, UINT uMsg, WPARAM wParam, LPARAM lParam);
+COLORREF AE_ColorBrightness(COLORREF crColor, int nPercent);
 BOOL GetWindowPos(HWND hWnd, HWND hWndOwner, RECT *rc);
 
 INT_PTR WideOption(HANDLE hOptions, const wchar_t *pOptionName, DWORD dwType, BYTE *lpData, DWORD dwData);
@@ -393,6 +445,7 @@ DWORD dwSaveFlags=0;
 HANDLE hThread=NULL;
 DWORD dwThreadId;
 BOOL bInMemory;
+HICON hPluginIcon;
 HWND hWndMainDlg=NULL;
 RECT rcMainMinMaxDialog={275, 388, 0, 0};
 RECT rcMainCurrentDialog={0};
@@ -407,7 +460,7 @@ wchar_t wszSessionsDir[MAX_PATH]=L"";
 wchar_t wszOpenOnStart[MAX_PATH];
 wchar_t wszSaveOnExit[MAX_PATH];
 wchar_t wszDlgInputBox[MAX_PATH];
-HSTACK hSessionStack={0};
+STACKSESSION hSessionStack={0};
 SESSION *lpVirtualSession=NULL;
 SESSION *lpRealSession=NULL;
 int nCurrentSessionIndex=CB_ERR;
@@ -417,9 +470,16 @@ BOOL bSaveOnExit=FALSE;
 int nDialogType=DLGT_MODAL;
 int nNewDialogType=0;
 BOOL bDockAutoload=TRUE;
-BOOL bSessionItemOpening=FALSE;
+BOOL bShowPath=FALSE;
+BOOL bItemOpening=FALSE;
+BOOL bSelChanged=FALSE;
+BOOL bDragging=FALSE;
+int nMouseMove=0;
+HCURSOR hCursorDragMove;
+SESSIONITEM *siDraggingCursor=NULL;
+HIMAGELIST hImageList=NULL;
 DWORD dwSaveData=SSD_ACTIVE|SSD_CODEPAGE|SSD_SELECTION|SSD_WORDWRAP|SSD_READONLY|SSD_OVERTYPE|SSD_BOOKMARKS|SSD_CODERALIAS|SSD_CODERFOLDS|SSD_CODERMARKS;
-WNDPROC OldListBoxProc;
+WNDPROC OldTreeViewProc;
 WNDPROCDATA *NewMainProcData=NULL;
 
 
@@ -610,7 +670,6 @@ DWORD WINAPI ThreadProc(LPVOID lpParameter)
 
 LRESULT CALLBACK MainDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-  static HICON hPluginIcon;
   static HMENU hMenuLabel;
   static HWND hWndTitleText;
   static HWND hWndTitleClose;
@@ -651,8 +710,6 @@ LRESULT CALLBACK MainDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
   {
     hWndMainDlg=hDlg;
 
-    //Load plugin icon
-    hPluginIcon=LoadIconA(hInstanceDLL, MAKEINTRESOURCEA(IDI_ICON_PLUGIN));
     SendMessage(hDlg, WM_SETICON, (WPARAM)ICON_BIG, (LPARAM)hPluginIcon);
 
     hWndSessionList=GetDlgItem(hDlg, IDC_SESSION_LIST);
@@ -691,8 +748,8 @@ LRESULT CALLBACK MainDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
       SetDlgItemTextWide(hDlg, IDOK, GetLangStringW(wLangModule, STRID_OK));
     }
 
-    FillSessions(&hSessionStack);
-    FillSessionsList(&hSessionStack, hWndSessionList);
+    LoadSessions(&hSessionStack);
+    ComboFillSessions(&hSessionStack, hWndSessionList);
     ComboBox_InsertStringWide(hWndSessionList, 0, GetLangStringW(wLangModule, STRID_CURRENTSESSION));
     SendMessage(hWndSessionList, CB_SETCURSEL, 0, 0);
     PostMessage(hDlg, WM_COMMAND, MAKELONG(IDC_SESSION_LIST, CBN_SELCHANGE), (LPARAM)hWndSessionList);
@@ -703,7 +760,10 @@ LRESULT CALLBACK MainDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
       AppendMenuWide(hMenuItems, MF_STRING, IDC_ITEM_OPEN, GetLangStringW(wLangModule, STRID_MENU_OPEN));
       AppendMenuWide(hMenuItems, MF_STRING, IDC_ITEM_CLOSE, GetLangStringW(wLangModule, STRID_MENU_CLOSE));
       AppendMenuWide(hMenuItems, MF_SEPARATOR, (UINT)-1, NULL);
-      AppendMenuWide(hMenuItems, MF_STRING, IDC_ITEM_ADD, GetLangStringW(wLangModule, STRID_MENU_ADD));
+      AppendMenuWide(hMenuItems, MF_STRING, IDC_ITEM_ADDCURFILE, GetLangStringW(wLangModule, STRID_MENU_ADDCURFILE));
+      AppendMenuWide(hMenuItems, MF_STRING, IDC_ITEM_ADDFILES, GetLangStringW(wLangModule, STRID_MENU_ADDFILE));
+      AppendMenuWide(hMenuItems, MF_STRING, IDC_ITEM_ADDDIR, GetLangStringW(wLangModule, STRID_MENU_ADDDIR));
+      AppendMenuWide(hMenuItems, MF_STRING, IDC_ITEM_RENAME, GetLangStringW(wLangModule, STRID_MENU_RENAME));
       AppendMenuWide(hMenuItems, MF_STRING, IDC_ITEM_MOVEUP, GetLangStringW(wLangModule, STRID_MENU_MOVEUP));
       AppendMenuWide(hMenuItems, MF_STRING, IDC_ITEM_MOVEDOWN, GetLangStringW(wLangModule, STRID_MENU_MOVEDOWN));
       AppendMenuWide(hMenuItems, MF_SEPARATOR, (UINT)-1, NULL);
@@ -737,12 +797,15 @@ LRESULT CALLBACK MainDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
       }
     }
 
+    ImageList_SetBkColor(hImageList, (COLORREF)SendMessage(hWndItemsList, TVM_GETBKCOLOR, 0, 0));
+    SendMessage(hWndItemsList, TVM_SETIMAGELIST, TVSIL_NORMAL, (LPARAM)hImageList);
+
     //Items list can accept Drag'n'Drop
     DragAcceptFiles(hWndItemsList, TRUE);
 
     //SubClass listbox
-    OldListBoxProc=(WNDPROC)GetWindowLongPtrWide(hWndItemsList, GWLP_WNDPROC);
-    SetWindowLongPtrWide(hWndItemsList, GWLP_WNDPROC, (UINT_PTR)NewListBoxProc);
+    OldTreeViewProc=(WNDPROC)GetWindowLongPtrWide(hWndItemsList, GWLP_WNDPROC);
+    SetWindowLongPtrWide(hWndItemsList, GWLP_WNDPROC, (UINT_PTR)NewTreeViewProc);
   }
   else if (uMsg == AKDLL_SETUP)
   {
@@ -756,44 +819,43 @@ LRESULT CALLBACK MainDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
       if (!lpVirtualSession || lpVirtualSession->bModified)
         bEnable=TRUE;
+      if (!bEnable)
+      {
+        if (GetFocus() == hWndSaveButton)
+          SetFocus(hWndSessionList);
+      }
       EnableWindow(hWndSaveButton, bEnable);
       EnableWindow(hWndCopyButton, !bEnable);
     }
-  }
-  else if (uMsg == WM_DROPFILES)
-  {
-    if (lpVirtualSession)
-      DropFiles((HDROP)wParam, hWndItemsList);
-    else
-      MessageBoxW(hMainWnd, GetLangStringW(wLangModule, STRID_DROPTOCURRENT), wszPluginTitle, MB_OK|MB_ICONEXCLAMATION);
-    return 0;
   }
   else if (uMsg == WM_CONTEXTMENU)
   {
     if ((HWND)wParam == hWndItemsList)
     {
+      RECT rcItem;
       POINT pt;
-      int nSelCount;
 
       if (lParam == -1)
       {
-        pt.x=0;
-        pt.y=0;
+        *(HTREEITEM *)&rcItem=(HTREEITEM)SendMessage(hWndItemsList, TVM_GETNEXTITEM, TVGN_CARET, (LPARAM)NULL);
+        SendMessage(hWndItemsList, TVM_GETITEMRECT, TRUE, (LPARAM)&rcItem);
+        pt.x=rcItem.left;
+        pt.y=rcItem.bottom;
         ClientToScreen(hWndItemsList, &pt);
       }
-      else
-      {
-        GetCursorPos(&pt);
-      }
-
-      nSelCount=(int)SendMessage(hWndItemsList, LB_GETSELCOUNT, 0, 0);
+      else GetCursorPos(&pt);
 
       if (!lpVirtualSession)
       {
+        HTREEITEM hItemCaret=(HTREEITEM)SendMessage(hWndItemsList, TVM_GETNEXTITEM, TVGN_CARET, (LPARAM)NULL);
+
         ModifyMenuWide(hMenuItems, IDC_ITEM_OPEN, MF_BYCOMMAND|MF_STRING, IDC_ITEM_OPEN, GetLangStringW(wLangModule, STRID_MENU_ACTIVATE));
-        EnableMenuItem(hMenuItems, IDC_ITEM_OPEN, (nSelCount == 1)?MF_ENABLED:MF_GRAYED);
-        EnableMenuItem(hMenuItems, IDC_ITEM_CLOSE, nSelCount?MF_ENABLED:MF_GRAYED);
-        EnableMenuItem(hMenuItems, IDC_ITEM_ADD, MF_GRAYED);
+        EnableMenuItem(hMenuItems, IDC_ITEM_OPEN, hItemCaret?MF_ENABLED:MF_GRAYED);
+        EnableMenuItem(hMenuItems, IDC_ITEM_CLOSE, hItemCaret?MF_ENABLED:MF_GRAYED);
+        EnableMenuItem(hMenuItems, IDC_ITEM_ADDCURFILE, MF_GRAYED);
+        EnableMenuItem(hMenuItems, IDC_ITEM_ADDFILES, MF_GRAYED);
+        EnableMenuItem(hMenuItems, IDC_ITEM_ADDDIR, MF_GRAYED);
+        EnableMenuItem(hMenuItems, IDC_ITEM_RENAME, MF_GRAYED);
         EnableMenuItem(hMenuItems, IDC_ITEM_MOVEUP, MF_GRAYED);
         EnableMenuItem(hMenuItems, IDC_ITEM_MOVEDOWN, MF_GRAYED);
         EnableMenuItem(hMenuItems, IDC_ITEM_DELETE, MF_GRAYED);
@@ -801,10 +863,30 @@ LRESULT CALLBACK MainDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
       }
       else
       {
+        SESSIONITEM *lpCount;
+        wchar_t *wpFile;
+        int nSelCount=0;
+        int nSelFilesCount=0;
+
+        for (lpCount=lpVirtualSession->hItemsStack.first; lpCount; lpCount=StackNextItem(lpCount, NULL))
+        {
+          if (lpCount->dwState & TVIS_SELECTED)
+          {
+            if (!lpCount->dwFolderFlags)
+              ++nSelFilesCount;
+            ++nSelCount;
+          }
+        }
         ModifyMenuWide(hMenuItems, IDC_ITEM_OPEN, MF_BYCOMMAND|MF_STRING, IDC_ITEM_OPEN, GetLangStringW(wLangModule, STRID_MENU_OPEN));
-        EnableMenuItem(hMenuItems, IDC_ITEM_OPEN, nSelCount?MF_ENABLED:MF_GRAYED);
-        EnableMenuItem(hMenuItems, IDC_ITEM_CLOSE, nSelCount?MF_ENABLED:MF_GRAYED);
-        EnableMenuItem(hMenuItems, IDC_ITEM_ADD, MF_ENABLED);
+        EnableMenuItem(hMenuItems, IDC_ITEM_OPEN, nSelFilesCount?MF_ENABLED:MF_GRAYED);
+        EnableMenuItem(hMenuItems, IDC_ITEM_CLOSE, nSelFilesCount?MF_ENABLED:MF_GRAYED);
+        if ((wpFile=(wchar_t *)SendMessage(hMainWnd, AKD_GETFRAMEINFO, FI_FILEW, (LPARAM)NULL)) && *wpFile)
+          EnableMenuItem(hMenuItems, IDC_ITEM_ADDCURFILE, MF_ENABLED);
+        else
+          EnableMenuItem(hMenuItems, IDC_ITEM_ADDCURFILE, MF_GRAYED);
+        EnableMenuItem(hMenuItems, IDC_ITEM_ADDFILES, MF_ENABLED);
+        EnableMenuItem(hMenuItems, IDC_ITEM_ADDDIR, MF_ENABLED);
+        EnableMenuItem(hMenuItems, IDC_ITEM_RENAME, nSelCount?MF_ENABLED:MF_GRAYED);
         EnableMenuItem(hMenuItems, IDC_ITEM_MOVEUP, nSelCount?MF_ENABLED:MF_GRAYED);
         EnableMenuItem(hMenuItems, IDC_ITEM_MOVEDOWN, nSelCount?MF_ENABLED:MF_GRAYED);
         EnableMenuItem(hMenuItems, IDC_ITEM_DELETE, nSelCount?MF_ENABLED:MF_GRAYED);
@@ -856,7 +938,7 @@ LRESULT CALLBACK MainDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
       if (!nCurrentSessionIndex)
       {
         ModifyMenuWide(hMenuLabel, IDC_SESSION_OPEN, MF_BYCOMMAND|MF_STRING|MF_ENABLED, IDC_SESSION_OPEN, GetLangStringW(wLangModule, STRID_UPDATE));
-        if (SendMessage(hWndItemsList, LB_GETCOUNT, 0, 0) > 0)
+        if (SendMessage(hWndItemsList, TVM_GETCOUNT, 0, 0) > 0)
           EnableMenuItem(hMenuLabel, IDC_SESSION_CLOSE, MF_ENABLED);
         else
           EnableMenuItem(hMenuLabel, IDC_SESSION_CLOSE, MF_GRAYED);
@@ -867,7 +949,7 @@ LRESULT CALLBACK MainDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
       }
       else
       {
-        if (SendMessage(hWndItemsList, LB_GETCOUNT, 0, 0) > 0)
+        if (SendMessage(hWndItemsList, TVM_GETCOUNT, 0, 0) > 0)
         {
           ModifyMenuWide(hMenuLabel, IDC_SESSION_OPEN, MF_BYCOMMAND|MF_STRING|MF_ENABLED, IDC_SESSION_OPEN, GetLangStringW(wLangModule, STRID_OPEN));
           EnableMenuItem(hMenuLabel, IDC_SESSION_CLOSE, MF_ENABLED);
@@ -904,21 +986,20 @@ LRESULT CALLBACK MainDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
           return 0;
         }
         if (lpVirtualSession)
-          FreeSessionItems(lpVirtualSession);
+          StackFreeItems(lpVirtualSession);
         lpVirtualSession=NULL;
         lpRealSession=NULL;
 
         if (!(nCurrentSessionIndex=(int)SendMessage(hWndSessionList, CB_GETCURSEL, 0, 0)))
         {
-          SendMessage(hWndItemsList, LB_RESETCONTENT, 0, 0);
-          FillItemsListCurrent(hWndItemsList);
-          UpdateListBoxHScroll(hWndItemsList);
+          ClearTreeView(hWndItemsList, FALSE);
+          TreeFillItemsCurrent(hWndItemsList);
 
           if (nDialogType != DLGT_DOCKABLE)
           {
             SetWindowTextWide(hWndOpenButton, GetLangStringW(wLangModule, STRID_UPDATE));
             EnableWindow(hWndOpenButton, TRUE);
-            if (SendMessage(hWndItemsList, LB_GETCOUNT, 0, 0) > 0)
+            if (SendMessage(hWndItemsList, TVM_GETCOUNT, 0, 0) > 0)
               EnableWindow(hWndCloseButton, TRUE);
             else
               EnableWindow(hWndCloseButton, FALSE);
@@ -930,21 +1011,20 @@ LRESULT CALLBACK MainDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
         }
         else
         {
-          SendMessage(hWndItemsList, LB_RESETCONTENT, 0, 0);
+          ClearTreeView(hWndItemsList, FALSE);
           ComboBox_GetLBTextWide(hWndSessionList, nCurrentSessionIndex, wszBuffer);
 
           if (lpRealSession=GetSession(&hSessionStack, wszBuffer))
           {
-            FillItemsList(&lpRealSession->hItemsStack, hWndItemsList);
             CopySession(lpRealSession, &ssCurrentTmp);
             lpVirtualSession=&ssCurrentTmp;
-            UpdateListBoxHScroll(hWndItemsList);
+            TreeAddChild(hWndItemsList, lpVirtualSession, NULL);
           }
 
           if (nDialogType != DLGT_DOCKABLE)
           {
             SetWindowTextWide(hWndOpenButton, GetLangStringW(wLangModule, STRID_OPEN));
-            if (SendMessage(hWndItemsList, LB_GETCOUNT, 0, 0) > 0)
+            if (SendMessage(hWndItemsList, TVM_GETCOUNT, 0, 0) > 0)
             {
               EnableWindow(hWndOpenButton, TRUE);
               EnableWindow(hWndCloseButton, TRUE);
@@ -961,13 +1041,6 @@ LRESULT CALLBACK MainDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
           }
         }
         PostMessage(hDlg, AKDLL_UPDATESAVEBUTTON, 0, 0);
-      }
-    }
-    else if (LOWORD(wParam) == IDC_ITEMS_LIST)
-    {
-      if (HIWORD(wParam) == LBN_DBLCLK)
-      {
-        PostMessage(hDlg, WM_COMMAND, IDC_ITEM_OPEN, 0);
       }
     }
     else if (LOWORD(wParam) == IDC_SESSION_OPEN)
@@ -1009,7 +1082,7 @@ LRESULT CALLBACK MainDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
       if (lpVirtualSession && LOWORD(wParam) == IDC_SESSION_SAVE)
       {
-        FreeSessionItems(lpRealSession);
+        StackFreeItems(lpRealSession);
         lpVirtualSession->bModified=FALSE;
         CopySession(lpVirtualSession, lpRealSession);
         SaveSessionFile(lpRealSession);
@@ -1125,7 +1198,7 @@ LRESULT CALLBACK MainDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
             lpRealSession=NULL;
 
             //Delete temp session
-            FreeSessionItems(lpVirtualSession);
+            StackFreeItems(lpVirtualSession);
             lpVirtualSession=NULL;
 
             SetFocus(hWndSessionList);
@@ -1137,139 +1210,244 @@ LRESULT CALLBACK MainDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     }
     else if (LOWORD(wParam) == IDC_ITEM_OPEN)
     {
-      int *lpSelItems;
-      int nSelCount;
-
-      if (nSelCount=GetListBoxSelItems(hWndItemsList, &lpSelItems))
+      if (!lpVirtualSession)
       {
-        if (!lpVirtualSession)
-        {
-          FRAMEDATA *lpFrame;
+        FRAMEDATA *lpFrame;
 
-          lpFrame=(FRAMEDATA *)SendMessage(hWndItemsList, LB_GETITEMDATA, (WPARAM)lpSelItems[0], 0);
+        if (lpFrame=(FRAMEDATA *)TreeItemParam(hWndItemsList, NULL))
           SendMessage(hMainWnd, AKD_FRAMEACTIVATE, 0, (LPARAM)lpFrame);
-        }
-        else
-        {
-          SESSIONITEM *lpElement;
-          int i;
+      }
+      else
+      {
+        SESSIONITEM *lpCount;
 
-          for (i=0; i < nSelCount; ++i)
-          {
-            if (lpElement=GetSessionItem(lpVirtualSession, lpSelItems[i] + 1))
-            {
-              OpenSessionItem(lpElement);
-            }
-          }
+        for (lpCount=lpVirtualSession->hItemsStack.first; lpCount; lpCount=StackNextItem(lpCount, NULL))
+        {
+          if ((lpCount->dwState & TVIS_SELECTED) && !lpCount->dwFolderFlags)
+            OpenItem(lpCount);
         }
-        FreeListBoxSelItems(&lpSelItems);
       }
     }
     else if (LOWORD(wParam) == IDC_ITEM_CLOSE)
     {
-      int *lpSelItems;
-      int nSelCount;
-
-      if (nSelCount=GetListBoxSelItems(hWndItemsList, &lpSelItems))
+      if (!lpVirtualSession)
       {
-        if (!lpVirtualSession)
-        {
-          FRAMEDATA *lpFrame;
-          int i;
+        TVITEMW tvi;
 
-          for (i=--nSelCount; i >= 0; --i)
-          {
-            if (lpFrame=(FRAMEDATA *)SendMessage(hWndItemsList, LB_GETITEMDATA, (WPARAM)lpSelItems[i], 0))
-            {
-              if (SendMessage(hMainWnd, AKD_FRAMEISVALID, 0, (LPARAM)lpFrame))
-              {
-                if (!CloseSessionItem(lpFrame, TRUE))
-                  break;
-                SendMessage(hWndItemsList, LB_DELETESTRING, lpSelItems[i], 0);
-              }
-            }
-            else break;
-          }
+        tvi.mask=TVIF_PARAM;
+        tvi.hItem=(HTREEITEM)SendMessage(hWndItemsList, TVM_GETNEXTITEM, TVGN_CARET, (LPARAM)NULL);
+        if (TreeView_GetItemWide(hWndItemsList, &tvi))
+        {
+          if (CloseItem((FRAMEDATA *)tvi.lParam, TRUE))
+            TreeDeleteItem(hWndItemsList, tvi.hItem);
         }
-        else
-        {
-          SESSIONITEM *lpElement;
-          FRAMEDATA *lpFrame;
-          int i;
+      }
+      else
+      {
+        SESSIONITEM *lpCount;
+        FRAMEDATA *lpFrame;
 
-          for (i=0; i < nSelCount; ++i)
+        for (lpCount=lpVirtualSession->hItemsStack.first; lpCount; lpCount=StackNextItem(lpCount, NULL))
+        {
+          if (lpCount->dwState & TVIS_SELECTED)
           {
-            if (lpElement=GetSessionItem(lpVirtualSession, lpSelItems[i] + 1))
+            if (lpFrame=(FRAMEDATA *)SendMessage(hMainWnd, AKD_FRAMEFINDW, FWF_BYFILENAME, (LPARAM)lpCount->wszItemExpFile))
             {
-              if (lpFrame=(FRAMEDATA *)SendMessage(hMainWnd, AKD_FRAMEFINDW, FWF_BYFILENAME, (LPARAM)lpElement->wszItemExpFile))
-              {
-                if (!CloseSessionItem(lpFrame, TRUE))
-                  break;
-              }
+              if (!CloseItem(lpFrame, TRUE))
+                break;
             }
           }
         }
-        FreeListBoxSelItems(&lpSelItems);
       }
     }
-    else if (LOWORD(wParam) == IDC_ITEM_ADD)
+    else if (LOWORD(wParam) == IDC_ITEM_ADDCURFILE ||
+             LOWORD(wParam) == IDC_ITEM_ADDFILES)
     {
       if (lpVirtualSession)
       {
-        OPENFILENAMEW ofn;
+        HTREEITEM hItemCaret;
+        BOOL bAddFiles=TRUE;
 
+        //Get caret here. Because, if no caret in list and dialog close, caret will return.
+        hItemCaret=(HTREEITEM)SendMessage(hWndItemsList, TVM_GETNEXTITEM, TVGN_CARET, (LPARAM)NULL);
         wszBuffer[0]=L'\0';
-        xmemset(&ofn, 0, sizeof(OPENFILENAMEW));
-        ofn.lStructSize  =sizeof(OPENFILENAMEW);
-        ofn.hwndOwner    =hDlg;
-        ofn.hInstance    =hInstanceDLL;
-        ofn.lpstrFile    =wszBuffer;
-        ofn.lpstrFilter  =GetLangStringW(wLangModule, STRID_FILTER);
-        ofn.nFilterIndex =2;
-        ofn.nMaxFile     =BUFFER_SIZE;
-        ofn.Flags        =OFN_ALLOWMULTISELECT|OFN_HIDEREADONLY|OFN_PATHMUSTEXIST|OFN_EXPLORER|OFN_ENABLESIZING;
+        wszBuffer[1]=L'\0';
 
-        if (GetOpenFileNameWide(&ofn))
+        if (LOWORD(wParam) == IDC_ITEM_ADDCURFILE)
+        {
+          EDITINFO ei;
+
+          if (SendMessage(hMainWnd, AKD_GETEDITINFO, (WPARAM)NULL, (LPARAM)&ei))
+            xstrcpynW(wszBuffer, ei.wszFile, MAX_PATH);
+          else
+            bAddFiles=FALSE;
+        }
+        else if (LOWORD(wParam) == IDC_ITEM_ADDFILES)
+        {
+          OPENFILENAMEW ofn;
+
+          xmemset(&ofn, 0, sizeof(OPENFILENAMEW));
+          ofn.lStructSize  =sizeof(OPENFILENAMEW);
+          ofn.hwndOwner    =hDlg;
+          ofn.hInstance    =hInstanceDLL;
+          ofn.lpstrFile    =wszBuffer;
+          ofn.lpstrFilter  =GetLangStringW(wLangModule, STRID_FILTER);
+          ofn.nFilterIndex =2;
+          ofn.nMaxFile     =BUFFER_SIZE;
+          ofn.Flags        =OFN_ALLOWMULTISELECT|OFN_HIDEREADONLY|OFN_PATHMUSTEXIST|OFN_EXPLORER|OFN_ENABLESIZING;
+          bAddFiles=GetOpenFileNameWide(&ofn);
+        }
+
+        if (bAddFiles && *wszBuffer)
         {
           wchar_t wszFile[MAX_PATH];
-          wchar_t *wpFile=wszBuffer + lstrlenW(wszBuffer) + 1;
-          SESSIONITEM *lpItemElement;
-          int nIndex;
+          wchar_t *wpFile=wszBuffer + xstrlenW(wszBuffer) + 1;
+          HTREEITEM hItemAfterThis=TVI_LAST;
+          SESSIONITEM *siNew=NULL;
+          SESSIONITEM *siParent=NULL;
+          SESSIONITEM *siAfterThis;
+          BOOL bFirstFile=TRUE;
 
-          SendMessage(hWndItemsList, LB_SETSEL, FALSE, -1);
+          if (hItemCaret && (siAfterThis=(SESSIONITEM *)TreeItemParam(hWndItemsList, hItemCaret)))
+          {
+            if (!siAfterThis->dwFolderFlags)
+            {
+              siParent=siAfterThis->parent;
+              hItemAfterThis=siAfterThis->hItem;
+            }
+            else
+            {
+              siParent=siAfterThis;
+              siAfterThis=ASI_FIRST;
+              hItemAfterThis=TVI_FIRST;
+            }
+          }
+          else siAfterThis=ASI_LAST;
 
           if (*wpFile)
           {
+            //Multiple files
             if (*(wpFile - 2) == L'\\') *(wpFile - 2)=L'\0';
 
             do
             {
-              if (IsPathFullW(wpFile))
+              if (IsPathFull(wpFile))
                 xstrcpyW(wszFile, wpFile);  //.lnk target
               else
                 xprintfW(wszFile, L"%s\\%s", wszBuffer, wpFile);
 
-              if (lpItemElement=AddSessionItem(lpVirtualSession))
+              if (siNew=StackAddItem(lpVirtualSession, siParent, siAfterThis))
               {
-                xstrcpynW(lpItemElement->wszItemFile, wszFile, MAX_PATH);
-                xstrcpynW(lpItemElement->wszItemExpFile, wszFile, MAX_PATH);
-                nIndex=ListBox_AddStringWide(hWndItemsList, wszFile);
-                SendMessage(hWndItemsList, LB_SETSEL, TRUE, nIndex);
+                xstrcpynW(siNew->wszName, GetFileName(wszFile, -1), MAX_PATH);
+                xstrcpynW(siNew->wszItemFile, wszFile, MAX_PATH);
+                xstrcpynW(siNew->wszItemExpFile, wszFile, MAX_PATH);
+                siNew->dwState=TVIS_SELECTED;
+                TreeAddItem(hWndItemsList, siNew, hItemAfterThis, siNew->dwState);
+                siAfterThis=siNew;
+                hItemAfterThis=siNew->hItem;
                 lpVirtualSession->bModified=TRUE;
+                if (bFirstFile)
+                {
+                  //Reset selection
+                  SendMessage(hWndItemsList, TVM_SELECTITEM, TVGN_CARET, (LPARAM)siNew->hItem);
+                  bFirstFile=FALSE;
+                }
               }
             }
-            while (*(wpFile+=lstrlenW(wpFile) + 1));
+            while (*(wpFile+=xstrlenW(wpFile) + 1));
           }
           else
           {
-            if (lpItemElement=AddSessionItem(lpVirtualSession))
+            //Single file
+            if (siNew=StackAddItem(lpVirtualSession, siParent, siAfterThis))
             {
-              xstrcpynW(lpItemElement->wszItemFile, wszBuffer, MAX_PATH);
-              xstrcpynW(lpItemElement->wszItemExpFile, wszBuffer, MAX_PATH);
-              nIndex=ListBox_AddStringWide(hWndItemsList, wszBuffer);
-              SendMessage(hWndItemsList, LB_SETSEL, TRUE, nIndex);
+              xstrcpynW(siNew->wszName, GetFileName(wszBuffer, -1), MAX_PATH);
+              xstrcpynW(siNew->wszItemFile, wszBuffer, MAX_PATH);
+              xstrcpynW(siNew->wszItemExpFile, wszBuffer, MAX_PATH);
+              siNew->dwState=TVIS_SELECTED;
+              TreeAddItem(hWndItemsList, siNew, hItemAfterThis, siNew->dwState);
               lpVirtualSession->bModified=TRUE;
+              SendMessage(hWndItemsList, TVM_SELECTITEM, TVGN_CARET, (LPARAM)siNew->hItem);
             }
+          }
+          PostMessage(hDlg, AKDLL_UPDATESAVEBUTTON, 0, 0);
+        }
+      }
+    }
+    else if (LOWORD(wParam) == IDC_ITEM_ADDDIR)
+    {
+      if (lpVirtualSession)
+      {
+        INT_PTR nResult;
+        HTREEITEM hItemCaret;
+
+        //Get caret here. Because, if no caret in list and dialog close, caret will return.
+        hItemCaret=(HTREEITEM)SendMessage(hWndItemsList, TVM_GETNEXTITEM, TVGN_CARET, (LPARAM)NULL);
+
+        nResult=DialogBoxParamWide(hInstanceDLL, MAKEINTRESOURCEW(IDD_INPUTBOX), hDlg, (DLGPROC)InputBoxDlgProc, IDC_ITEM_ADDDIR);
+
+        if (nResult && wszDlgInputBox[0])
+        {
+          HTREEITEM hItemAfterThis=TVI_LAST;
+          SESSIONITEM *siNew=NULL;
+          SESSIONITEM *siParent=NULL;
+          SESSIONITEM *siAfterThis;
+
+          if (hItemCaret && (siAfterThis=(SESSIONITEM *)TreeItemParam(hWndItemsList, hItemCaret)))
+          {
+            if (!siAfterThis->dwFolderFlags)
+            {
+              siParent=siAfterThis->parent;
+              hItemAfterThis=siAfterThis->hItem;
+            }
+            else
+            {
+              siParent=siAfterThis;
+              siAfterThis=ASI_FIRST;
+              hItemAfterThis=TVI_FIRST;
+            }
+          }
+          else siAfterThis=ASI_LAST;
+
+          if (siNew=StackAddItem(lpVirtualSession, siParent, siAfterThis))
+          {
+            xstrcpynW(siNew->wszName, wszDlgInputBox, MAX_PATH);
+            siNew->wszItemFile[0]=L'\0';
+            siNew->wszItemExpFile[0]=L'\0';
+            siNew->dwState=0;
+            siNew->dwFolderFlags=FLDF_CLOSE;
+            TreeAddItem(hWndItemsList, siNew, hItemAfterThis, siNew->dwState);
+            lpVirtualSession->bModified=TRUE;
+            SendMessage(hWndItemsList, TVM_SELECTITEM, TVGN_CARET, (LPARAM)siNew->hItem);
+          }
+        }
+        PostMessage(hDlg, AKDLL_UPDATESAVEBUTTON, 0, 0);
+      }
+    }
+    else if (LOWORD(wParam) == IDC_ITEM_RENAME)
+    {
+      if (lpVirtualSession)
+      {
+        TVITEMW tvi;
+        SESSIONITEM *siCaret=NULL;
+        HTREEITEM hItemCaret=(HTREEITEM)SendMessage(hWndItemsList, TVM_GETNEXTITEM, TVGN_CARET, (LPARAM)NULL);
+        INT_PTR nResult;
+
+        if (hItemCaret && (siCaret=(SESSIONITEM *)TreeItemParam(hWndItemsList, hItemCaret)))
+        {
+          nResult=DialogBoxParamWide(hInstanceDLL, MAKEINTRESOURCEW(IDD_ITEMEDIT), hDlg, (DLGPROC)ItemEditDlgProc, (LPARAM)siCaret);
+
+          if (nResult)
+          {
+            if (!siCaret->dwFolderFlags)
+              TranslateFileString(siCaret->wszItemFile, siCaret->wszItemExpFile, MAX_PATH);
+            tvi.mask=TVIF_TEXT;
+            tvi.pszText=(wchar_t *)siCaret->wszName;
+            tvi.cchTextMax=MAX_PATH;
+            tvi.hItem=siCaret->hItem;
+            TreeView_SetItemWide(hWndItemsList, &tvi);
+
+            lpVirtualSession->bModified=TRUE;
           }
           PostMessage(hDlg, AKDLL_UPDATESAVEBUTTON, 0, 0);
         }
@@ -1279,35 +1457,19 @@ LRESULT CALLBACK MainDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     {
       if (lpVirtualSession)
       {
-        int *lpSelItems;
-        int nSelCount;
-        int nMinIndex;
-        int nOldIndex=-1;
-        int nNewIndex=-1;
-        int i;
+        SESSIONITEM *lpCount=lpVirtualSession->hItemsStack.first;
+        HTREEITEM hItemCaret=(HTREEITEM)SendMessage(hWndItemsList, TVM_GETNEXTITEM, TVGN_CARET, (LPARAM)NULL);
 
-        nMinIndex=0;
-
-        if (nSelCount=GetListBoxSelItems(hWndItemsList, &lpSelItems))
+        while (lpCount)
         {
-          for (i=0; i < nSelCount; ++i)
+          if ((lpCount->dwState & TVIS_SELECTED) && lpCount->prev && !(lpCount->prev->dwState & TVIS_SELECTED))
           {
-            if (lpSelItems[i] > nMinIndex)
-            {
-              if (nNewIndex == -1 && i > 0)
-              {
-                if (lpSelItems[i] - 1 <= lpSelItems[i - 1])
-                  continue;
-              }
-              nOldIndex=lpSelItems[i];
-              nNewIndex=lpSelItems[i] - 1;
-              MoveListBoxItem(hWndItemsList, nOldIndex, nNewIndex);
-              MoveSessionItem(lpVirtualSession, nOldIndex + 1, nNewIndex + 1);
-              SendMessage(hWndItemsList, LB_SETSEL, TRUE, nNewIndex);
-              lpVirtualSession->bModified=TRUE;
-            }
+            TreeMoveItem(hWndItemsList, hItemCaret, lpVirtualSession, lpCount, lpCount->parent, lpCount->prev->prev);
+            lpCount=StackNextItemNoChild(lpCount->next);
+            lpVirtualSession->bModified=TRUE;
+            continue;
           }
-          FreeListBoxSelItems(&lpSelItems);
+          lpCount=StackNextItem(lpCount, NULL);
         }
         PostMessage(hDlg, AKDLL_UPDATESAVEBUTTON, 0, 0);
       }
@@ -1316,82 +1478,94 @@ LRESULT CALLBACK MainDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     {
       if (lpVirtualSession)
       {
-        int *lpSelItems;
-        int nSelCount;
-        int nMaxIndex;
-        int nOldIndex=-1;
-        int nNewIndex=-1;
-        int i;
+        SESSIONITEM *lpCount=lpVirtualSession->hItemsStack.last;
+        HTREEITEM hItemCaret=(HTREEITEM)SendMessage(hWndItemsList, TVM_GETNEXTITEM, TVGN_CARET, (LPARAM)NULL);
 
-        nMaxIndex=(int)SendMessage(hWndItemsList, LB_GETCOUNT, 0, 0) - 1;
-
-        if (nSelCount=GetListBoxSelItems(hWndItemsList, &lpSelItems))
+        while (lpCount)
         {
-          for (i=--nSelCount; i >= 0; --i)
+          if ((lpCount->dwState & TVIS_SELECTED) && lpCount->next && !(lpCount->next->dwState & TVIS_SELECTED))
           {
-            if (lpSelItems[i] < nMaxIndex)
-            {
-              if (nNewIndex == -1 && i < nSelCount)
-              {
-                if (lpSelItems[i] + 1 >= lpSelItems[i + 1])
-                  continue;
-              }
-              nOldIndex=lpSelItems[i];
-              nNewIndex=lpSelItems[i] + 1;
-              MoveListBoxItem(hWndItemsList, nOldIndex, nNewIndex);
-              MoveSessionItem(lpVirtualSession, nOldIndex + 1, nNewIndex + 1);
-              SendMessage(hWndItemsList, LB_SETSEL, TRUE, nNewIndex);
-              lpVirtualSession->bModified=TRUE;
-            }
-          }
-          FreeListBoxSelItems(&lpSelItems);
-        }
-        PostMessage(hDlg, AKDLL_UPDATESAVEBUTTON, 0, 0);
-      }
-    }
-    else if (LOWORD(wParam) == IDC_ITEM_DELETE)
-    {
-      if (lpVirtualSession)
-      {
-        int *lpSelItems;
-        int nSelCount;
-        int i;
-
-        if (nSelCount=GetListBoxSelItems(hWndItemsList, &lpSelItems))
-        {
-          for (i=--nSelCount; i >= 0; --i)
-          {
-            SendMessage(hWndItemsList, LB_DELETESTRING, lpSelItems[i], 0);
-            DeleteSessionItem(lpVirtualSession, lpSelItems[i] + 1);
+            TreeMoveItem(hWndItemsList, hItemCaret, lpVirtualSession, lpCount, lpCount->parent, lpCount->next);
+            lpCount=StackPrevItemNoChild(lpCount->prev);
             lpVirtualSession->bModified=TRUE;
+            continue;
           }
-          FreeListBoxSelItems(&lpSelItems);
+          lpCount=StackPrevItem(lpCount, NULL);
         }
         PostMessage(hDlg, AKDLL_UPDATESAVEBUTTON, 0, 0);
       }
     }
-    else if (LOWORD(wParam) == IDC_ITEM_DELETEOLD)
+    else if (LOWORD(wParam) == IDC_ITEM_DELETE ||
+             LOWORD(wParam) == IDC_ITEM_DELETEOLD)
     {
       if (lpVirtualSession)
       {
-        SESSIONITEM *lpElement;
-        int nMaxIndex;
-        int i;
+        SESSIONITEM *lpCount;
+        SESSIONITEM *lpPrevCount=NULL;
+        SESSIONITEM *lpNewCaret=NULL;
+        SESSIONITEM *lpParentCaret=NULL;
+        HTREEITEM hItemCaret=(HTREEITEM)SendMessage(hWndItemsList, TVM_GETNEXTITEM, TVGN_CARET, (LPARAM)NULL);
 
-        nMaxIndex=(int)SendMessage(hWndItemsList, LB_GETCOUNT, 0, 0) - 1;
-
-        for (i=nMaxIndex; i >= 0; --i)
+        //Mark for deletion
+        if (LOWORD(wParam) == IDC_ITEM_DELETE)
         {
-          if (lpElement=GetSessionItem(lpVirtualSession, i + 1))
+          for (lpCount=lpVirtualSession->hItemsStack.first; lpCount; lpCount=StackNextItem(lpCount, NULL))
           {
-            if (!FileExistsWide(lpElement->wszItemExpFile))
-            {
-              SendMessage(hWndItemsList, LB_DELETESTRING, i, 0);
-              DeleteSessionItem(lpVirtualSession, i + 1);
-              lpVirtualSession->bModified=TRUE;
-            }
+            if (lpCount->dwState & TVIS_SELECTED)
+              lpCount->bDeleting=TRUE;
           }
-          else break;
+        }
+        else if (LOWORD(wParam) == IDC_ITEM_DELETEOLD)
+        {
+          for (lpCount=lpVirtualSession->hItemsStack.first; lpCount; lpCount=StackNextItem(lpCount, NULL))
+          {
+            if (!lpCount->dwFolderFlags && !FileExistsWide(lpCount->wszItemExpFile))
+              lpCount->bDeleting=TRUE;
+          }
+        }
+
+        //Deletion
+        for (lpCount=lpVirtualSession->hItemsStack.first; lpCount;)
+        {
+          if (lpCount->bDeleting)
+          {
+            if (!lpNewCaret && hItemCaret == lpCount->hItem)
+            {
+              //Change caret
+              for (lpNewCaret=lpCount; lpNewCaret;)
+              {
+                if (!lpNewCaret->bDeleting)
+                {
+                  for (lpParentCaret=lpNewCaret; lpParentCaret; lpParentCaret=lpParentCaret->parent)
+                  {
+                    //Check that root items not marked for deletion
+                    if (lpParentCaret->bDeleting)
+                    {
+                      lpNewCaret=lpParentCaret;
+                      goto NextCaret;
+                    }
+                  }
+                  SendMessage(hWndItemsList, TVM_SELECTITEM, TVGN_CARET, (LPARAM)lpNewCaret->hItem);
+                  break;
+                }
+                NextCaret:
+                if (lpNewCaret->next)
+                  lpNewCaret=lpNewCaret->next;
+                else
+                  lpNewCaret=lpNewCaret->parent;
+              }
+            }
+            TreeDeleteItem(hWndItemsList, lpCount->hItem);
+            StackDeleteItem(lpVirtualSession, lpCount);
+            if (!lpPrevCount)
+              lpCount=lpVirtualSession->hItemsStack.first;
+            else
+              lpCount=StackNextItem(lpPrevCount, NULL);
+            lpVirtualSession->bModified=TRUE;
+            continue;
+          }
+          lpPrevCount=lpCount;
+          lpCount=StackNextItem(lpCount, NULL);
         }
         PostMessage(hDlg, AKDLL_UPDATESAVEBUTTON, 0, 0);
       }
@@ -1427,10 +1601,13 @@ LRESULT CALLBACK MainDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
       if (SaveSessionPrompt() == IDCANCEL)
         return 0;
       if (lpVirtualSession)
-        FreeSessionItems(lpVirtualSession);
+        StackFreeItems(lpVirtualSession);
       lpVirtualSession=NULL;
       lpRealSession=NULL;
       FreeSessions(&hSessionStack);
+
+      //Destroy resources
+      DestroyMenu(hMenuItems);
 
       if (nCurDialogType == DLGT_DOCKABLE)
       {
@@ -1465,16 +1642,113 @@ LRESULT CALLBACK MainDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
       }
     }
   }
+  else if (uMsg == WM_NOTIFY)
+  {
+    if (wParam == IDC_ITEMS_LIST)
+    {
+      if (((NMHDR *)lParam)->code == (UINT)NM_CUSTOMDRAW)
+      {
+        NMTVCUSTOMDRAW *lptvcd=(NMTVCUSTOMDRAW *)lParam;
+        LRESULT lResult;
+
+        if (lptvcd->nmcd.dwDrawStage == CDDS_PREPAINT)
+        {
+          lResult=CDRF_NOTIFYITEMDRAW;
+        }
+        else if (lptvcd->nmcd.dwDrawStage == CDDS_ITEMPREPAINT)
+        {
+          if (bDragging)
+          {
+            if (siDraggingCursor && siDraggingCursor == (SESSIONITEM *)lptvcd->nmcd.lItemlParam)
+            {
+              lptvcd->clrTextBk=AE_ColorBrightness(GetSysColor(COLOR_HIGHLIGHT), 80);
+            }
+          }
+          lResult=CDRF_DODEFAULT;
+        }
+        else lResult=CDRF_DODEFAULT;
+
+        SetWindowLongPtrWide(hDlg, DWLP_MSGRESULT, lResult);
+        return TRUE;
+      }
+      else if (((NMTREEVIEWW *)lParam)->hdr.code == TVN_SELCHANGEDA ||
+               ((NMTREEVIEWW *)lParam)->hdr.code == TVN_SELCHANGEDW)
+      {
+        if (!bDragging)
+        {
+          NMTREEVIEWW *pnmtv=(NMTREEVIEWW *)lParam;
+
+          if (lpVirtualSession)
+          {
+            //Multi-selection
+            SESSIONITEM *lpOldItem=(SESSIONITEM *)pnmtv->itemOld.lParam;
+            SESSIONITEM *lpNewItem=(SESSIONITEM *)pnmtv->itemNew.lParam;
+
+            if (lpOldItem && GetKeyState(VK_CONTROL) < 0)
+            {
+              if (lpOldItem->dwState & TVIS_SELECTED)
+                SelectItem(hWndItemsList, lpOldItem, TRUE);
+              if (lpNewItem)
+              {
+                if (lpNewItem->dwState & TVIS_SELECTED)
+                  SelectItem(hWndItemsList, lpNewItem, FALSE);
+                else
+                  SelectItem(hWndItemsList, lpNewItem, TRUE);
+              }
+            }
+            else if (lpOldItem && GetKeyState(VK_SHIFT) < 0)
+            {
+              SESSIONITEM *lpStartItem=lpOldItem;
+              SESSIONITEM *lpEndItem=lpNewItem;
+              int nOldIndex;
+              int nNewIndex;
+
+              if ((nOldIndex=StackItemIndex(lpVirtualSession, lpOldItem)) &&
+                  (nNewIndex=StackItemIndex(lpVirtualSession, lpNewItem)))
+              {
+                if (nNewIndex < nOldIndex)
+                {
+                  lpStartItem=lpNewItem;
+                  lpEndItem=lpOldItem;
+                }
+
+                //Select range
+                for (; lpStartItem; lpStartItem=StackNextItem(lpStartItem, NULL))
+                {
+                  SelectItem(hWndItemsList, lpStartItem, TRUE);
+                  if (lpStartItem == lpEndItem)
+                    break;
+                }
+              }
+            }
+            else
+            {
+              SESSIONITEM *lpCount;
+
+              //Reset selection
+              for (lpCount=lpVirtualSession->hItemsStack.first; lpCount; lpCount=StackNextItem(lpCount, NULL))
+              {
+                if ((lpCount->dwState & TVIS_SELECTED) && lpCount != lpNewItem)
+                  SelectItem(hWndItemsList, lpCount, FALSE);
+              }
+              if (lpNewItem)
+                SelectItem(hWndItemsList, lpNewItem, TRUE);
+            }
+          }
+          bSelChanged=TRUE;
+        }
+      }
+      else if (((NMHDR *)lParam)->code == (UINT)NM_DBLCLK)
+      {
+        if (TreeCursorItem(hWndItemsList))
+          PostMessage(hDlg, WM_COMMAND, IDC_ITEM_OPEN, 0);
+      }
+    }
+  }
   else if (uMsg == WM_CLOSE)
   {
     PostMessage(hDlg, WM_COMMAND, IDCANCEL, 0);
     return TRUE;
-  }
-  else if (uMsg == WM_DESTROY)
-  {
-    //Destroy resources
-    DestroyMenu(hMenuItems);
-    DestroyIcon(hPluginIcon);
   }
 
   //Dialog resize messages
@@ -1495,14 +1769,11 @@ LRESULT CALLBACK MainDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 BOOL CALLBACK InputBoxDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-  static HICON hPluginIcon;
   static HWND hWndInputBox;
   static HWND hWndInputBoxEdit;
 
   if (uMsg == WM_INITDIALOG)
   {
-    //Load plugin icon
-    hPluginIcon=LoadIconA(hInstanceDLL, MAKEINTRESOURCEA(IDI_ICON_PLUGIN));
     SendMessage(hDlg, WM_SETICON, (WPARAM)ICON_BIG, (LPARAM)hPluginIcon);
 
     hWndInputBox=GetDlgItem(hDlg, IDC_INPUTBOX_EDIT);
@@ -1514,12 +1785,15 @@ BOOL CALLBACK InputBoxDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam
       SetWindowTextWide(hDlg, GetLangStringW(wLangModule, STRID_COPY));
     else if (lParam == IDC_SESSION_RENAME)
       SetWindowTextWide(hDlg, GetLangStringW(wLangModule, STRID_RENAME));
+    else if (lParam == IDC_ITEM_ADDDIR)
+      SetWindowTextWide(hDlg, GetLangStringW(wLangModule, STRID_ADDDIR));
     SetDlgItemTextWide(hDlg, IDC_INPUTBOX_LABEL, GetLangStringW(wLangModule, STRID_NEWNAME));
     SetDlgItemTextWide(hDlg, IDOK, GetLangStringW(wLangModule, STRID_OK));
     SetDlgItemTextWide(hDlg, IDCANCEL, GetLangStringW(wLangModule, STRID_CANCEL));
 
     SendMessage(hWndInputBoxEdit, EM_LIMITTEXT, MAX_PATH, 0);
-    FillSessionsList(&hSessionStack, hWndInputBox);
+    if (lParam != IDC_ITEM_ADDDIR)
+      ComboFillSessions(&hSessionStack, hWndInputBox);
     if (lpVirtualSession)
     {
       if (lParam == IDC_SESSION_COPY)
@@ -1529,7 +1803,7 @@ BOOL CALLBACK InputBoxDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam
         int i;
 
         xstrcpynW(wszSessionName, lpVirtualSession->wszSessionName, MAX_PATH);
-        i=lstrlenW(wszSessionName) - 1;
+        i=(int)xstrlenW(wszSessionName) - 1;
 
         if (wszSessionName[i] == L')')
         {
@@ -1549,6 +1823,9 @@ BOOL CALLBACK InputBoxDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam
             break;
           }
         }
+      }
+      else if (lParam == IDC_ITEM_ADDDIR)
+      {
       }
       else SetWindowTextWide(hWndInputBox, lpVirtualSession->wszSessionName);
     }
@@ -1579,23 +1856,84 @@ BOOL CALLBACK InputBoxDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam
     PostMessage(hDlg, WM_COMMAND, IDCANCEL, 0);
     return TRUE;
   }
-  else if (uMsg == WM_DESTROY)
+  return FALSE;
+}
+
+BOOL CALLBACK ItemEditDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+  static HWND hWndName;
+  static HWND hWndFileLabel;
+  static HWND hWndFile;
+  static HWND hWndOKButton;
+  static SESSIONITEM *si;
+
+  if (uMsg == WM_INITDIALOG)
   {
-    //Destroy plugin icon
-    DestroyIcon(hPluginIcon);
+    si=(SESSIONITEM *)lParam;
+
+    SendMessage(hDlg, WM_SETICON, (WPARAM)ICON_BIG, (LPARAM)hPluginIcon);
+    hWndName=GetDlgItem(hDlg, IDC_ITEMNAME);
+    hWndFileLabel=GetDlgItem(hDlg, IDC_ITEMFILE_LABEL);
+    hWndFile=GetDlgItem(hDlg, IDC_ITEMFILE);
+    hWndOKButton=GetDlgItem(hDlg, IDOK);
+
+    SetWindowTextWide(hDlg, GetLangStringW(wLangModule, STRID_RENAME));
+    SetDlgItemTextWide(hDlg, IDC_ITEMNAME_LABEL, GetLangStringW(wLangModule, STRID_ITEMNAME));
+    SetDlgItemTextWide(hDlg, IDC_ITEMFILE_LABEL, GetLangStringW(wLangModule, STRID_ITEMFILE));
+    SetDlgItemTextWide(hDlg, IDOK, GetLangStringW(wLangModule, STRID_OK));
+    SetDlgItemTextWide(hDlg, IDCANCEL, GetLangStringW(wLangModule, STRID_CANCEL));
+    SetWindowTextWide(hWndName, si->wszName);
+    if (!si->dwFolderFlags)
+    {
+      SetWindowTextWide(hWndFile, si->wszItemFile);
+      if (bShowPath)
+      {
+        SetFocus(hWndFile);
+        SendMessage(hWndFile, EM_SETSEL, 0, (LPARAM)-1);
+      }
+    }
+    else
+    {
+      EnableWindow(hWndFileLabel, FALSE);
+      EnableWindow(hWndFile, FALSE);
+    }
+  }
+  else if (uMsg == WM_COMMAND)
+  {
+    if (LOWORD(wParam) == IDC_ITEMNAME)
+    {
+      if (GetWindowTextLengthWide(hWndName))
+        EnableWindow(hWndOKButton, TRUE);
+      else
+        EnableWindow(hWndOKButton, FALSE);
+    }
+    else if (LOWORD(wParam) == IDOK)
+    {
+      GetWindowTextWide(hWndName, si->wszName, MAX_PATH);
+      if (!si->dwFolderFlags)
+        GetWindowTextWide(hWndFile, si->wszItemFile, MAX_PATH);
+
+      EndDialog(hDlg, 1);
+      return TRUE;
+    }
+    else if (LOWORD(wParam) == IDCANCEL)
+    {
+      EndDialog(hDlg, 0);
+      return TRUE;
+    }
   }
   return FALSE;
 }
 
 BOOL CALLBACK SettingsDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-  static HICON hPluginIcon;
   static HWND hWndProgramDir;
   static HWND hWndAppDataDir;
   static HWND hWndOpenOnStart;
   static HWND hWndOpenName;
   static HWND hWndSaveOnExit;
   static HWND hWndSaveName;
+  static HWND hWndShowPath;
   static HWND hWndDlgTypeModal;
   static HWND hWndDlgTypeModeless;
   static HWND hWndDlgTypeDockable;
@@ -1614,8 +1952,6 @@ BOOL CALLBACK SettingsDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam
 
   if (uMsg == WM_INITDIALOG)
   {
-    //Load plugin icon
-    hPluginIcon=LoadIconA(hInstanceDLL, MAKEINTRESOURCEA(IDI_ICON_PLUGIN));
     SendMessage(hDlg, WM_SETICON, (WPARAM)ICON_BIG, (LPARAM)hPluginIcon);
 
     hWndProgramDir=GetDlgItem(hDlg, IDC_SETTINGS_SAVESESSIONS_PROGRAMDIR);
@@ -1624,6 +1960,7 @@ BOOL CALLBACK SettingsDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam
     hWndOpenName=GetDlgItem(hDlg, IDC_SETTINGS_OPENNAME);
     hWndSaveOnExit=GetDlgItem(hDlg, IDC_SETTINGS_SAVEONEXIT);
     hWndSaveName=GetDlgItem(hDlg, IDC_SETTINGS_SAVENAME);
+    hWndShowPath=GetDlgItem(hDlg, IDC_SETTINGS_SHOWPATH);
     hWndDlgTypeModal=GetDlgItem(hDlg, IDC_SETTINGS_DLGTYPE_MODAL);
     hWndDlgTypeModeless=GetDlgItem(hDlg, IDC_SETTINGS_DLGTYPE_MODELESS);
     hWndDlgTypeDockable=GetDlgItem(hDlg, IDC_SETTINGS_DLGTYPE_DOCKABLE);
@@ -1646,6 +1983,7 @@ BOOL CALLBACK SettingsDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam
     SetDlgItemTextWide(hDlg, IDC_SETTINGS_SESSION_GROUP, GetLangStringW(wLangModule, STRID_SESSION));
     SetDlgItemTextWide(hDlg, IDC_SETTINGS_OPENONSTART, GetLangStringW(wLangModule, STRID_OPENONSTART));
     SetDlgItemTextWide(hDlg, IDC_SETTINGS_SAVEONEXIT, GetLangStringW(wLangModule, STRID_SAVEONEXIT));
+    SetDlgItemTextWide(hDlg, IDC_SETTINGS_SHOWPATH, GetLangStringW(wLangModule, STRID_SHOWPATH));
     SetDlgItemTextWide(hDlg, IDC_SETTINGS_DLGTYPE_GROUP, GetLangStringW(wLangModule, STRID_DIALOGTYPE));
     SetDlgItemTextWide(hDlg, IDC_SETTINGS_DLGTYPE_MODAL, GetLangStringW(wLangModule, STRID_MODALDIALOG));
     SetDlgItemTextWide(hDlg, IDC_SETTINGS_DLGTYPE_MODELESS, GetLangStringW(wLangModule, STRID_MODELESSDIALOG));
@@ -1677,6 +2015,7 @@ BOOL CALLBACK SettingsDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam
       SendMessage(hWndAppDataDir, BM_SETCHECK, BST_CHECKED, 0);
     if (bOpenOnStart) SendMessage(hWndOpenOnStart, BM_SETCHECK, BST_CHECKED, 0);
     if (bSaveOnExit) SendMessage(hWndSaveOnExit, BM_SETCHECK, BST_CHECKED, 0);
+    if (bShowPath) SendMessage(hWndShowPath, BM_SETCHECK, BST_CHECKED, 0);
     if (nDialogType == DLGT_MODAL)
     {
       SendMessage(hWndDlgTypeModal, BM_SETCHECK, BST_CHECKED, 0);
@@ -1797,6 +2136,12 @@ BOOL CALLBACK SettingsDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam
       GetWindowTextWide(hWndSaveName, wszSaveOnExit, MAX_PATH);
       bOpenOnStart=(BOOL)SendMessage(hWndOpenOnStart, BM_GETCHECK, 0, 0);
       bSaveOnExit=(BOOL)SendMessage(hWndSaveOnExit, BM_GETCHECK, 0, 0);
+      nState=(BOOL)SendMessage(hWndShowPath, BM_GETCHECK, 0, 0);
+      if (bShowPath != nState)
+      {
+        bShowPath=nState;
+        PostMessage(hWndMainDlg, WM_COMMAND, MAKELONG(IDC_SESSION_LIST, CBN_SELCHANGE), (LPARAM)0);
+      }
 
       dwSaveFlags|=OF_SETTINGS;
       EndDialog(hDlg, 0);
@@ -1811,17 +2156,244 @@ BOOL CALLBACK SettingsDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam
     PostMessage(hDlg, WM_COMMAND, IDCANCEL, 0);
     return TRUE;
   }
-  else if (uMsg == WM_DESTROY)
-  {
-    //Destroy plugin icon
-    DestroyIcon(hPluginIcon);
-  }
   return FALSE;
 }
 
-LRESULT CALLBACK NewListBoxProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+LRESULT CALLBACK NewTreeViewProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-  if (uMsg == WM_GETDLGCODE)
+  if (uMsg == WM_SETFOCUS ||
+      uMsg == WM_KILLFOCUS)
+  {
+    //Multi-selection
+    InvalidateRect(hWnd, NULL, FALSE);
+  }
+  else if (uMsg == WM_DROPFILES)
+  {
+    if (lpVirtualSession)
+      DropFiles((HDROP)wParam, hWnd);
+    else
+      MessageBoxW(hMainWnd, GetLangStringW(wLangModule, STRID_DROPTOCURRENT), wszPluginTitle, MB_OK|MB_ICONEXCLAMATION);
+    return 0;
+  }
+  else if (uMsg == WM_RBUTTONDOWN)
+  {
+    return DefWindowProcWide(hWnd, uMsg, wParam, lParam);
+  }
+  else if (uMsg == WM_LBUTTONDOWN)
+  {
+    if (lpVirtualSession)
+    {
+      //Multi-selection
+      TVHITTESTINFO tvhti;
+      TVITEMW tvi;
+      HTREEITEM hItemCaret=(HTREEITEM)SendMessage(hWnd, TVM_GETNEXTITEM, TVGN_CARET, (LPARAM)NULL);
+      HTREEITEM hItemCursor=NULL;
+      SESSIONITEM *siCursor;
+
+      if (GetFocus() != hWnd)
+        SetFocus(hWnd);
+
+      //Get cursor item
+      GetCursorPos(&tvhti.pt);
+      ScreenToClient(hWnd, &tvhti.pt);
+      SendMessage(hWnd, TVM_HITTEST, 0, (LPARAM)&tvhti);
+      if (tvhti.hItem)
+      {
+        //Collapse/Expand item
+        if (tvhti.flags & TVHT_ONITEMBUTTON)
+        {
+          SendMessage(hWnd, TVM_EXPAND, TVE_TOGGLE, (LPARAM)tvhti.hItem);
+
+          tvi.mask=TVIF_STATE|TVIF_PARAM;
+          tvi.stateMask=TVIS_EXPANDED;
+          tvi.hItem=tvhti.hItem;
+          if (TreeView_GetItemWide(hWnd, &tvi))
+          {
+            siCursor=(SESSIONITEM *)tvi.lParam;
+
+            if (tvi.state & TVIS_EXPANDED)
+            {
+              if (siCursor->dwFolderFlags & FLDF_CLOSE)
+              {
+                siCursor->dwFolderFlags&=~FLDF_CLOSE;
+                siCursor->dwFolderFlags|=FLDF_OPEN;
+                lpVirtualSession->bModified=TRUE;
+              }
+            }
+            else
+            {
+              if (siCursor->dwFolderFlags & FLDF_OPEN)
+              {
+                siCursor->dwFolderFlags&=~FLDF_OPEN;
+                siCursor->dwFolderFlags|=FLDF_CLOSE;
+                lpVirtualSession->bModified=TRUE;
+              }
+            }
+
+            //TreeView control sets caret to collapsed item without
+            //notifications, so change data in stack accordingly.
+            if (siCursor->dwFolderFlags & FLDF_CLOSE)
+            {
+              SESSIONITEM *lpCount;
+              int nResetCount=0;
+
+              //Reset selection in childrens
+              for (lpCount=siCursor->firstChild; lpCount; lpCount=StackNextItem(lpCount, siCursor))
+              {
+                if (lpCount->dwState & TVIS_SELECTED)
+                {
+                  SelectItem(hWnd, lpCount, FALSE);
+                  ++nResetCount;
+                }
+              }
+              if (nResetCount)
+                SelectItem(hWnd, siCursor, TRUE);
+            }
+            PostMessage(hWndMainDlg, AKDLL_UPDATESAVEBUTTON, 0, 0);
+          }
+          return TRUE;
+        }
+        if (tvhti.flags & (TVHT_ONITEMLABEL|TVHT_ONITEMICON))
+          hItemCursor=tvhti.hItem;
+      }
+
+      if (hItemCursor && (siCursor=(SESSIONITEM *)TreeItemParam(hWnd, hItemCursor)) && (siCursor->dwState & TVIS_SELECTED) && GetKeyState(VK_CONTROL) >= 0)
+      {
+        //Cursor item is selected, so don't process click without Ctrl, because we can start dragging.
+      }
+      else
+      {
+        if (hItemCaret == hItemCursor)
+        {
+          NMTREEVIEWW nmtv;
+
+          nmtv.hdr.hwndFrom=hWnd;
+          nmtv.hdr.idFrom=IDC_ITEMS_LIST;
+          nmtv.hdr.code=TVN_SELCHANGEDW;
+          nmtv.action=TVC_BYMOUSE;
+
+          xmemset(&nmtv.itemOld, 0, sizeof(TVITEMW));
+          nmtv.itemOld.mask=TVIF_STATE|TVIF_PARAM;
+          nmtv.itemOld.stateMask=TVIS_SELECTED;
+          nmtv.itemOld.hItem=hItemCursor;
+          TreeView_GetItemWide(hWnd, &nmtv.itemOld);
+          xmemcpy(&nmtv.itemNew, &nmtv.itemOld, sizeof(TVITEMW));
+          SendMessage(GetParent(hWnd), WM_NOTIFY, IDC_ITEMS_LIST, (LPARAM)&nmtv);
+        }
+        else SendMessage(hWnd, TVM_SELECTITEM, TVGN_CARET, (LPARAM)hItemCursor);
+      }
+      nMouseMove=4;
+      return TRUE;
+    }
+  }
+  else if (uMsg == WM_MOUSEMOVE)
+  {
+    if (!bDragging)
+    {
+      if (nMouseMove > 0)
+      {
+        if (--nMouseMove == 0)
+          bDragging=TRUE;
+      }
+    }
+    if (bDragging)
+    {
+      SESSIONITEM *siNewCursor=NULL;
+      HTREEITEM hItemCursor;
+
+      SetCursor(hCursorDragMove);
+      if (hItemCursor=TreeCursorItem(hWnd))
+        siNewCursor=(SESSIONITEM *)TreeItemParam(hWnd, hItemCursor);
+      if (siNewCursor != siDraggingCursor && siDraggingCursor)
+      {
+        //Erase old item background
+        TreeUpdateItem(hWnd, siDraggingCursor->hItem);
+      }
+
+      if (siNewCursor)
+      {
+        //Draw current item background
+        siDraggingCursor=siNewCursor;
+        TreeUpdateItem(hWnd, siDraggingCursor->hItem);
+      }
+      else siDraggingCursor=NULL;
+    }
+  }
+  else if (uMsg == WM_LBUTTONUP)
+  {
+    nMouseMove=0;
+
+    if (bDragging)
+    {
+      //Drop
+      HTREEITEM hItemAfterThis=TVI_LAST;
+      SESSIONITEM *siParent=NULL;
+      SESSIONITEM *siAfterThis=siDraggingCursor;
+
+      if (siAfterThis)
+      {
+        if (!siAfterThis->dwFolderFlags)
+        {
+          siParent=siAfterThis->parent;
+          hItemAfterThis=siAfterThis->hItem;
+        }
+        else
+        {
+          siParent=siAfterThis;
+          siAfterThis=ASI_FIRST;
+          hItemAfterThis=TVI_FIRST;
+        }
+      }
+      else siAfterThis=ASI_LAST;
+
+      if (lpVirtualSession)
+      {
+        SESSIONITEM *lpCount=lpVirtualSession->hItemsStack.first;
+        SESSIONITEM *lpPrevCount=NULL;
+        HTREEITEM hItemCaret=(HTREEITEM)SendMessage(hWnd, TVM_GETNEXTITEM, TVGN_CARET, (LPARAM)NULL);
+
+        while (lpCount)
+        {
+          if ((lpCount->dwState & TVIS_SELECTED) && !lpCount->bMoving)
+          {
+            lpCount->bMoving=TRUE;
+
+            if (TreeMoveItem(hWnd, hItemCaret, lpVirtualSession, lpCount, siParent, siAfterThis))
+            {
+              siAfterThis=lpCount;
+              if (!lpPrevCount)
+                lpCount=lpVirtualSession->hItemsStack.first;
+              else
+              {
+                if (lpPrevCount->bMoving)
+                  lpCount=StackNextItemNoChild(lpPrevCount);
+                else
+                  lpCount=StackNextItem(lpPrevCount, NULL);
+              }
+              lpVirtualSession->bModified=TRUE;
+              continue;
+            }
+            else siAfterThis=lpCount;
+          }
+          lpPrevCount=lpCount;
+          if (lpCount->bMoving)
+            lpCount=StackNextItemNoChild(lpCount);
+          else
+            lpCount=StackNextItem(lpCount, NULL);
+        }
+        for (lpCount=lpVirtualSession->hItemsStack.first; lpCount; lpCount=StackNextItem(lpCount, NULL))
+        {
+          if (lpCount->bMoving)
+            lpCount->bMoving=FALSE;
+        }
+        PostMessage(hWndMainDlg, AKDLL_UPDATESAVEBUTTON, 0, 0);
+      }
+      bDragging=FALSE;
+      siDraggingCursor=NULL;
+      InvalidateRect(hWnd, NULL, FALSE);
+    }
+  }
+  else if (uMsg == WM_GETDLGCODE)
   {
     MSG *msg=(MSG *)lParam;
 
@@ -1836,9 +2408,8 @@ LRESULT CALLBACK NewListBoxProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
       }
     }
   }
-
-  if (uMsg == WM_KEYDOWN ||
-      uMsg == WM_SYSKEYDOWN)
+  else if (uMsg == WM_KEYDOWN ||
+           uMsg == WM_SYSKEYDOWN)
   {
     BOOL bAlt=FALSE;
     BOOL bShift=FALSE;
@@ -1859,7 +2430,7 @@ LRESULT CALLBACK NewListBoxProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
         return TRUE;
       }
     }
-    else if (wParam == 'W')
+    else if (wParam == L'W')
     {
       if (!bAlt && !bShift && bControl)
       {
@@ -1871,7 +2442,23 @@ LRESULT CALLBACK NewListBoxProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
     {
       if (!bAlt && !bShift && !bControl)
       {
-        PostMessage(GetParent(hWnd), WM_COMMAND, IDC_ITEM_ADD, 0);
+        PostMessage(GetParent(hWnd), WM_COMMAND, IDC_ITEM_ADDFILES, 0);
+        return TRUE;
+      }
+    }
+    else if (wParam == VK_F2)
+    {
+      if (!bAlt && !bShift && !bControl)
+      {
+        PostMessage(GetParent(hWnd), WM_COMMAND, IDC_ITEM_RENAME, 0);
+        return TRUE;
+      }
+    }
+    else if (wParam == VK_F7)
+    {
+      if (!bAlt && !bShift && !bControl)
+      {
+        PostMessage(GetParent(hWnd), WM_COMMAND, IDC_ITEM_ADDDIR, 0);
         return TRUE;
       }
     }
@@ -1901,10 +2488,7 @@ LRESULT CALLBACK NewListBoxProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
     }
   }
 
-  if (bOldWindows)
-    return CallWindowProcA(OldListBoxProc, hWnd, uMsg, wParam, lParam);
-  else
-    return CallWindowProcW(OldListBoxProc, hWnd, uMsg, wParam, lParam);
+  return CallWindowProcWide(OldTreeViewProc, hWnd, uMsg, wParam, lParam);
 }
 
 LRESULT CALLBACK NewMainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -1960,11 +2544,16 @@ LRESULT CALLBACK NewMainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 BOOL LoadSessionFile(SESSION *ss)
 {
-  SESSIONITEM *lpItemElement;
+  SESSIONITEM *siNew;
+  SESSIONITEM *siParent=NULL;
+  wchar_t wszName[MAX_PATH];
   wchar_t wszSessionFile[MAX_PATH];
   wchar_t wszDocumentFile[MAX_PATH];
   wchar_t *wszText;
   const wchar_t *wpText;
+  const wchar_t *wpTextBegin;
+  const wchar_t *wpFolderStart;
+  const wchar_t *wpName;
   const wchar_t *wpBookmark;
   const wchar_t *wpAlias;
   const wchar_t *wpFold;
@@ -1975,6 +2564,7 @@ BOOL LoadSessionFile(SESSION *ss)
   DWORD dwBytesRead;
   DWORD dwUnicodeLen;
   INT_PTR nFirstVisChar;
+  DWORD dwFolderFlags;
   BOOL bWordWrap;
   BOOL bReadOnly;
   BOOL bOvertypeMode;
@@ -1984,6 +2574,7 @@ BOOL LoadSessionFile(SESSION *ss)
   wchar_t *wszCoderMarks;
   int nCodePage;
   int nTabActive;
+  int nMessageID;
   int i;
 
   xprintfW(wszSessionFile, L"%s\\%s.session", wszSessionsDir, ss->wszSessionName);
@@ -2005,20 +2596,71 @@ BOOL LoadSessionFile(SESSION *ss)
             ++wpText;
             --dwUnicodeLen;
           }
+          wpTextBegin=wpText;
 
           while (*wpText)
           {
-            //Get file name
-            for (i=0; i < MAX_PATH && *wpText != L'\r' && *wpText != L'\0'; wszBuffer[i++]=*wpText++);
-            wszBuffer[i]=L'\0';
-            xstrcpynW(wszDocumentFile, wszBuffer, MAX_PATH);
+            SkipSpaces(&wpText);
 
-            //Next line
-            while (*wpText != L'\r' && *wpText != L'\0') ++wpText;
-            if (*wpText == L'\0') goto FreeText;
-            if (*++wpText == L'\n') ++wpText;
+            //Folder end
+            if (*wpText == L'}')
+            {
+              if (!siParent)
+              {
+                nMessageID=STRID_PARSEMSG_NOOPENBRACKET;
+                goto Error;
+              }
+              ++wpText;
+              siParent=siParent->parent;
+              continue;
+            }
 
-            //Get edit parameters
+            //Folder begin
+            if (*wpText == L'\"' || (*wpText == L'-' && *(wpText + 1) == L'\"'))
+            {
+              dwFolderFlags=FLDF_CLOSE;
+              if (*wpText == L'-')
+              {
+                dwFolderFlags&=~FLDF_CLOSE;
+                dwFolderFlags|=FLDF_OPEN;
+                wpText+=2;
+              }
+              else ++wpText;
+
+              for (wpFolderStart=wpText; *wpText != L'\r' && *wpText != L'\0'; ++wpText)
+              {
+                if (*wpText == L'\"')
+                {
+                  if (siParent=StackAddItem(ss, siParent, ASI_LAST))
+                  {
+                    xstrcpynW(siParent->wszName, wpFolderStart, (wpText - wpFolderStart) + 1);
+                    siParent->dwFolderFlags=dwFolderFlags;
+                  }
+                  ++wpText;
+                  break;
+                }
+              }
+              if (!NextLine(&wpText)) goto FreeText;
+              SkipSpaces(&wpText);
+
+              if (*wpText != L'{')
+              {
+                nMessageID=STRID_PARSEMSG_NOOPENBRACKET;
+                goto Error;
+              }
+              ++wpText;
+              SkipSpaces(&wpText);
+              continue;
+            }
+
+            //File name
+            for (i=0; i < MAX_PATH && *wpText != L'\r' && *wpText != L'\0'; wszDocumentFile[i++]=*wpText++);
+            wszDocumentFile[i]=L'\0';
+            if (!NextLine(&wpText)) goto FreeText;
+            SkipSpaces(&wpText);
+
+            //File parameters
+            wszName[0]=L'\0';
             nTabActive=0;
             nCodePage=0;
             cr.cpMin=0;
@@ -2038,7 +2680,21 @@ BOOL LoadSessionFile(SESSION *ss)
               {
                 ++wpText;
 
-                if (!xstrcmpnW(L"Active=", wpText, (UINT_PTR)-1))
+                if (!xstrcmpnW(L"Name=", wpText, (UINT_PTR)-1))
+                {
+                  wpText+=5;
+                  if (*wpText == L'\"')
+                  {
+                    for (wpName=++wpText; *wpText != L'\"' && *wpText != L'\0'; ++wpText);
+
+                    if (*wpText == L'\"')
+                    {
+                      xstrcpynW(wszName, wpName, min(wpText - wpName + 1, MAX_PATH));
+                      ++wpText;
+                    }
+                  }
+                }
+                else if (!xstrcmpnW(L"Active=", wpText, (UINT_PTR)-1))
                 {
                   wpText+=7;
                   if (xatoiW(wpText, &wpText) == 1)
@@ -2097,12 +2753,8 @@ BOOL LoadSessionFile(SESSION *ss)
                   wpText+=11;
                   if (*wpText == L'\"')
                   {
-                    wpAlias=++wpText;
+                    for (wpAlias=++wpText; *wpText != L'\"' && *wpText != L'\0'; ++wpText);
 
-                    while (*wpText != L'\"' && *wpText != L'\0')
-                    {
-                      ++wpText;
-                    }
                     if (*wpText == L'\"')
                     {
                       if (wszCoderAlias=(wchar_t *)GlobalAlloc(GPTR, (wpText - wpAlias + 1) * sizeof(wchar_t)))
@@ -2161,28 +2813,49 @@ BOOL LoadSessionFile(SESSION *ss)
             }
             if (wszDocumentFile[0])
             {
-              if (lpItemElement=AddSessionItem(ss))
+              if (siNew=StackAddItem(ss, siParent, ASI_LAST))
               {
-                xstrcpynW(lpItemElement->wszItemFile, wszDocumentFile, MAX_PATH);
-                TranslateFileString(wszDocumentFile, lpItemElement->wszItemExpFile, MAX_PATH);
-                lpItemElement->nTabActive=nTabActive;
-                lpItemElement->nCodePage=nCodePage;
-                lpItemElement->nSelStart=cr.cpMin;
-                lpItemElement->nSelEnd=cr.cpMax;
-                lpItemElement->nFirstVisChar=nFirstVisChar;
-                lpItemElement->bWordWrap=bWordWrap;
-                lpItemElement->bReadOnly=bReadOnly;
-                lpItemElement->bOvertypeMode=bOvertypeMode;
-                lpItemElement->wszBookmarks=wszBookmarks;
-                lpItemElement->wszCoderAlias=wszCoderAlias;
-                lpItemElement->wszCoderFolds=wszCoderFolds;
-                lpItemElement->wszCoderMarks=wszCoderMarks;
+                if (wszName[0])
+                  xstrcpynW(siNew->wszName, wszName, MAX_PATH);
+                else
+                  xstrcpynW(siNew->wszName, GetFileName(wszDocumentFile, -1), MAX_PATH);
+                xstrcpynW(siNew->wszItemFile, wszDocumentFile, MAX_PATH);
+                TranslateFileString(wszDocumentFile, siNew->wszItemExpFile, MAX_PATH);
+                siNew->nTabActive=nTabActive;
+                siNew->nCodePage=nCodePage;
+                siNew->nSelStart=cr.cpMin;
+                siNew->nSelEnd=cr.cpMax;
+                siNew->nFirstVisChar=nFirstVisChar;
+                siNew->bWordWrap=bWordWrap;
+                siNew->bReadOnly=bReadOnly;
+                siNew->bOvertypeMode=bOvertypeMode;
+                siNew->wszBookmarks=wszBookmarks;
+                siNew->wszCoderAlias=wszCoderAlias;
+                siNew->wszCoderFolds=wszCoderFolds;
+                siNew->wszCoderMarks=wszCoderMarks;
               }
             }
-
-            while (*wpText == L'\r' || *wpText == L'\n') ++wpText;
+          }
+          if (siParent)
+          {
+            nMessageID=STRID_PARSEMSG_NOCLOSEBRACKET;
+            goto Error;
           }
         }
+        goto FreeText;
+
+        Error:
+        if (EditSessionFile(ss->wszSessionName))
+        {
+          CHARRANGE64 cr;
+          HWND hWndEdit=(HWND)SendMessage(hMainWnd, AKD_GETFRAMEINFO, FI_WNDEDIT, (LPARAM)NULL);
+
+          cr.cpMin=wpText - wpTextBegin;
+          cr.cpMax=cr.cpMin + 1;
+          SendMessage(hWndEdit, EM_EXSETSEL64, 0, (LPARAM)&cr);
+        }
+        MessageBoxW(hMainWnd, GetLangStringW(wLangModule, nMessageID), wszPluginTitle, MB_OK|MB_ICONERROR);
+
         FreeText:
         GlobalFree((HGLOBAL)wszText);
       }
@@ -2212,7 +2885,7 @@ void OpenSessionFile(const wchar_t *wpSessionName)
   if (LoadSessionFile(&ss))
   {
     OpenSession(&ss.hItemsStack);
-    FreeSessionItems(&ss);
+    StackFreeItems(&ss);
   }
 }
 
@@ -2226,7 +2899,7 @@ void CloseSessionFile(const wchar_t *wpSessionName)
   if (LoadSessionFile(&ss))
   {
     CloseSession(&ss.hItemsStack);
-    FreeSessionItems(&ss);
+    StackFreeItems(&ss);
   }
 }
 
@@ -2246,13 +2919,18 @@ BOOL EditSessionFile(const wchar_t *wpSessionName)
 
 void SaveSessionFile(SESSION *ss)
 {
-  SESSIONITEM *lpItemElement;
+  SESSIONITEM *si=ss->hItemsStack.first;
   wchar_t wszSessionFile[MAX_PATH];
   wchar_t wszCoderAlias[MAX_PATH];
   wchar_t *wszData;
+  wchar_t *wpCount;
+  wchar_t *wpMaxCount;
+  wchar_t *wszSpacesIndent=NULL;
   INT_PTR nDataSize;
   HANDLE hFile;
   DWORD dwBytesWritten;
+  int nLevel=0;
+  int nMaxLevel=-1;
 
   if (nSaveSessions == SDIR_PROGRAM)
     CreateDirectoryWide(wszSessionsDir, NULL);
@@ -2264,10 +2942,25 @@ void SaveSessionFile(SESSION *ss)
     return;
   if (WriteFile(hFile, "\xFF\xFE", 2, &dwBytesWritten, NULL))
   {
-    for (lpItemElement=(SESSIONITEM *)ss->hItemsStack.first; lpItemElement; lpItemElement=lpItemElement->next)
+    while (si)
     {
-      if (lpItemElement->wszCoderAlias)
-        xprintfW(wszCoderAlias, L"\"%s\"", lpItemElement->wszCoderAlias);
+      if (nLevel > nMaxLevel)
+      {
+        if (wszSpacesIndent)
+        {
+          GlobalFree((HGLOBAL)wszSpacesIndent);
+          wszSpacesIndent=NULL;
+        }
+        if (wszSpacesIndent=(wchar_t *)GlobalAlloc(GPTR, (nLevel * 2 + 1) * sizeof(wchar_t)))
+        {
+          for (wpCount=wszSpacesIndent, wpMaxCount=wszSpacesIndent + (nLevel * 2); wpCount < wpMaxCount; ++wpCount)
+            *wpCount=L' ';
+        }
+        nMaxLevel=nLevel;
+      }
+
+      if (si->wszCoderAlias)
+        xprintfW(wszCoderAlias, L"\"%s\"", si->wszCoderAlias);
       else
         wszCoderAlias[0]=L'\0';
 
@@ -2277,9 +2970,23 @@ void SaveSessionFile(SESSION *ss)
 
       for (;;)
       {
-        //Two lines to write
-        nDataSize=xprintfW(wszData, L"%s\r\n/Active=%d /Codepage=%d /Selection=%Id-%Id /FirstVisChar=%Id /WordWrap=%d /ReadOnly=%d /Overtype=%d /Bookmarks=%s /CoderAlias=%s /Folds=%s /Marks=%s\r\n\r\n",
-                                    lpItemElement->wszItemFile, lpItemElement->nTabActive, lpItemElement->nCodePage, lpItemElement->nSelStart, lpItemElement->nSelEnd, lpItemElement->nFirstVisChar, lpItemElement->bWordWrap, lpItemElement->bReadOnly, lpItemElement->bOvertypeMode, lpItemElement->wszBookmarks, wszCoderAlias, lpItemElement->wszCoderFolds, lpItemElement->wszCoderMarks);
+        if (si->dwFolderFlags)
+        {
+          //Is empty folder
+          if (!si->firstChild)
+            nDataSize=xprintfW(wszData, L"%s%.%ds%s\"%s\"\r\n%.%ds{\r\n%.%ds}\r\n",
+                                        (si->prev && !si->prev->dwFolderFlags)?L"\r\n":L"", nLevel * 2, wszSpacesIndent, (si->dwFolderFlags & FLDF_OPEN)?L"-":L"", si->wszName, nLevel * 2, wszSpacesIndent, nLevel * 2, wszSpacesIndent);
+          else
+            nDataSize=xprintfW(wszData, L"%s%.%ds%s\"%s\"\r\n%.%ds{\r\n",
+                                        (si->prev && !si->prev->dwFolderFlags)?L"\r\n":L"", nLevel * 2, wszSpacesIndent, (si->dwFolderFlags & FLDF_OPEN)?L"-":L"", si->wszName, nLevel * 2, wszSpacesIndent);
+        }
+        else
+        {
+          //File
+          nDataSize=xprintfW(wszData, L"%s%.%ds%s\r\n%.%ds/Name=\"%s\" /Active=%d /Codepage=%d /Selection=%Id-%Id /FirstVisChar=%Id /WordWrap=%d /ReadOnly=%d /Overtype=%d /Bookmarks=%s /CoderAlias=%s /Folds=%s /Marks=%s\r\n",
+                                      (si->prev && !si->prev->dwFolderFlags)?L"\r\n":L"", nLevel * 2, wszSpacesIndent, si->wszItemFile, nLevel * 2, wszSpacesIndent, si->wszName, si->nTabActive, si->nCodePage, si->nSelStart, si->nSelEnd, si->nFirstVisChar, si->bWordWrap, si->bReadOnly, si->bOvertypeMode, si->wszBookmarks, wszCoderAlias, si->wszCoderFolds, si->wszCoderMarks);
+        }
+
         if (!wszData)
         {
           if (wszData=(wchar_t *)GlobalAlloc(GPTR, nDataSize * sizeof(wchar_t)))
@@ -2292,28 +2999,55 @@ void SaveSessionFile(SESSION *ss)
         break;
       }
       if (!dwBytesWritten) break;
+
+      //Next item
+      if (si->firstChild)
+      {
+        si=si->firstChild;
+        ++nLevel;
+        continue;
+      }
+
+      do
+      {
+        if (si->next)
+        {
+          si=si->next;
+          break;
+        }
+        si=si->parent;
+        --nLevel;
+
+        if (si)
+        {
+          WriteFile(hFile, wszSpacesIndent, (nLevel * 2) * sizeof(wchar_t), &dwBytesWritten, NULL);
+          WriteFile(hFile, L"}\r\n", 3 * sizeof(wchar_t), &dwBytesWritten, NULL);
+        }
+      }
+      while (si);
     }
   }
+  if (wszSpacesIndent) GlobalFree((HGLOBAL)wszSpacesIndent);
   CloseHandle(hFile);
 }
 
 void SaveCurrentSession(const wchar_t *wpSessionName)
 {
-  HSTACK hCloseStack={0};
-  SESSION ss;
-  SESSION *lpElement;
+  STACKSESSION hCloseStack={0};
+  SESSION ssDummy;
+  SESSION *ss;
 
-  if (lpElement=AddCurrentSession(&hCloseStack, wpSessionName))
+  if (ss=AddCurrentSession(&hCloseStack, wpSessionName))
   {
-    SaveSessionFile(lpElement);
-    DeleteSession(&hCloseStack, lpElement);
+    SaveSessionFile(ss);
+    DeleteSession(&hCloseStack, ss);
   }
   else
   {
     //Save empty session
-    xmemset(&ss, 0, sizeof(SESSION));
-    xstrcpynW(ss.wszSessionName, wpSessionName, MAX_PATH);
-    SaveSessionFile(&ss);
+    xmemset(&ssDummy, 0, sizeof(SESSION));
+    xstrcpynW(ssDummy.wszSessionName, wpSessionName, MAX_PATH);
+    SaveSessionFile(&ssDummy);
   }
 }
 
@@ -2336,7 +3070,7 @@ int SaveSessionPrompt()
 
     if (nChoice == IDYES)
     {
-      FreeSessionItems(lpRealSession);
+      StackFreeItems(lpRealSession);
       lpVirtualSession->bModified=FALSE;
       CopySession(lpVirtualSession, lpRealSession);
       SaveSessionFile(lpRealSession);
@@ -2345,9 +3079,9 @@ int SaveSessionPrompt()
   return nChoice;
 }
 
-void FillSessions(HSTACK *hStack)
+void LoadSessions(STACKSESSION *hStack)
 {
-  SESSION *lpElement;
+  SESSION *ss;
   WIN32_FIND_DATAW wfd;
   HANDLE hFind;
   wchar_t wszFindFiles[MAX_PATH];
@@ -2362,11 +3096,11 @@ void FillSessions(HSTACK *hStack)
     {
       if (wfd.cFileName[0] == L'.' && (wfd.cFileName[1] == L'\0' || (wfd.cFileName[1] == L'.' && wfd.cFileName[2] == L'\0'))) continue;
 
-      GetBaseNameW(wfd.cFileName, wszBaseName, MAX_PATH);
+      GetBaseName(wfd.cFileName, wszBaseName, MAX_PATH);
 
-      if (lpElement=AddEmptySession(hStack, wszBaseName))
+      if (ss=AddEmptySession(hStack, wszBaseName))
       {
-        LoadSessionFile(lpElement);
+        LoadSessionFile(ss);
       }
     }
     while (FindNextFileWide(hFind, &wfd));
@@ -2375,23 +3109,23 @@ void FillSessions(HSTACK *hStack)
   }
 }
 
-SESSION* AddEmptySession(HSTACK *hStack, const wchar_t *wpSessionName)
+SESSION* AddEmptySession(STACKSESSION *hStack, const wchar_t *wpSessionName)
 {
-  SESSION *lpElement=NULL;
+  SESSION *ss=NULL;
 
-  if (!StackInsertIndex((stack **)&hStack->first, (stack **)&hStack->last, (stack **)&lpElement, -1, sizeof(SESSION)))
+  if (!StackInsertIndex((stack **)&hStack->first, (stack **)&hStack->last, (stack **)&ss, -1, sizeof(SESSION)))
   {
-    xstrcpynW(lpElement->wszSessionName, wpSessionName, MAX_PATH);
+    xstrcpynW(ss->wszSessionName, wpSessionName, MAX_PATH);
   }
-  return lpElement;
+  return ss;
 }
 
-SESSION* AddCurrentSession(HSTACK *hStack, const wchar_t *wpSessionName)
+SESSION* AddCurrentSession(STACKSESSION *hStack, const wchar_t *wpSessionName)
 {
   FRAMEDATA *lpFrameActive;
   FRAMEDATA *lpFrame;
   SESSION *lpSessionElement=NULL;
-  SESSIONITEM *lpItemElement=NULL;
+  SESSIONITEM *siNew=NULL;
   PLUGINFUNCTION *pfLineBoard=NULL;
   PLUGINFUNCTION *pfCoder=NULL;
   TCITEMW tcItem;
@@ -2623,22 +3357,23 @@ SESSION* AddCurrentSession(HSTACK *hStack, const wchar_t *wpSessionName)
             }
           }
 
-          if (lpItemElement=AddSessionItem(lpSessionElement))
+          if (siNew=StackAddItem(lpSessionElement, NULL, ASI_LAST))
           {
-            xstrcpynW(lpItemElement->wszItemFile, lpFrame->ei.wszFile, MAX_PATH);
-            xstrcpynW(lpItemElement->wszItemExpFile, lpFrame->ei.wszFile, MAX_PATH);
-            lpItemElement->nTabActive=nTabActive;
-            lpItemElement->nCodePage=lpFrame->ei.nCodePage;
-            lpItemElement->nSelStart=cr.cpMin;
-            lpItemElement->nSelEnd=cr.cpMax;
-            lpItemElement->nFirstVisChar=nFirstVisChar;
-            lpItemElement->bWordWrap=lpFrame->ei.bWordWrap;
-            lpItemElement->bReadOnly=lpFrame->ei.bReadOnly;
-            lpItemElement->bOvertypeMode=lpFrame->ei.bOvertypeMode;
-            lpItemElement->wszBookmarks=wszBookmarks;
-            lpItemElement->wszCoderAlias=wszCoderAlias;
-            lpItemElement->wszCoderFolds=wszCoderFolds;
-            lpItemElement->wszCoderMarks=wszCoderMarks;
+            xstrcpynW(siNew->wszName, GetFileName(lpFrame->ei.wszFile, -1), MAX_PATH);
+            xstrcpynW(siNew->wszItemFile, lpFrame->ei.wszFile, MAX_PATH);
+            xstrcpynW(siNew->wszItemExpFile, lpFrame->ei.wszFile, MAX_PATH);
+            siNew->nTabActive=nTabActive;
+            siNew->nCodePage=lpFrame->ei.nCodePage;
+            siNew->nSelStart=cr.cpMin;
+            siNew->nSelEnd=cr.cpMax;
+            siNew->nFirstVisChar=nFirstVisChar;
+            siNew->bWordWrap=lpFrame->ei.bWordWrap;
+            siNew->bReadOnly=lpFrame->ei.bReadOnly;
+            siNew->bOvertypeMode=lpFrame->ei.bOvertypeMode;
+            siNew->wszBookmarks=wszBookmarks;
+            siNew->wszCoderAlias=wszCoderAlias;
+            siNew->wszCoderFolds=wszCoderFolds;
+            siNew->wszCoderMarks=wszCoderMarks;
           }
         }
       }
@@ -2647,92 +3382,116 @@ SESSION* AddCurrentSession(HSTACK *hStack, const wchar_t *wpSessionName)
   return lpSessionElement;
 }
 
-SESSION* GetSession(HSTACK *hStack, const wchar_t *wpSessionName)
+SESSION* GetSession(STACKSESSION *hStack, const wchar_t *wpSessionName)
 {
-  SESSION *lpElement=(SESSION *)hStack->first;
+  SESSION *ss;
 
-  while (lpElement)
+  for (ss=hStack->first; ss; ss=ss->next)
   {
-    if (!xstrcmpiW(lpElement->wszSessionName, wpSessionName))
-      return lpElement;
-
-    lpElement=lpElement->next;
+    if (!xstrcmpiW(ss->wszSessionName, wpSessionName))
+      return ss;
   }
   return NULL;
 }
 
-void CopySession(SESSION *ssSource, SESSION *ssTarget)
+void CopySessionLevel(SESSIONITEM *siFirstSource, SESSIONITEM *siLastSource, SESSIONITEM **psiFirstTarget, SESSIONITEM **psiLastTarget, SESSIONITEM *siTargetParent)
 {
-  SESSIONITEM *lpItemSource;
-  SESSIONITEM *lpItemTarget;
+  SESSIONITEM *siFirstTarget;
   SIZE_T nSize;
 
-  xstrcpynW(ssTarget->wszSessionName, ssSource->wszSessionName, MAX_PATH);
-  ssTarget->hItemsStack.first=0;
-  ssTarget->hItemsStack.last=0;
-  ssTarget->bModified=ssSource->bModified;
-  StackCopy((stack *)ssSource->hItemsStack.first, (stack *)ssSource->hItemsStack.last, (stack **)&ssTarget->hItemsStack.first, (stack **)&ssTarget->hItemsStack.last, sizeof(SESSIONITEM));
+  *psiFirstTarget=NULL;
+  *psiLastTarget=NULL;
+  StackCopy((stack *)siFirstSource, (stack *)siLastSource, (stack **)psiFirstTarget, (stack **)psiLastTarget, sizeof(SESSIONITEM));
+  siFirstTarget=*psiFirstTarget;
 
-  //Realloc bookmarks
-  lpItemSource=ssSource->hItemsStack.first;
-  lpItemTarget=ssTarget->hItemsStack.first;
-
-  while (lpItemSource)
+  //Realloc strings
+  while (siFirstSource)
   {
-    if (lpItemSource->wszBookmarks)
+    siFirstTarget->parent=siTargetParent;
+    siFirstTarget->firstChild=NULL;
+    siFirstTarget->lastChild=NULL;
+
+    if (siFirstSource->wszBookmarks)
     {
-      nSize=GlobalSize((HGLOBAL)lpItemSource->wszBookmarks);
-
-      if (lpItemTarget->wszBookmarks=(wchar_t *)GlobalAlloc(GPTR, nSize))
-      {
-        xmemcpy(lpItemTarget->wszBookmarks, lpItemSource->wszBookmarks, nSize);
-      }
+      nSize=GlobalSize((HGLOBAL)siFirstSource->wszBookmarks);
+      if (siFirstTarget->wszBookmarks=(wchar_t *)GlobalAlloc(GPTR, nSize))
+        xmemcpy(siFirstTarget->wszBookmarks, siFirstSource->wszBookmarks, nSize);
     }
-    if (lpItemSource->wszCoderAlias)
+    if (siFirstSource->wszCoderAlias)
     {
-      nSize=GlobalSize((HGLOBAL)lpItemSource->wszCoderAlias);
-
-      if (lpItemTarget->wszCoderAlias=(wchar_t *)GlobalAlloc(GPTR, nSize))
-      {
-        xmemcpy(lpItemTarget->wszCoderAlias, lpItemSource->wszCoderAlias, nSize);
-      }
+      nSize=GlobalSize((HGLOBAL)siFirstSource->wszCoderAlias);
+      if (siFirstTarget->wszCoderAlias=(wchar_t *)GlobalAlloc(GPTR, nSize))
+        xmemcpy(siFirstTarget->wszCoderAlias, siFirstSource->wszCoderAlias, nSize);
     }
-    if (lpItemSource->wszCoderFolds)
+    if (siFirstSource->wszCoderFolds)
     {
-      nSize=GlobalSize((HGLOBAL)lpItemSource->wszCoderFolds);
-
-      if (lpItemTarget->wszCoderFolds=(wchar_t *)GlobalAlloc(GPTR, nSize))
-      {
-        xmemcpy(lpItemTarget->wszCoderFolds, lpItemSource->wszCoderFolds, nSize);
-      }
+      nSize=GlobalSize((HGLOBAL)siFirstSource->wszCoderFolds);
+      if (siFirstTarget->wszCoderFolds=(wchar_t *)GlobalAlloc(GPTR, nSize))
+        xmemcpy(siFirstTarget->wszCoderFolds, siFirstSource->wszCoderFolds, nSize);
     }
-    if (lpItemSource->wszCoderMarks)
+    if (siFirstSource->wszCoderMarks)
     {
-      nSize=GlobalSize((HGLOBAL)lpItemSource->wszCoderMarks);
+      nSize=GlobalSize((HGLOBAL)siFirstSource->wszCoderMarks);
+      if (siFirstTarget->wszCoderMarks=(wchar_t *)GlobalAlloc(GPTR, nSize))
+        xmemcpy(siFirstTarget->wszCoderMarks, siFirstSource->wszCoderMarks, nSize);
+    }
+    siFirstSource=siFirstSource->next;
+    siFirstTarget=siFirstTarget->next;
+  }
+}
 
-      if (lpItemTarget->wszCoderMarks=(wchar_t *)GlobalAlloc(GPTR, nSize))
-      {
-        xmemcpy(lpItemTarget->wszCoderMarks, lpItemSource->wszCoderMarks, nSize);
-      }
+void CopySession(SESSION *ssSource, SESSION *ssTarget)
+{
+  SESSIONITEM *lpSourceParent=NULL;
+  SESSIONITEM *lpTargetParent=NULL;
+  SESSIONITEM *lpSourceSubling;
+  SESSIONITEM *lpTargetSubling;
+
+  xstrcpynW(ssTarget->wszSessionName, ssSource->wszSessionName, MAX_PATH);
+  ssTarget->bModified=ssSource->bModified;
+  CopySessionLevel(ssSource->hItemsStack.first, ssSource->hItemsStack.last, &ssTarget->hItemsStack.first, &ssTarget->hItemsStack.last, NULL);
+  lpSourceSubling=ssSource->hItemsStack.first;
+  lpTargetSubling=ssTarget->hItemsStack.first;
+
+  NextParent:
+  while (lpSourceSubling)
+  {
+    if (lpSourceSubling->firstChild)
+    {
+      CopySessionLevel(lpSourceSubling->firstChild, lpSourceSubling->lastChild, &lpTargetSubling->firstChild, &lpTargetSubling->lastChild, lpTargetSubling);
+      lpSourceSubling=lpSourceSubling->firstChild;
+      lpTargetSubling=lpTargetSubling->firstChild;
+      continue;
     }
 
-    lpItemSource=lpItemSource->next;
-    lpItemTarget=lpItemTarget->next;
+    //Group doesn't have childrens
+    lpSourceParent=lpSourceSubling->parent;
+    lpTargetParent=lpTargetSubling->parent;
+    lpSourceSubling=lpSourceSubling->next;
+    lpTargetSubling=lpTargetSubling->next;
+  }
+  if (lpSourceParent)
+  {
+    lpSourceSubling=lpSourceParent->next;
+    lpTargetSubling=lpTargetParent->next;
+    lpSourceParent=lpSourceParent->parent;
+    lpTargetParent=lpTargetParent->parent;
+    goto NextParent;
   }
 }
 
 void OpenSession(STACKSESSIONITEM *hStack)
 {
-  SESSIONITEM *lpItemElement;
+  SESSIONITEM *lpCount;
   FRAMEDATA *lpFrameActivate=NULL;
 
-  for (lpItemElement=hStack->first; lpItemElement; lpItemElement=lpItemElement->next)
+  for (lpCount=hStack->first; lpCount; lpCount=StackNextItem(lpCount, NULL))
   {
-    if (FileExistsWide(lpItemElement->wszItemExpFile))
+    if (!lpCount->dwFolderFlags && FileExistsWide(lpCount->wszItemExpFile))
     {
-      OpenSessionItem(lpItemElement);
+      OpenItem(lpCount);
 
-      if (lpItemElement->nTabActive)
+      if (lpCount->nTabActive)
       {
         lpFrameActivate=(FRAMEDATA *)SendMessage(hMainWnd, AKD_FRAMEFIND, FWF_CURRENT, 0);
       }
@@ -2744,65 +3503,199 @@ void OpenSession(STACKSESSIONITEM *hStack)
 
 void CloseSession(STACKSESSIONITEM *hStack)
 {
-  SESSIONITEM *lpItemElement;
+  SESSIONITEM *lpCount;
   FRAMEDATA *lpFrame;
 
-  for (lpItemElement=hStack->first; lpItemElement; lpItemElement=lpItemElement->next)
+  for (lpCount=hStack->first; lpCount; lpCount=StackNextItem(lpCount, NULL))
   {
-    if (lpFrame=(FRAMEDATA *)SendMessage(hMainWnd, AKD_FRAMEFINDW, FWF_BYFILENAME, (LPARAM)lpItemElement->wszItemExpFile))
+    if (!lpCount->dwFolderFlags && (lpFrame=(FRAMEDATA *)SendMessage(hMainWnd, AKD_FRAMEFINDW, FWF_BYFILENAME, (LPARAM)lpCount->wszItemExpFile)))
     {
-      if (!CloseSessionItem(lpFrame, FALSE))
+      if (!CloseItem(lpFrame, FALSE))
         break;
     }
   }
 }
 
-void DeleteSession(HSTACK *hStack, SESSION *ss)
+void DeleteSession(STACKSESSION *hStack, SESSION *ss)
 {
-  FreeSessionItems(ss);
+  StackFreeItems(ss);
   StackDelete((stack **)&hStack->first, (stack **)&hStack->last, (stack *)ss);
 }
 
-void FreeSessions(HSTACK *hStack)
+void FreeSessions(STACKSESSION *hStack)
 {
-  SESSION *lpElement=(SESSION *)hStack->first;
+  SESSION *ss;
 
-  while (lpElement)
+  for (ss=hStack->first; ss; ss=ss->next)
   {
-    FreeSessionItems(lpElement);
-
-    lpElement=lpElement->next;
+    StackFreeItems(ss);
   }
   StackClear((stack **)&hStack->first, (stack **)&hStack->last);
 }
 
-SESSIONITEM* AddSessionItem(SESSION *ss)
+SESSIONITEM* StackAddItem(SESSION *ss, SESSIONITEM *siParent, SESSIONITEM *siAfterThis)
 {
-  SESSIONITEM *lpElement=NULL;
+  SESSIONITEM *siNew=NULL;
+  SESSIONITEM **siFirst;
+  SESSIONITEM **siLast;
 
-  StackInsertIndex((stack **)&ss->hItemsStack.first, (stack **)&ss->hItemsStack.last, (stack **)&lpElement, -1, sizeof(SESSIONITEM));
-  return lpElement;
-}
-
-SESSIONITEM* GetSessionItem(SESSION *ss, int nIndex)
-{
-  SESSIONITEM *lpElement=NULL;
-
-  StackGetElement((stack *)ss->hItemsStack.first, (stack *)ss->hItemsStack.last, (stack **)&lpElement, nIndex);
-  return lpElement;
-}
-
-void MoveSessionItem(SESSION *ss, int nOldIndex, int nNewIndex)
-{
-  SESSIONITEM *lpElement=NULL;
-
-  if (lpElement=GetSessionItem(ss, nOldIndex))
+  if (!siParent)
   {
-    StackMoveIndex((stack **)&ss->hItemsStack.first, (stack **)&ss->hItemsStack.last, (stack *)lpElement, nNewIndex);
+    siFirst=&ss->hItemsStack.first;
+    siLast=&ss->hItemsStack.last;
+  }
+  else
+  {
+    siFirst=&siParent->firstChild;
+    siLast=&siParent->lastChild;
+  }
+  if (siAfterThis == ASI_FIRST)
+    siAfterThis=NULL;
+  else if (siAfterThis == ASI_LAST)
+    siAfterThis=*siLast;
+
+  if (!StackInsertAfter((stack **)siFirst, (stack **)siLast, (stack *)siAfterThis, (stack **)&siNew, sizeof(SESSIONITEM)))
+  {
+    siNew->parent=siParent;
+    ++ss->hItemsStack.nElements;
+  }
+  return siNew;
+}
+
+int StackItemIndex(SESSION *ss, SESSIONITEM *si)
+{
+  SESSIONITEM *lpCount;
+  int nIndex=1;
+
+  for (lpCount=ss->hItemsStack.first; lpCount; lpCount=StackNextItem(lpCount, NULL))
+  {
+    if (lpCount == si)
+      return nIndex;
+    ++nIndex;
+  }
+  return 0;
+}
+
+SESSIONITEM* StackNextItem(SESSIONITEM *siItem, SESSIONITEM *siRoot)
+{
+  if (siItem->firstChild)
+    return siItem->firstChild;
+
+  do
+  {
+    if (siItem->next)
+      return siItem->next;
+    siItem=siItem->parent;
+  }
+  while (siItem != siRoot);
+
+  return NULL;
+}
+
+SESSIONITEM* StackNextItemNoChild(SESSIONITEM *si)
+{
+  do
+  {
+    if (si->next)
+      return si->next;
+  }
+  while (si=si->parent);
+
+  return si;
+}
+
+SESSIONITEM* StackPrevItem(SESSIONITEM *siItem, SESSIONITEM *siRoot)
+{
+  if (siItem->lastChild)
+    return siItem->lastChild;
+
+  do
+  {
+    if (siItem->prev)
+      return siItem->prev;
+    siItem=siItem->parent;
+  }
+  while (siItem != siRoot);
+
+  return NULL;
+}
+
+SESSIONITEM* StackPrevItemNoChild(SESSIONITEM *si)
+{
+  do
+  {
+    if (si->prev)
+      return si->prev;
+  }
+  while (si=si->parent);
+
+  return si;
+}
+
+void StackDeleteItem(SESSION *ss, SESSIONITEM *siItem)
+{
+  SESSIONITEM *lpParent=siItem;
+  SESSIONITEM *lpSubling;
+  SESSIONITEM *lpNextSubling;
+
+  if (siItem)
+    lpSubling=siItem->firstChild;
+  else
+    lpSubling=ss->hItemsStack.first;
+
+  while (lpSubling)
+  {
+    NextParent:
+    if (lpSubling->firstChild)
+    {
+      lpSubling=lpSubling->firstChild;
+      continue;
+    }
+
+    //Group doesn't have childrens
+    lpParent=lpSubling->parent;
+    lpNextSubling=lpSubling->next;
+
+    //Delete group
+    if (lpSubling->wszBookmarks)
+      GlobalFree((HGLOBAL)lpSubling->wszBookmarks);
+    if (lpSubling->wszCoderAlias)
+      GlobalFree((HGLOBAL)lpSubling->wszCoderAlias);
+    if (lpSubling->wszCoderFolds)
+      GlobalFree((HGLOBAL)lpSubling->wszCoderFolds);
+    if (lpSubling->wszCoderMarks)
+      GlobalFree((HGLOBAL)lpSubling->wszCoderMarks);
+
+    if (!lpParent)
+      StackDelete((stack **)&ss->hItemsStack.first, (stack **)&ss->hItemsStack.last, (stack *)lpSubling);
+    else
+      StackDelete((stack **)&lpParent->firstChild, (stack **)&lpParent->lastChild, (stack *)lpSubling);
+    --ss->hItemsStack.nElements;
+
+    lpSubling=lpNextSubling;
+  }
+  if (lpParent != siItem)
+  {
+    lpSubling=lpParent;
+    goto NextParent;
+  }
+
+  if (siItem)
+  {
+    if (!siItem->parent)
+      StackDelete((stack **)&ss->hItemsStack.first, (stack **)&ss->hItemsStack.last, (stack *)siItem);
+    else
+      StackDelete((stack **)&siItem->parent->firstChild, (stack **)&siItem->parent->lastChild, (stack *)siItem);
+    --ss->hItemsStack.nElements;
   }
 }
 
-void OpenSessionItem(SESSIONITEM *si)
+void StackFreeItems(SESSION *ss)
+{
+  StackDeleteItem(ss, NULL);
+}
+
+void OpenItem(SESSIONITEM *si)
 {
   FRAMEDATA *lpFrameActivate=NULL;
   EDITINFO ei;
@@ -2813,7 +3706,7 @@ void OpenSessionItem(SESSIONITEM *si)
   DWORD dwCmdLineOptions;
   int nLockScroll;
 
-  bSessionItemOpening=TRUE;
+  bItemOpening=TRUE;
 
   if (SendMessage(hMainWnd, AKD_GETEDITINFO, (WPARAM)NULL, (LPARAM)&ei))
   {
@@ -3030,10 +3923,10 @@ void OpenSessionItem(SESSIONITEM *si)
   }
 
   End:
-  bSessionItemOpening=FALSE;
+  bItemOpening=FALSE;
 }
 
-BOOL CloseSessionItem(FRAMEDATA *lpFrame, BOOL bSingle)
+BOOL CloseItem(FRAMEDATA *lpFrame, BOOL bSingle)
 {
   BOOL bModified;
   BOOL bResult=TRUE;
@@ -3064,73 +3957,101 @@ BOOL CloseSessionItem(FRAMEDATA *lpFrame, BOOL bSingle)
   return bResult;
 }
 
-void DeleteSessionItem(SESSION *ss, int nIndex)
+BOOL SelectItem(HWND hWnd, SESSIONITEM *si, BOOL bSelect)
 {
-  SESSIONITEM *lpElement=NULL;
+  TVITEMW tvi;
+  BOOL bResult;
 
-  if (!StackGetElement((stack *)ss->hItemsStack.first, (stack *)ss->hItemsStack.last, (stack **)&lpElement, nIndex))
+  tvi.mask=TVIF_STATE;
+  tvi.state=bSelect?TVIS_SELECTED:0;
+  tvi.stateMask=TVIS_SELECTED;
+  tvi.hItem=si->hItem;
+  bResult=TreeView_SetItemWide(hWnd, &tvi);
+
+  if (bSelect)
+    si->dwState|=TVIS_SELECTED;
+  else
+    si->dwState&=~TVIS_SELECTED;
+  return bResult;
+}
+
+void ComboFillSessions(STACKSESSION *hStack, HWND hWnd)
+{
+  SESSION *ss;
+
+  for (ss=hStack->first; ss; ss=ss->next)
   {
-    if (lpElement->wszBookmarks)
-      GlobalFree((HGLOBAL)lpElement->wszBookmarks);
-    if (lpElement->wszCoderAlias)
-      GlobalFree((HGLOBAL)lpElement->wszCoderAlias);
-    if (lpElement->wszCoderFolds)
-      GlobalFree((HGLOBAL)lpElement->wszCoderFolds);
-    if (lpElement->wszCoderMarks)
-      GlobalFree((HGLOBAL)lpElement->wszCoderMarks);
-
-    StackDelete((stack **)&ss->hItemsStack.first, (stack **)&ss->hItemsStack.last, (stack *)lpElement);
+    ComboBox_AddStringWide(hWnd, ss->wszSessionName);
   }
 }
 
-void FreeSessionItems(SESSION *ss)
+int MoveComboBoxItem(HWND hWnd, int nOldIndex, int nNewIndex)
 {
-  SESSIONITEM *lpItemElement=(SESSIONITEM *)ss->hItemsStack.first;
+  wchar_t *wpText;
+  int nIndex=CB_ERR;
+  int nTextLen;
 
-  while (lpItemElement)
+  if ((nTextLen=(int)SendMessage(hWnd, CB_GETLBTEXTLEN, nOldIndex, 0)) != CB_ERR)
   {
-    if (lpItemElement->wszBookmarks)
-      GlobalFree((HGLOBAL)lpItemElement->wszBookmarks);
-    if (lpItemElement->wszCoderAlias)
-      GlobalFree((HGLOBAL)lpItemElement->wszCoderAlias);
-    if (lpItemElement->wszCoderFolds)
-      GlobalFree((HGLOBAL)lpItemElement->wszCoderFolds);
-    if (lpItemElement->wszCoderMarks)
-      GlobalFree((HGLOBAL)lpItemElement->wszCoderMarks);
-
-    lpItemElement=lpItemElement->next;
+    if (wpText=(wchar_t *)GlobalAlloc(GMEM_FIXED, (nTextLen + 1) * sizeof(wchar_t)))
+    {
+      ComboBox_GetLBTextWide(hWnd, nOldIndex, wpText);
+      SendMessage(hWnd, CB_DELETESTRING, nOldIndex, 0);
+      nIndex=ComboBox_InsertStringWide(hWnd, nNewIndex, wpText);
+      GlobalFree((HGLOBAL)wpText);
+    }
   }
-  StackClear((stack **)&ss->hItemsStack.first, (stack **)&ss->hItemsStack.last);
+  return nIndex;
 }
 
-void FillSessionsList(HSTACK *hStack, HWND hWnd)
+int UpdateComboBoxDropWidth(HWND hWnd)
 {
-  SESSION *lpElement=(SESSION *)hStack->first;
+  wchar_t *wpText;
+  HDC hDC;
+  HFONT hFont;
+  HFONT hOldFont;
+  SIZE size;
+  int nTextLen;
+  int nMaxWidth=0;
+  int nIndex=0;
 
-  while (lpElement)
+  if (hDC=GetDC(hWnd))
   {
-    ComboBox_AddStringWide(hWnd, lpElement->wszSessionName);
+    hFont=(HFONT)SendMessage(hWnd, WM_GETFONT, 0,0);
+    hOldFont=(HFONT)SelectObject(hDC, hFont);
 
-    lpElement=lpElement->next;
+    for (;;)
+    {
+      if ((nTextLen=(int)SendMessage(hWnd, CB_GETLBTEXTLEN, nIndex, 0)) != CB_ERR)
+      {
+        if (wpText=(wchar_t *)GlobalAlloc(GMEM_FIXED, (nTextLen + 1) * sizeof(wchar_t)))
+        {
+          ComboBox_GetLBTextWide(hWnd, nIndex, wpText);
+          if (GetTextExtentPoint32W(hDC, wpText, nTextLen, &size))
+            nMaxWidth=max(size.cx, nMaxWidth);
+          GlobalFree((HGLOBAL)wpText);
+        }
+        else break;
+      }
+      else break;
+
+      ++nIndex;
+    }
+
+    if (hOldFont) SelectObject(hDC, hOldFont);
+    ReleaseDC(hWnd, hDC);
   }
+  SendMessage(hWnd, CB_SETDROPPEDWIDTH, nMaxWidth + 10, 0);
+  return nMaxWidth;
 }
 
-void FillItemsList(STACKSESSIONITEM *hStack, HWND hWnd)
+void TreeFillItemsCurrent(HWND hWndTreeView)
 {
-  SESSIONITEM *lpItemElement;
-
-  for (lpItemElement=hStack->first; lpItemElement; lpItemElement=lpItemElement->next)
-  {
-    ListBox_AddStringWide(hWnd, lpItemElement->wszItemFile);
-  }
-}
-
-void FillItemsListCurrent(HWND hWnd)
-{
+  TVINSERTSTRUCTW tvis;
+  TVITEMW tvi;
   TCITEMW tcItem;
   FRAMEDATA *lpFrame;
   int nTabItem=0;
-  int nListBoxItem=0;
 
   for (;;)
   {
@@ -3141,10 +4062,189 @@ void FillItemsListCurrent(HWND hWnd)
 
     if (*lpFrame->ei.wszFile)
     {
-      nListBoxItem=ListBox_AddStringWide(hWnd, lpFrame->ei.wszFile);
-      SendMessage(hWnd, LB_SETITEMDATA, (WPARAM)nListBoxItem, (LPARAM)lpFrame);
+      tvi.mask=TVIF_TEXT|TVIF_PARAM;
+      tvi.pszText=(wchar_t *)(bShowPath?lpFrame->ei.wszFile:GetFileName(lpFrame->ei.wszFile, -1));
+      tvi.cchTextMax=MAX_PATH;
+      tvi.lParam=(LPARAM)lpFrame;
+
+      xmemcpy(&tvis.item, &tvi, sizeof(TVITEMW));
+      tvis.hParent=NULL;
+      tvis.hInsertAfter=TVI_LAST;
+      TreeView_InsertItemWide(hWndTreeView, &tvis);
     }
   }
+}
+
+void TreeAddItem(HWND hWndTreeView, SESSIONITEM *si, HTREEITEM hInsertAfter, DWORD dwState)
+{
+  TVINSERTSTRUCTW tvis;
+
+  tvis.item.mask=TVIF_TEXT|TVIF_IMAGE|TVIF_SELECTEDIMAGE|TVIF_STATE|TVIF_PARAM;
+  tvis.item.hItem=NULL;
+  tvis.item.state=dwState;
+  tvis.item.stateMask=dwState;
+  if (bShowPath && !si->dwFolderFlags)
+    tvis.item.pszText=si->wszItemFile;
+  else
+    tvis.item.pszText=si->wszName;
+  tvis.item.cchTextMax=MAX_PATH;
+  if (!si->dwFolderFlags)
+  {
+    tvis.item.iImage=0;
+    tvis.item.iSelectedImage=0;
+  }
+  else
+  {
+    tvis.item.iImage=1;
+    tvis.item.iSelectedImage=1;
+  }
+  tvis.item.cChildren=0;
+  tvis.item.lParam=(LPARAM)si;
+
+  tvis.hParent=si->parent?si->parent->hItem:NULL;
+  tvis.hInsertAfter=hInsertAfter;
+  si->hItem=(HTREEITEM)TreeView_InsertItemWide(hWndTreeView, &tvis);
+}
+
+void TreeAddChild(HWND hWndTreeView, SESSION *ss, SESSIONITEM *si)
+{
+  SESSIONITEM *siCount;
+  SESSIONITEM *siFirst;
+
+  if (!si)
+    siFirst=ss->hItemsStack.first;
+  else
+    siFirst=si->firstChild;
+
+  for (siCount=siFirst; siCount; siCount=StackNextItem(siCount, si))
+  {
+    TreeAddItem(hWndTreeView, siCount, TVI_LAST, siCount->dwState);
+  }
+  for (siCount=siFirst; siCount; siCount=StackNextItem(siCount, si))
+  {
+    if ((siCount->dwFolderFlags & FLDF_OPEN) && siCount->firstChild)
+      SendMessage(hWndTreeView, TVM_EXPAND, TVE_EXPAND, (LPARAM)siCount->hItem);
+  }
+}
+
+BOOL TreeMoveItem(HWND hWndTreeView, HTREEITEM hItemCaret, SESSION *ss, SESSIONITEM *siItem, SESSIONITEM *siParent, SESSIONITEM *siAfterThis)
+{
+  HTREEITEM hItemDelete=siItem->hItem;
+  SESSIONITEM *siBeforeThis;
+  SESSIONITEM **siFirstSrc;
+  SESSIONITEM **siLastSrc;
+  SESSIONITEM **siFirstDst;
+  SESSIONITEM **siLastDst;
+
+  if (siItem == siParent)
+    return FALSE;
+  if (!siItem->parent)
+  {
+    siFirstSrc=&ss->hItemsStack.first;
+    siLastSrc=&ss->hItemsStack.last;
+  }
+  else
+  {
+    siFirstSrc=&siItem->parent->firstChild;
+    siLastSrc=&siItem->parent->lastChild;
+  }
+  if (!siParent)
+  {
+    siFirstDst=&ss->hItemsStack.first;
+    siLastDst=&ss->hItemsStack.last;
+  }
+  else
+  {
+    siFirstDst=&siParent->firstChild;
+    siLastDst=&siParent->lastChild;
+  }
+  if (siAfterThis == NULL || siAfterThis == ASI_FIRST)
+  {
+    siAfterThis=NULL;
+    siBeforeThis=*siFirstDst;
+  }
+  else if (siAfterThis == ASI_LAST)
+  {
+    siAfterThis=*siLastDst;
+    siBeforeThis=NULL;
+  }
+  else siBeforeThis=siAfterThis->next;
+
+  //Item need to be moved?
+  if (*siFirstSrc == *siFirstDst && *siLastSrc == *siLastDst &&
+      (siBeforeThis == siItem || siBeforeThis == siItem->next))
+    return FALSE;
+
+  //Move in stacks
+  StackSplit((stack **)siFirstSrc, (stack **)siLastSrc, (stack *)siItem, (stack *)siItem);
+  StackJoin((stack **)siFirstDst, (stack **)siLastDst, (stack *)siBeforeThis, (stack *)siItem, (stack *)siItem);
+  siItem->parent=siParent;
+
+  //Move in control
+  TreeAddItem(hWndTreeView, siItem, siAfterThis?siAfterThis->hItem:TVI_FIRST, siItem->dwState);
+  TreeAddChild(hWndTreeView, ss, siItem);
+  if ((siItem->dwFolderFlags & FLDF_OPEN) && siItem->firstChild)
+    SendMessage(hWndTreeView, TVM_EXPAND, TVE_EXPAND, (LPARAM)siItem->hItem);
+  if (hItemCaret == hItemDelete)
+    SendMessage(hWndTreeView, TVM_SELECTITEM, TVGN_CARET, (LPARAM)siItem->hItem);
+  TreeDeleteItem(hWndTreeView, hItemDelete);
+  return TRUE;
+}
+
+BOOL TreeDeleteItem(HWND hWndTreeView, HTREEITEM hItem)
+{
+  BOOL bResult;
+
+  //bDeleting=TRUE;
+  bResult=(BOOL)SendMessage(hWndTreeView, TVM_DELETEITEM, 0, (LPARAM)hItem);
+  //bDeleting=FALSE;
+  return bResult;
+}
+
+void TreeUpdateItem(HWND hWndTreeView, HTREEITEM hItem)
+{
+  RECT rcItem;
+
+  *(HTREEITEM *)&rcItem=hItem;
+  SendMessage(hWndTreeView, TVM_GETITEMRECT, TRUE, (LPARAM)&rcItem);
+  InvalidateRect(hWndTreeView, &rcItem, FALSE);
+}
+
+LPARAM TreeItemParam(HWND hWndTreeView, HTREEITEM hItem)
+{
+  TVITEMW tvi;
+
+  tvi.mask=TVIF_PARAM;
+  if (!hItem)
+    tvi.hItem=(HTREEITEM)SendMessage(hWndTreeView, TVM_GETNEXTITEM, TVGN_CARET, (LPARAM)NULL);
+  else
+    tvi.hItem=hItem;
+  if (TreeView_GetItemWide(hWndTreeView, &tvi))
+    return tvi.lParam;
+  return 0;
+}
+
+HTREEITEM TreeCursorItem(HWND hWndTreeView)
+{
+  TVHITTESTINFO tvhti;
+
+  GetCursorPos(&tvhti.pt);
+  ScreenToClient(hWndTreeView, &tvhti.pt);
+  SendMessage(hWndTreeView, TVM_HITTEST, 0, (LPARAM)&tvhti);
+  if (tvhti.hItem)
+  {
+    if (tvhti.flags & (TVHT_ONITEMLABEL|TVHT_ONITEMICON))
+      return tvhti.hItem;
+  }
+  return NULL;
+}
+
+void ClearTreeView(HWND hWndTreeView, BOOL bRedraw)
+{
+  SendMessage(hWndTreeView, WM_SETREDRAW, FALSE, 0);
+  TreeDeleteItem(hWndTreeView, NULL);
+  SendMessage(hWndTreeView, WM_SETREDRAW, TRUE, 0);
+  if (bRedraw) InvalidateRect(hWndTreeView, NULL, TRUE);
 }
 
 int GetCollapsedFoldsString(HSTACK *hFoldsStack, wchar_t *wszString)
@@ -3347,193 +4447,43 @@ INT_PTR GetEscapeParam(const wchar_t *wpText, const wchar_t **wpParamStart, cons
   return *wpParamEnd - *wpParamStart;
 }
 
-int UpdateListBoxHScroll(HWND hWnd)
+BOOL NextLine(const wchar_t **wppText)
 {
-  wchar_t *wpText;
-  HDC hDC;
-  HFONT hFont;
-  HFONT hOldFont;
-  SIZE size;
-  int nTextLen;
-  int nMaxWidth=0;
-  int nIndex=0;
-
-  if (hDC=GetDC(hWnd))
-  {
-    hFont=(HFONT)SendMessage(hWnd, WM_GETFONT, 0,0);
-    hOldFont=(HFONT)SelectObject(hDC, hFont);
-
-    for (;;)
-    {
-      if ((nTextLen=(int)SendMessage(hWnd, LB_GETTEXTLEN, nIndex, 0)) != LB_ERR)
-      {
-        if (wpText=(wchar_t *)GlobalAlloc(GMEM_FIXED, (nTextLen + 1) * sizeof(wchar_t)))
-        {
-          ListBox_GetTextWide(hWnd, nIndex, wpText);
-          if (GetTextExtentPoint32W(hDC, wpText, nTextLen, &size))
-            nMaxWidth=max(size.cx, nMaxWidth);
-          GlobalFree((HGLOBAL)wpText);
-        }
-        else break;
-      }
-      else break;
-
-      ++nIndex;
-    }
-
-    if (hOldFont) SelectObject(hDC, hOldFont);
-    ReleaseDC(hWnd, hDC);
-  }
-  SendMessage(hWnd, LB_SETHORIZONTALEXTENT, nMaxWidth + 10, 0);
-  return nMaxWidth;
+  while (**wppText != L'\r' && **wppText != L'\0') ++*wppText;
+  if (**wppText == L'\0') return FALSE;
+  if (*++*wppText == L'\n') ++*wppText;
+  return TRUE;
 }
 
-int UpdateComboBoxDropWidth(HWND hWnd)
+void SkipSpaces(const wchar_t **wppText)
 {
-  wchar_t *wpText;
-  HDC hDC;
-  HFONT hFont;
-  HFONT hOldFont;
-  SIZE size;
-  int nTextLen;
-  int nMaxWidth=0;
-  int nIndex=0;
-
-  if (hDC=GetDC(hWnd))
-  {
-    hFont=(HFONT)SendMessage(hWnd, WM_GETFONT, 0,0);
-    hOldFont=(HFONT)SelectObject(hDC, hFont);
-
-    for (;;)
-    {
-      if ((nTextLen=(int)SendMessage(hWnd, CB_GETLBTEXTLEN, nIndex, 0)) != CB_ERR)
-      {
-        if (wpText=(wchar_t *)GlobalAlloc(GMEM_FIXED, (nTextLen + 1) * sizeof(wchar_t)))
-        {
-          ComboBox_GetLBTextWide(hWnd, nIndex, wpText);
-          if (GetTextExtentPoint32W(hDC, wpText, nTextLen, &size))
-            nMaxWidth=max(size.cx, nMaxWidth);
-          GlobalFree((HGLOBAL)wpText);
-        }
-        else break;
-      }
-      else break;
-
-      ++nIndex;
-    }
-
-    if (hOldFont) SelectObject(hDC, hOldFont);
-    ReleaseDC(hWnd, hDC);
-  }
-  SendMessage(hWnd, CB_SETDROPPEDWIDTH, nMaxWidth + 10, 0);
-  return nMaxWidth;
+  while (**wppText == L' ' || **wppText == L'\t' || **wppText == L'\r' || **wppText == L'\n') ++*wppText;
 }
 
-int MoveListBoxItem(HWND hWnd, int nOldIndex, int nNewIndex)
-{
-  wchar_t *wpText;
-  int nIndex=LB_ERR;
-  int nTextLen;
-
-  if ((nTextLen=(int)SendMessage(hWnd, LB_GETTEXTLEN, nOldIndex, 0)) != LB_ERR)
-  {
-    if (wpText=(wchar_t *)GlobalAlloc(GMEM_FIXED, (nTextLen + 1) * sizeof(wchar_t)))
-    {
-      ListBox_GetTextWide(hWnd, nOldIndex, wpText);
-      SendMessage(hWnd, LB_DELETESTRING, nOldIndex, 0);
-      nIndex=ListBox_InsertStringWide(hWnd, nNewIndex, wpText);
-      GlobalFree((HGLOBAL)wpText);
-    }
-  }
-  return nIndex;
-}
-
-int MoveComboBoxItem(HWND hWnd, int nOldIndex, int nNewIndex)
-{
-  wchar_t *wpText;
-  int nIndex=CB_ERR;
-  int nTextLen;
-
-  if ((nTextLen=(int)SendMessage(hWnd, CB_GETLBTEXTLEN, nOldIndex, 0)) != CB_ERR)
-  {
-    if (wpText=(wchar_t *)GlobalAlloc(GMEM_FIXED, (nTextLen + 1) * sizeof(wchar_t)))
-    {
-      ComboBox_GetLBTextWide(hWnd, nOldIndex, wpText);
-      SendMessage(hWnd, CB_DELETESTRING, nOldIndex, 0);
-      nIndex=ComboBox_InsertStringWide(hWnd, nNewIndex, wpText);
-      GlobalFree((HGLOBAL)wpText);
-    }
-  }
-  return nIndex;
-}
-
-int GetListBoxSelItems(HWND hWnd, int **lpSelItems)
-{
-  int nSelCount;
-
-  if (lpSelItems)
-  {
-    nSelCount=(int)SendMessage(hWnd, LB_GETSELCOUNT, 0, 0);
-
-    if (*lpSelItems=(int *)GlobalAlloc(GPTR, nSelCount * sizeof(int)))
-    {
-      return (int)SendMessage(hWnd, LB_GETSELITEMS, nSelCount, (LPARAM)*lpSelItems);
-    }
-  }
-  return 0;
-}
-
-void FreeListBoxSelItems(int **lpSelItems)
-{
-  if (lpSelItems && *lpSelItems)
-  {
-    GlobalFree((HGLOBAL)*lpSelItems);
-    *lpSelItems=NULL;
-  }
-}
-
-BOOL IsPathFullA(char *pPath)
-{
-  if (pPath[0] == '\\' && pPath[1] == '\\') return TRUE;
-  if (pPath[0] != '\0' && pPath[1] == ':') return TRUE;
-  return FALSE;
-}
-
-BOOL IsPathFullW(wchar_t *wpPath)
+BOOL IsPathFull(const wchar_t *wpPath)
 {
   if (wpPath[0] == L'\\' && wpPath[1] == L'\\') return TRUE;
   if (wpPath[0] != L'\0' && wpPath[1] == L':') return TRUE;
   return FALSE;
 }
 
-int GetBaseNameA(const char *pFile, char *szBaseName, int nBaseNameMaxLen)
+const wchar_t* GetFileName(const wchar_t *wpFile, int nFileLen)
 {
-  int nFileLen=lstrlenA(pFile);
-  int nEndOffset=-1;
-  int i;
+  const wchar_t *wpCount;
 
-  for (i=nFileLen - 1; i >= 0; --i)
+  if (nFileLen == -1) nFileLen=(int)xstrlenW(wpFile);
+
+  for (wpCount=wpFile + nFileLen - 1; wpCount >= wpFile; --wpCount)
   {
-    if (pFile[i] == '\\')
-      break;
-
-    if (nEndOffset == -1)
-    {
-      if (pFile[i] == '.')
-        nEndOffset=i;
-    }
+    if (*wpCount == L'\\')
+      return wpCount + 1;
   }
-  ++i;
-  if (nEndOffset == -1) nEndOffset=nFileLen;
-  nBaseNameMaxLen=min(nEndOffset - i + 1, nBaseNameMaxLen);
-  lstrcpynA(szBaseName, pFile + i, nBaseNameMaxLen);
-
-  return nBaseNameMaxLen;
+  return wpFile;
 }
 
-int GetBaseNameW(const wchar_t *wpFile, wchar_t *wszBaseName, int nBaseNameMaxLen)
+int GetBaseName(const wchar_t *wpFile, wchar_t *wszBaseName, int nBaseNameMaxLen)
 {
-  int nFileLen=lstrlenW(wpFile);
+  int nFileLen=(int)xstrlenW(wpFile);
   int nEndOffset=-1;
   int i;
 
@@ -3563,7 +4513,7 @@ BOOL CreateDirectoryRecursive(const wchar_t *wpPath)
   wchar_t *wpCount;
 
   xstrcpynW(wszPath, wpPath, MAX_PATH);
-  wpPathEnd=wszPath + lstrlenW(wszPath);
+  wpPathEnd=wszPath + xstrlenW(wszPath);
   wpCount=wpPathEnd;
 
   Create:
@@ -3599,11 +4549,33 @@ BOOL CreateDirectoryRecursive(const wchar_t *wpPath)
 
 void DropFiles(HDROP hDrop, HWND hWndItemsList)
 {
+  HTREEITEM hItemCursor;
+  HTREEITEM hItemAfterThis=TVI_LAST;
+  SESSIONITEM *siNew=NULL;
+  SESSIONITEM *siParent=NULL;
+  SESSIONITEM *siAfterThis;
   wchar_t wszFile[MAX_PATH];
-  SESSIONITEM *lpItemElement;
+  BOOL bFirstFile=TRUE;
   int nDropped;
-  int nIndex;
   int i;
+
+  hItemCursor=TreeCursorItem(hWndItemsList);
+
+  if (siAfterThis=(SESSIONITEM *)TreeItemParam(hWndItemsList, hItemCursor))
+  {
+    if (!siAfterThis->dwFolderFlags)
+    {
+      siParent=siAfterThis->parent;
+      hItemAfterThis=siAfterThis->hItem;
+    }
+    else
+    {
+      siParent=siAfterThis;
+      siAfterThis=ASI_FIRST;
+      hItemAfterThis=TVI_FIRST;
+    }
+  }
+  else siAfterThis=ASI_LAST;
 
   nDropped=DragQueryFileWide(hDrop, 0xFFFFFFFF, NULL, 0);
 
@@ -3615,19 +4587,30 @@ void DropFiles(HDROP hDrop, HWND hWndItemsList)
     {
       if (lpVirtualSession)
       {
-        if (lpItemElement=AddSessionItem(lpVirtualSession))
+        if (siNew=StackAddItem(lpVirtualSession, siParent, siAfterThis))
         {
-          xstrcpynW(lpItemElement->wszItemFile, wszFile, MAX_PATH);
-          xstrcpynW(lpItemElement->wszItemExpFile, wszFile, MAX_PATH);
-          nIndex=ListBox_AddStringWide(hWndItemsList, wszFile);
-          SendMessage(hWndItemsList, LB_SETSEL, TRUE, nIndex);
+          xstrcpynW(siNew->wszName, GetFileName(wszFile, -1), MAX_PATH);
+          xstrcpynW(siNew->wszItemFile, wszFile, MAX_PATH);
+          xstrcpynW(siNew->wszItemExpFile, wszFile, MAX_PATH);
+          siNew->dwState=TVIS_SELECTED;
+          TreeAddItem(hWndItemsList, siNew, hItemAfterThis, siNew->dwState);
+          siAfterThis=siNew;
+          hItemAfterThis=siNew->hItem;
           lpVirtualSession->bModified=TRUE;
+          if (bFirstFile)
+          {
+            //Reset selection
+            SendMessage(hWndItemsList, TVM_SELECTITEM, TVGN_CARET, (LPARAM)siNew->hItem);
+            bFirstFile=FALSE;
+          }
         }
       }
     }
     if (nMDI == WMD_SDI) break;
   }
   DragFinish(hDrop);
+
+  PostMessage(hWndMainDlg, AKDLL_UPDATESAVEBUTTON, 0, 0);
 }
 
 int IsFile(const wchar_t *wpFile)
@@ -3653,6 +4636,28 @@ LRESULT SendToDoc(AEHDOC hDocEdit, HWND hWndEdit, UINT uMsg, WPARAM wParam, LPAR
   if (SendMessage(hWndEdit, AEM_SENDMESSAGE, 0, (LPARAM)&sm))
     return sm.lResult;
   return 0;
+}
+
+COLORREF AE_ColorBrightness(COLORREF crColor, int nPercent)
+{
+  //From -100% to 0% - to dark, from 0% to 100% - to light
+  BYTE r=GetRValue(crColor);
+  BYTE g=GetGValue(crColor);
+  BYTE b=GetBValue(crColor);
+
+  if  (nPercent > 0 && nPercent <= 100)
+  {
+    r=(BYTE)(r + (nPercent * (255 - r) / 100));
+    g=(BYTE)(g + (nPercent * (255 - g) / 100));
+    b=(BYTE)(b + (nPercent * (255 - b) / 100));
+  }
+  else if (nPercent >= -100 && nPercent < 0)
+  {
+    r=(BYTE)(r + (nPercent * r / 100));
+    g=(BYTE)(g + (nPercent * g / 100));
+    b=(BYTE)(b + (nPercent * b / 100));
+  }
+  return RGB(r, g, b);
 }
 
 BOOL GetWindowPos(HWND hWnd, HWND hWndOwner, RECT *rc)
@@ -3697,6 +4702,7 @@ void ReadOptions(DWORD dwFlags)
     WideOption(hOptions, L"OpenOnStartSession", PO_STRING, (LPBYTE)wszOpenOnStart, sizeof(wszOpenOnStart));
     WideOption(hOptions, L"SaveOnExitEnable", PO_DWORD, (LPBYTE)&bSaveOnExit, sizeof(DWORD));
     WideOption(hOptions, L"SaveOnExitSession", PO_STRING, (LPBYTE)wszSaveOnExit, sizeof(wszSaveOnExit));
+    WideOption(hOptions, L"ShowPath", PO_DWORD, (LPBYTE)&bShowPath, sizeof(DWORD));
     WideOption(hOptions, L"SaveData", PO_DWORD, (LPBYTE)&dwSaveData, sizeof(DWORD));
     WideOption(hOptions, L"DockAutoload", PO_DWORD, (LPBYTE)&bDockAutoload, sizeof(DWORD));
     WideOption(hOptions, L"DialogType", PO_DWORD, (LPBYTE)&nDialogType, sizeof(DWORD));
@@ -3722,9 +4728,10 @@ void SaveOptions(DWORD dwFlags)
     {
       WideOption(hOptions, L"SaveSessions", PO_DWORD, (LPBYTE)&nSaveSessions, sizeof(DWORD));
       WideOption(hOptions, L"OpenOnStartEnable", PO_DWORD, (LPBYTE)&bOpenOnStart, sizeof(DWORD));
-      WideOption(hOptions, L"OpenOnStartSession", PO_STRING, (LPBYTE)wszOpenOnStart, (lstrlenW(wszOpenOnStart) + 1) * sizeof(wchar_t));
+      WideOption(hOptions, L"OpenOnStartSession", PO_STRING, (LPBYTE)wszOpenOnStart, ((int)xstrlenW(wszOpenOnStart) + 1) * sizeof(wchar_t));
       WideOption(hOptions, L"SaveOnExitEnable", PO_DWORD, (LPBYTE)&bSaveOnExit, sizeof(DWORD));
-      WideOption(hOptions, L"SaveOnExitSession", PO_STRING, (LPBYTE)wszSaveOnExit, (lstrlenW(wszSaveOnExit) + 1) * sizeof(wchar_t));
+      WideOption(hOptions, L"SaveOnExitSession", PO_STRING, (LPBYTE)wszSaveOnExit, ((int)xstrlenW(wszSaveOnExit) + 1) * sizeof(wchar_t));
+      WideOption(hOptions, L"ShowPath", PO_DWORD, (LPBYTE)&bShowPath, sizeof(DWORD));
       WideOption(hOptions, L"SaveData", PO_DWORD, (LPBYTE)&dwSaveData, sizeof(DWORD));
       WideOption(hOptions, L"DockAutoload", PO_DWORD, (LPBYTE)&bDockAutoload, sizeof(DWORD));
       if (nNewDialogType)
@@ -3757,6 +4764,10 @@ const wchar_t* GetLangStringW(LANGID wLangID, int nStringID)
 {
   if (wLangID == LANG_RUSSIAN)
   {
+    if (nStringID == STRID_PARSEMSG_NOOPENBRACKET)
+      return L"\x041D\x0435\x0442\x0020\x043E\x0442\x043A\x0440\x044B\x0432\x0430\x044E\x0449\x0435\x0439\x0020\x0441\x043A\x043E\x0431\x043A\x0438\x002E";
+    if (nStringID == STRID_PARSEMSG_NOCLOSEBRACKET)
+      return L"\x041D\x0435\x0442\x0020\x0437\x0430\x043A\x0440\x044B\x0432\x0430\x044E\x0449\x0435\x0439\x0020\x0441\x043A\x043E\x0431\x043A\x0438\x002E";
     if (nStringID == STRID_SESSION)
       return L"\x0421\x0435\x0441\x0441\x0438\x044F";
     if (nStringID == STRID_OPEN)
@@ -3773,14 +4784,26 @@ const wchar_t* GetLangStringW(LANGID wLangID, int nStringID)
       return L"\x041F\x0435\x0440\x0435\x0438\x043C\x0435\x043D\x043E\x0432\x0430\x0442\x044C";
     if (nStringID == STRID_DELETE)
       return L"\x0423\x0434\x0430\x043B\x0438\x0442\x044C";
+    if (nStringID == STRID_ADDDIR)
+      return L"\x0414\x043E\x0431\x0430\x0432\x0438\x0442\x044C\x0020\x043F\x0430\x043F\x043A\x0443";
+    if (nStringID == STRID_ITEMNAME)
+      return L"\x0418\x043C\x044F:";
+    if (nStringID == STRID_ITEMFILE)
+      return L"\x0424\x0430\x0439\x043B:";
     if (nStringID == STRID_MENU_OPEN)
       return L"\x041E\x0442\x043A\x0440\x044B\x0442\x044C\tEnter";
     if (nStringID == STRID_MENU_CLOSE)
       return L"\x0417\x0430\x043A\x0440\x044B\x0442\x044C\tCtrl+W";
     if (nStringID == STRID_MENU_ACTIVATE)
       return L"\x0410\x043A\x0442\x0438\x0432\x0438\x0440\x043E\x0432\x0430\x0442\x044C\tEnter";
-    if (nStringID == STRID_MENU_ADD)
-      return L"\x0414\x043E\x0431\x0430\x0432\x0438\x0442\x044C\x002E\x002E\x002E\tInsert";
+    if (nStringID == STRID_MENU_ADDCURFILE)
+      return L"\x0414\x043E\x0431\x0430\x0432\x0438\x0442\x044C\x0020\x0442\x0435\x043A\x0443\x0449\x0438\x0439\x0020\x0444\x0430\x0439\x043B";
+    if (nStringID == STRID_MENU_ADDFILE)
+      return L"\x0414\x043E\x0431\x0430\x0432\x0438\x0442\x044C\x0020\x0444\x0430\x0439\x043B\x044B...\tInsert";
+    if (nStringID == STRID_MENU_ADDDIR)
+      return L"\x0414\x043E\x0431\x0430\x0432\x0438\x0442\x044C\x0020\x043F\x0430\x043F\x043A\x0443...\tF7";
+    if (nStringID == STRID_MENU_RENAME)
+      return L"\x041F\x0435\x0440\x0435\x0438\x043C\x0435\x043D\x043E\x0432\x0430\x0442\x044C...\tF2";
     if (nStringID == STRID_MENU_MOVEDOWN)
       return L"\x041F\x0435\x0440\x0435\x043C\x0435\x0441\x0442\x0438\x0442\x044C\x0020\x0432\x043D\x0438\x0437\tAlt+Down";
     if (nStringID == STRID_MENU_MOVEUP)
@@ -3803,6 +4826,8 @@ const wchar_t* GetLangStringW(LANGID wLangID, int nStringID)
       return L"\x041E\x0442\x043A\x0440\x044B\x0442\x044C\x0020\x043F\x0440\x0438\x0020\x0437\x0430\x043F\x0443\x0441\x043A\x0435\x003A";
     if (nStringID == STRID_SAVEONEXIT)
       return L"\x0421\x043E\x0445\x0440\x0430\x043D\x0438\x0442\x044C\x0020\x043D\x0430\x0020\x0432\x044B\x0445\x043E\x0434\x0435\x003A";
+    if (nStringID == STRID_SHOWPATH)
+      return L"\x041F\x043E\x043A\x0430\x0437\x044B\x0432\x0430\x0442\x044C\x0020\x043F\x0443\x0442\x044C\x0020\x0444\x0430\x0439\x043B\x043E\x0432";
     if (nStringID == STRID_DIALOGTYPE)
       return L"\x0422\x0438\x043F\x0020\x0434\x0438\x0430\x043B\x043E\x0433\x0430";
     if (nStringID == STRID_MODALDIALOG)
@@ -3864,6 +4889,10 @@ const wchar_t* GetLangStringW(LANGID wLangID, int nStringID)
   }
   else
   {
+    if (nStringID == STRID_PARSEMSG_NOOPENBRACKET)
+      return L"No opening bracket.";
+    if (nStringID == STRID_PARSEMSG_NOCLOSEBRACKET)
+      return L"No closing bracket.";
     if (nStringID == STRID_SESSION)
       return L"Session";
     if (nStringID == STRID_OPEN)
@@ -3880,14 +4909,26 @@ const wchar_t* GetLangStringW(LANGID wLangID, int nStringID)
       return L"Rename";
     if (nStringID == STRID_DELETE)
       return L"Delete";
+    if (nStringID == STRID_ADDDIR)
+      return L"Add folder";
+    if (nStringID == STRID_ITEMNAME)
+      return L"Name:";
+    if (nStringID == STRID_ITEMFILE)
+      return L"File:";
     if (nStringID == STRID_MENU_OPEN)
       return L"Open\tEnter";
     if (nStringID == STRID_MENU_CLOSE)
       return L"Close\tCtrl+W";
     if (nStringID == STRID_MENU_ACTIVATE)
       return L"Activate\tEnter";
-    if (nStringID == STRID_MENU_ADD)
-      return L"Add...\tInsert";
+    if (nStringID == STRID_MENU_ADDCURFILE)
+      return L"Add current file";
+    if (nStringID == STRID_MENU_ADDFILE)
+      return L"Add files...\tInsert";
+    if (nStringID == STRID_MENU_ADDDIR)
+      return L"Add folder...\tF7";
+    if (nStringID == STRID_MENU_RENAME)
+      return L"Rename...\tF2";
     if (nStringID == STRID_MENU_MOVEDOWN)
       return L"Move down\tAlt+Down";
     if (nStringID == STRID_MENU_MOVEUP)
@@ -3910,6 +4951,8 @@ const wchar_t* GetLangStringW(LANGID wLangID, int nStringID)
       return L"Open on start:";
     if (nStringID == STRID_SAVEONEXIT)
       return L"Save on exit:";
+    if (nStringID == STRID_SHOWPATH)
+      return L"Show files path";
     if (nStringID == STRID_DIALOGTYPE)
       return L"Dialog type";
     if (nStringID == STRID_MODALDIALOG)
@@ -4045,6 +5088,26 @@ void InitMain()
   //SubClass
   NewMainProcData=NULL;
   SendMessage(hMainWnd, AKD_SETMAINPROC, (WPARAM)NewMainProc, (LPARAM)&NewMainProcData);
+
+  //Create image list
+  {
+    HICON hIcon;
+
+    hImageList=ImageList_Create(16, 16, ILC_COLOR16|ILC_MASK, 0, 0);
+
+    if (hIcon=(HICON)LoadImageA(hInstanceDLL, MAKEINTRESOURCEA(IDI_ICON_FILE), IMAGE_ICON, 16, 16, 0))
+    {
+      ImageList_AddIcon(hImageList, hIcon);
+      DestroyIcon(hIcon);
+    }
+    if (hIcon=(HICON)LoadImageA(hInstanceDLL, MAKEINTRESOURCEA(IDI_ICON_FOLDER), IMAGE_ICON, 16, 16, 0))
+    {
+      ImageList_AddIcon(hImageList, hIcon);
+      DestroyIcon(hIcon);
+    }
+  }
+  hCursorDragMove=(HCURSOR)LoadImageA(hInstanceDLL, MAKEINTRESOURCEA(IDC_CURSOR_DRAGMOVE), IMAGE_CURSOR, 0, 0, 0);
+  hPluginIcon=LoadIconA(hInstanceDLL, MAKEINTRESOURCEA(IDI_ICON_PLUGIN));
 }
 
 void UninitMain()
@@ -4059,6 +5122,11 @@ void UninitMain()
   }
 
   FreeSessions(&hSessionStack);
+
+  //Destroy resources
+  ImageList_Destroy(hImageList);
+  DestroyCursor(hCursorDragMove);
+  DestroyIcon(hPluginIcon);
 }
 
 //Entry point

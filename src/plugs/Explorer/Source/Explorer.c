@@ -96,6 +96,7 @@
 
 #define DLLA_EXPLORER_GOTOPATH  1
 #define DLLA_EXPLORER_REFRESH   2
+#define DLLA_EXPLORER_GETDOCK   3
 
 #define AKDLL_INIT          (WM_USER + 100)
 #define AKDLL_SETUP         (WM_USER + 101)
@@ -322,6 +323,16 @@ void __declspec(dllexport) Main(PLUGINDATA *pd)
         if (nAction == DLLA_EXPLORER_REFRESH)
         {
           if (hWndDockDlg) PostMessage(hWndDockDlg, AKDLL_REFRESH, 0, 0);
+        }
+        else if (nAction == DLLA_EXPLORER_GETDOCK)
+        {
+          HWND *lpWndDock=NULL;
+    
+          if (IsExtCallParamValid(pd->lParam, 2))
+            lpWndDock=(HWND *)GetExtCallParam(pd->lParam, 2);
+    
+          if (lpWndDock)
+            *lpWndDock=hWndDockDlg;
         }
       }
       else
@@ -2568,9 +2579,9 @@ void InitCommon(PLUGINDATA *pd)
   {
     int i;
 
-    for (i=0; pd->wszFunction[i] != ':'; ++i)
+    for (i=0; pd->wszFunction[i] != L':'; ++i)
       wszPluginName[i]=pd->wszFunction[i];
-    wszPluginName[i]='\0';
+    wszPluginName[i]=L'\0';
   }
   xprintfW(wszPluginTitle, GetLangStringW(wLangModule, STRID_PLUGIN), wszPluginName);
 

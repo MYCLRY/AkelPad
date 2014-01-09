@@ -658,13 +658,15 @@ LRESULT CALLBACK NewMainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
   if (uMsg == WM_CLOSE)
   {
-    //Send WM_CLOSE to scripts dialogs and wait for thread finished.
-    if (CountAllScriptWindows())
+    //Send WM_CLOSE to scripts dialogs or
+    //post quit message to message loop and
+    //wait for thread finished.
+    if (IsAnyMessageLoop())
     {
       int nCloseOK;
       int nCloseERR;
 
-      CloseAllScriptWindows(&nCloseOK, &nCloseERR);
+      CloseScriptThreadAll(&nCloseOK, &nCloseERR);
 
       if (nCloseOK && !nCloseERR)
       {
@@ -681,12 +683,12 @@ LRESULT CALLBACK NewMainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
   else if (uMsg == AKDN_MESSAGEBOXBEGIN)
   {
     g_MainMessageBox=TRUE;
-    ShowAllScriptWindows(FALSE);
+    ShowScriptWindowsAll(FALSE);
   }
   else if (uMsg == AKDN_MESSAGEBOXEND)
   {
     g_MainMessageBox=FALSE;
-    ShowAllScriptWindows(TRUE);
+    ShowScriptWindowsAll(TRUE);
   }
   else if (uMsg == AKDN_MAIN_ONFINISH)
   {
@@ -706,11 +708,9 @@ LRESULT CALLBACK NewMainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
   }
   else if (uMsg == AKDN_MAIN_ONDESTROY)
   {
-    if (hThreadStack.first)
-    {
-      bMainOnFinish=TRUE;
-      PostQuitAllScriptWindows();
-    }
+    bMainOnFinish=TRUE;
+    //We already quit from message loops in WM_CLOSE.
+    //PostQuitScriptAll();
   }
 
   //Call next procedure
@@ -723,7 +723,7 @@ VOID CALLBACK TimerProc(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime)
   {
     UINT_PTR dwElapsed=GetTickCount() - dwWaitScriptTimerStart;
 
-    if (!CountAllScriptWindows() || dwElapsed > 10000)
+    if (!IsAnyMessageLoop() || dwElapsed > 10000)
     {
       KillTimer(NULL, dwWaitScriptTimerId);
       dwWaitScriptTimerId=0;
@@ -1072,13 +1072,15 @@ void FreeScriptResources(SCRIPTTHREAD *lpScriptThread, BOOL bDebug)
   StackDeleteScriptThread(&hThreadStack, lpScriptThread);
 }
 
-BOOL CloseScriptWindows(SCRIPTTHREAD *lpScriptThread)
+BOOL CloseScriptThread(SCRIPTTHREAD *lpScriptThread)
 {
   CALLBACKITEM *lpCallback;
   CALLBACKITEM *lpNextCallback;
   BOOL bResult=TRUE;
   BOOL bTerminated=FALSE;
+  BOOL bPostQuit=TRUE;
 
+  //Close dialogs by sending WM_CLOSE. Script must call oSys.Call("user32::PostQuitMessage", 0) itself.
   for (lpCallback=lpScriptThread->hDialogCallbackStack.first; lpCallback; lpCallback=lpNextCallback)
   {
     lpNextCallback=lpCallback->next;
@@ -1097,7 +1099,15 @@ BOOL CloseScriptWindows(SCRIPTTHREAD *lpScriptThread)
         StackDeleteCallback(&lpScriptThread->hDialogCallbackStack, lpCallback);
         bTerminated=TRUE;
       }
+      bPostQuit=FALSE;
     }
+  }
+
+  //Script has message loop - send quit mesage.
+  if (bPostQuit)
+  {
+    if (lpScriptThread->hWndScriptsThreadDummy && lpScriptThread->bMessageLoop)
+      SendMessage(lpScriptThread->hWndScriptsThreadDummy, AKDLL_POSTQUIT, 0, 0);
   }
 
   if (bTerminated && !lpScriptThread->hDialogCallbackStack.nElements)
@@ -1107,7 +1117,7 @@ BOOL CloseScriptWindows(SCRIPTTHREAD *lpScriptThread)
   return bResult;
 }
 
-void CloseAllScriptWindows(int *nCloseOK, int *nCloseERR)
+void CloseScriptThreadAll(int *nCloseOK, int *nCloseERR)
 {
   SCRIPTTHREAD *lpElement;
   SCRIPTTHREAD *lpNextElement;
@@ -1118,14 +1128,14 @@ void CloseAllScriptWindows(int *nCloseOK, int *nCloseERR)
   for (lpElement=hThreadStack.first; lpElement; lpElement=lpNextElement)
   {
     lpNextElement=lpElement->next;
-    if (CloseScriptWindows(lpElement))
+    if (CloseScriptThread(lpElement))
       ++*nCloseOK;
     else
       ++*nCloseERR;
   }
 }
 
-void PostQuitAllScriptWindows()
+void PostQuitScriptAll()
 {
   SCRIPTTHREAD *lpElement;
   SCRIPTTHREAD *lpNextElement;
@@ -1138,16 +1148,16 @@ void PostQuitAllScriptWindows()
   }
 }
 
-int CountAllScriptWindows()
+BOOL IsAnyMessageLoop()
 {
   SCRIPTTHREAD *lpElement;
-  int nDialogs=0;
 
   for (lpElement=hThreadStack.first; lpElement; lpElement=lpElement->next)
   {
-    nDialogs+=lpElement->hDialogCallbackStack.nElements;
+    if (lpElement->bMessageLoop)
+      return TRUE;
   }
-  return nDialogs;
+  return FALSE;
 }
 
 void ShowScriptWindows(SCRIPTTHREAD *lpScriptThread, BOOL bShow)
@@ -1175,7 +1185,7 @@ void ShowScriptWindows(SCRIPTTHREAD *lpScriptThread, BOOL bShow)
   }
 }
 
-void ShowAllScriptWindows(BOOL bShow)
+void ShowScriptWindowsAll(BOOL bShow)
 {
   SCRIPTTHREAD *lpElement;
 
@@ -1793,9 +1803,9 @@ void InitCommon(PLUGINDATA *pd)
   {
     int i;
 
-    for (i=0; pd->wszFunction[i] != ':'; ++i)
+    for (i=0; pd->wszFunction[i] != L':'; ++i)
       wszPluginName[i]=pd->wszFunction[i];
-    wszPluginName[i]='\0';
+    wszPluginName[i]=L'\0';
   }
   xprintfW(wszPluginTitle, GetLangStringW(wLangModule, STRID_PLUGIN), wszPluginName);
   xprintfW(wszScriptsDir, L"%s\\AkelFiles\\Plugs\\Scripts", pd->wszAkelDir);

@@ -76,20 +76,21 @@
 #define DLLA_MACROS_GETLASTERROR       4
 
 #define STRID_HOTKEY_EXISTS     1
-#define STRID_CANNOT_OPEN_FILE  2
-#define STRID_ALREADY_EXIST     3
-#define STRID_CONFIRM_DELETE    4
-#define STRID_THREAD_BUSY       5
-#define STRID_NORECORD          6
-#define STRID_MACRO             7
-#define STRID_HOTKEY            8
-#define STRID_RECORD_LISTITEM   9
-#define STRID_RECORD            10
-#define STRID_SAVE              11
-#define STRID_DELETE            12
-#define STRID_ASSIGN            13
-#define STRID_PLUGIN            14
-#define STRID_CLOSE             15
+#define STRID_CANNOT_OPENFILE   2
+#define STRID_CANNOT_HOOK       3
+#define STRID_ALREADY_EXIST     4
+#define STRID_CONFIRM_DELETE    5
+#define STRID_THREAD_BUSY       6
+#define STRID_NORECORD          7
+#define STRID_MACRO             8
+#define STRID_HOTKEY            9
+#define STRID_RECORD_LISTITEM   10
+#define STRID_RECORD            11
+#define STRID_SAVE              12
+#define STRID_DELETE            13
+#define STRID_ASSIGN            14
+#define STRID_PLUGIN            15
+#define STRID_CLOSE             16
 
 #define OF_RECT        0x1
 #define OF_HOTKEYS     0x2
@@ -734,7 +735,7 @@ LRESULT CALLBACK MainDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
             lvi.state=LVIS_SELECTED|LVIS_FOCUSED;
             SendMessage(hWndMacrosList, LVM_SETITEMSTATE, nIndex, (LPARAM)&lvi);
           }
-          else MessageBoxW(hDlg, GetLangStringW(wLangModule, STRID_CANNOT_OPEN_FILE), wszPluginTitle, MB_OK|MB_ICONERROR);
+          else MessageBoxW(hDlg, GetLangStringW(wLangModule, STRID_CANNOT_OPENFILE), wszPluginTitle, MB_OK|MB_ICONERROR);
         }
         else MessageBoxW(hDlg, GetLangStringW(wLangModule, STRID_ALREADY_EXIST), wszPluginTitle, MB_OK|MB_ICONEXCLAMATION);
       }
@@ -1359,6 +1360,7 @@ BOOL DeleteMacroFile(wchar_t *wpMacro)
 void MacroRecord()
 {
   hHook=SetWindowsHookEx(WH_GETMESSAGE, GetMsgProc, hInstanceDLL, 0);
+  if (!hHook) MessageBoxW(hMainWnd, GetLangStringW(wLangModule, STRID_CANNOT_HOOK), wszPluginTitle, MB_OK|MB_ICONERROR);
 }
 
 void MacroStop()
@@ -1814,8 +1816,10 @@ const wchar_t* GetLangStringW(LANGID wLangID, int nStringID)
   {
     if (nStringID == STRID_HOTKEY_EXISTS)
       return L"%s\n\n\x0413\x043E\x0440\x044F\x0447\x0430\x044F\x0020\x043A\x043B\x0430\x0432\x0438\x0448\x0430\x0020\x0443\x0436\x0435\x0020\x043D\x0430\x0437\x043D\x0430\x0447\x0435\x043D\x0430\x0020\x0434\x043B\x044F\x0020\x0022\x0025\x0073\x0022\x002E";
-    if (nStringID == STRID_CANNOT_OPEN_FILE)
+    if (nStringID == STRID_CANNOT_OPENFILE)
       return L"\x041D\x0435\x0432\x043E\x0437\x043C\x043E\x0436\x043D\x043E\x0020\x043E\x0442\x043A\x0440\x044B\x0442\x044C\x0020\x0444\x0430\x0439\x043B\x002E";
+    if (nStringID == STRID_CANNOT_HOOK)
+      return L"\x041D\x0435\x0432\x043E\x0437\x043C\x043E\x0436\x043D\x043E\x0020\x0443\x0441\x0442\x0430\x043D\x043E\x0432\x0438\x0442\x044C\x0020\x0445\x0443\x043A\x002E";
     if (nStringID == STRID_ALREADY_EXIST)
       return L"\x041C\x0430\x043A\x0440\x043E\x0441\x0020\x0443\x0436\x0435\x0020\x0441\x0443\x0449\x0435\x0441\x0442\x0432\x0443\x0435\x0442\x002E";
     if (nStringID == STRID_CONFIRM_DELETE)
@@ -1847,8 +1851,10 @@ const wchar_t* GetLangStringW(LANGID wLangID, int nStringID)
   {
     if (nStringID == STRID_HOTKEY_EXISTS)
       return L"%s\n\nHotkey already assigned to \"%s\".";
-    if (nStringID == STRID_CANNOT_OPEN_FILE)
+    if (nStringID == STRID_CANNOT_OPENFILE)
       return L"Cannot open file.";
+    if (nStringID == STRID_CANNOT_HOOK)
+      return L"Cannot install hook.";
     if (nStringID == STRID_ALREADY_EXIST)
       return L"Macro already exists.";
     if (nStringID == STRID_CONFIRM_DELETE)
@@ -1909,9 +1915,9 @@ void InitCommon(PLUGINDATA *pd)
   {
     int i;
 
-    for (i=0; pd->wszFunction[i] != ':'; ++i)
+    for (i=0; pd->wszFunction[i] != L':'; ++i)
       wszPluginName[i]=pd->wszFunction[i];
-    wszPluginName[i]='\0';
+    wszPluginName[i]=L'\0';
   }
   xprintfW(wszPluginTitle, GetLangStringW(wLangModule, STRID_PLUGIN), wszPluginName);
   xprintfW(wszMacrosDir, L"%s\\AkelFiles\\Plugs\\Macros", pd->wszAkelDir);

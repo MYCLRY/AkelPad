@@ -1,8 +1,8 @@
 *****************************************************************
-***                Explorer AkelPad plugin v5.7               ***
+***                Explorer AkelPad plugin v5.8               ***
 *****************************************************************
 
-2013 Shengalts Aleksander aka Instructor (Shengalts@mail.ru)
+2014 Shengalts Aleksander aka Instructor (Shengalts@mail.ru)
 
 
 *** Description ***
@@ -29,3 +29,26 @@ Call("Explorer::Main", 2)
   Parameters:
     2
       Refresh file list.
+
+Call("Explorer::Main", 3, *WINDOW)
+  Parameters:
+    1
+      Get dockable window handle. Use with Scripts plugin.
+    *WINDOW
+      Pointer to a variable, that receives dockable window handle.
+  Example:
+    WScript.Echo(GetExplorerWindow());
+
+    function GetExplorerWindow()
+    {
+      var lpWnd;
+      var hWnd=0;
+
+      if (lpWnd=AkelPad.MemAlloc(_X64?8:4 /*sizeof(HWND)*/))
+      {
+        AkelPad.CallW("Explorer::Main", 3, lpWnd);
+        hWnd=AkelPad.MemRead(lpWnd, 2 /*DT_QWORD*/);
+        AkelPad.MemFree(lpWnd);
+      }
+      return hWnd;
+    }

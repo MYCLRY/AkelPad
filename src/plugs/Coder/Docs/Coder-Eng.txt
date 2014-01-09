@@ -1,8 +1,8 @@
 *****************************************************************
-***                 Coder AkelPad plugin v11.9                ***
+***                 Coder AkelPad plugin v12.2                ***
 *****************************************************************
 
-2013 Shengalts Aleksander aka Instructor (Shengalts@mail.ru)
+2014 Shengalts Aleksander aka Instructor (Shengalts@mail.ru)
 
 
 *** Description ***
@@ -113,12 +113,28 @@ Call("Coder::HighLight", 4, ID, "#RRGGBB", "#RRGGBB", DIRECTION)
 
 *** External call Coder::CodeFold ***
 
-Call("Coder::CodeFold", 1, *BOOL)
+Call("Coder::CodeFold", 1, *WINDOW)
   Parameters:
     1
       Show/Hide list.
-    *BOOL
-      Optional parameter. Pointer to a variable, that receives list visibility.
+    *WINDOW
+      Optional parameter. Pointer to a variable, that receives dockable window handle.
+  Example (get dockable window handle):
+    WScript.Echo(GetCodeFoldWindow());
+
+    function GetCodeFoldWindow()
+    {
+      var lpWnd;
+      var hWnd=0;
+
+      if (lpWnd=AkelPad.MemAlloc(_X64?8:4 /*sizeof(HWND)*/))
+      {
+        AkelPad.CallW("Coder::CodeFold", 1, lpWnd);
+        hWnd=AkelPad.MemRead(lpWnd, 2 /*DT_QWORD*/);
+        AkelPad.MemFree(lpWnd);
+      }
+      return hWnd;
+    }
 
 
 *** External call Coder::Settings ***

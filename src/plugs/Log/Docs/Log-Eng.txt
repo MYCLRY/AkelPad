@@ -2,7 +2,7 @@
 ***                  Log AkelPad plugin v3.6                  ***
 *****************************************************************
 
-2013 Shengalts Aleksander aka Instructor (Shengalts@mail.ru)
+2014 Shengalts Aleksander aka Instructor (Shengalts@mail.ru)
 
 
 *** Description ***
@@ -88,16 +88,16 @@ Call("Log::Output", 2, *WINDOW)
 
     function GetOutputWindow()
     {
-      var lpWindow;
-      var nWindow=0;
+      var lpWnd;
+      var hWnd=0;
 
-      if (lpWindow=AkelPad.MemAlloc(_X64?8:4 /*sizeof(HWND)*/))
+      if (lpWnd=AkelPad.MemAlloc(_X64?8:4 /*sizeof(HWND)*/))
       {
-        AkelPad.Call("Log::Output", 2, lpWindow);
-        nWindow=AkelPad.MemRead(lpWindow, 2 /*DT_QWORD*/);
-        AkelPad.MemFree(lpWindow);
+        AkelPad.Call("Log::Output", 2, lpWnd);
+        hWnd=AkelPad.MemRead(lpWnd, 2 /*DT_QWORD*/);
+        AkelPad.MemFree(lpWnd);
       }
-      return nWindow;
+      return hWnd;
     }
 
 Call("Log::Output", 3, *EXECSTATE, *PLUGINTHREAD, *PROCESSHANDLE, *PROCESSID)

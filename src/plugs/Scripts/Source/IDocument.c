@@ -2054,6 +2054,9 @@ HRESULT STDMETHODCALLTYPE Document_ScriptHandle(IDocument *this, VARIANT vtData,
   {
     SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)GetVariantInt(pvtData);
 
+    if (!lpScriptThread)
+      lpScriptThread=((IRealDocument *)this)->lpScriptThread;
+
     if (lpScriptThread)
     {
       if (nOperation == SH_GETTHREADHANDLE)
@@ -2062,6 +2065,12 @@ HRESULT STDMETHODCALLTYPE Document_ScriptHandle(IDocument *this, VARIANT vtData,
         nResult=lpScriptThread->dwThreadID;
       else if (nOperation == SH_GETMESSAGELOOP)
         nResult=lpScriptThread->bMessageLoop;
+      else if (nOperation == SH_GETLOCKMULTICOPY)
+        nResult=lpScriptThread->bSingleCopy;
+      else if (nOperation == SH_GETLOCKSCRIPTSQUEUE)
+        nResult=lpScriptThread->hExecMutex?TRUE:FALSE;
+      else if (nOperation == SH_GETLOCKPROGRAMTHREAD)
+        nResult=lpScriptThread->hInitMutex?TRUE:FALSE;
       else if (nOperation == SH_GETNAME)
       {
         vtResult->vt=VT_BSTR;
@@ -2397,7 +2406,7 @@ void StackFreeCallbacks(CALLBACKSTACK *hStack)
     {
       Document_WindowUnsubClass(NULL, lpElement->hHandle);
     }
-    StackFreeMessages(&lpElement->hMsgIntStack);
+    else StackFreeMessages(&lpElement->hMsgIntStack);
   }
   StackClear((stack **)&hStack->first, (stack **)&hStack->last);
   hStack->nElements=0;
@@ -2481,6 +2490,12 @@ LRESULT CALLBACK SubclassMainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lP
 
   if (lpCallback=StackGetCallbackByHandle(&g_hSubclassCallbackStack, (HANDLE)(INT_PTR)WSC_MAINPROC))
   {
+    if (uMsg == AKDN_OPENDOCUMENT_START)
+    {
+      //Some threads queue problem. Binary file message in main thread could block sending AKDN_OPENDOCUMENT_START to Script.js.
+      //CmdLineBegin=/Call("Scripts::Main", 2, "Script.js")
+      Sleep(0);
+    }
     lResult=SubclassSend(lpCallback, hWnd, uMsg, wParam, lParam);
 
     if (lpCallback->bNoNextProc)

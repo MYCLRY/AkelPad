@@ -554,7 +554,9 @@ LineBoard_BookmarkTextColor 0\r\
 LineBoard_BookmarkBkColor 0\r\
 LineBoard_BookmarkBorderColor 0\r\
 LineBoard_LineUnsavedColor 0\r\
-LineBoard_LineSavedColor 0\r"
+LineBoard_LineSavedColor 0\r\
+LineBoard_RulerScaleColor 0\r\
+LineBoard_RulerCaretColor 0\r"
 
 #define TXT_DEFAULT_VARTHEME_SPECIALCHAR \
 L"SpecialChar_BasicFontStyle 0\r\
@@ -639,7 +641,9 @@ LineBoard_BookmarkTextColor #FFFFFF\r\
 LineBoard_BookmarkBkColor #666666\r\
 LineBoard_BookmarkBorderColor #EBEBEB\r\
 LineBoard_LineUnsavedColor #DBCD28\r\
-LineBoard_LineSavedColor #50CF30\r"
+LineBoard_LineSavedColor #50CF30\r\
+LineBoard_RulerScaleColor #000000\r\
+LineBoard_RulerCaretColor #DBCD28\r"
 
 #define TXT_ACTIVE4D_VARTHEME_SPECIALCHAR \
 L"SpecialChar_BasicFontStyle 0\r\
@@ -724,7 +728,9 @@ LineBoard_BookmarkTextColor #2B211C\r\
 LineBoard_BookmarkBkColor #E8E2DD\r\
 LineBoard_BookmarkBorderColor #4B3D34\r\
 LineBoard_LineUnsavedColor #F6F080\r\
-LineBoard_LineSavedColor #80FF80\r"
+LineBoard_LineSavedColor #80FF80\r\
+LineBoard_RulerScaleColor #E8E2DD\r\
+LineBoard_RulerCaretColor #F6F080\r"
 
 #define TXT_BESPIN_VARTHEME_SPECIALCHAR \
 L"SpecialChar_BasicFontStyle 0\r\
@@ -809,7 +815,9 @@ LineBoard_BookmarkTextColor #002240\r\
 LineBoard_BookmarkBkColor #E1EFFF\r\
 LineBoard_BookmarkBorderColor #001629\r\
 LineBoard_LineUnsavedColor #FF9D00\r\
-LineBoard_LineSavedColor #3AD900\r"
+LineBoard_LineSavedColor #3AD900\r\
+LineBoard_RulerScaleColor #FFFFFF\r\
+LineBoard_RulerCaretColor #FF9D00\r"
 
 #define TXT_COBALT_VARTHEME_SPECIALCHAR \
 L"SpecialChar_BasicFontStyle 0\r\
@@ -894,7 +902,9 @@ LineBoard_BookmarkTextColor #F9F9F9\r\
 LineBoard_BookmarkBkColor #7A7A7A\r\
 LineBoard_BookmarkBorderColor #DFE6F0\r\
 LineBoard_LineUnsavedColor #D35727\r\
-LineBoard_LineSavedColor #108B35\r"
+LineBoard_LineSavedColor #108B35\r\
+LineBoard_RulerScaleColor #080808\r\
+LineBoard_RulerCaretColor #D35727\r"
 
 #define TXT_DAWN_VARTHEME_SPECIALCHAR \
 L"SpecialChar_BasicFontStyle 0\r\
@@ -979,7 +989,9 @@ LineBoard_BookmarkTextColor #FFFFFF\r\
 LineBoard_BookmarkBkColor #747474\r\
 LineBoard_BookmarkBorderColor #F1F1DA\r\
 LineBoard_LineUnsavedColor #CC7800\r\
-LineBoard_LineSavedColor #2FB900\r"
+LineBoard_LineSavedColor #2FB900\r\
+LineBoard_RulerScaleColor #000000\r\
+LineBoard_RulerCaretColor #CC7800\r"
 
 #define TXT_EARTH_VARTHEME_SPECIALCHAR \
 L"SpecialChar_BasicFontStyle 0\r\
@@ -1064,7 +1076,9 @@ LineBoard_BookmarkTextColor #EEEEEE\r\
 LineBoard_BookmarkBkColor #777777\r\
 LineBoard_BookmarkBorderColor #DFDFDF\r\
 LineBoard_LineUnsavedColor #EC9900\r\
-LineBoard_LineSavedColor #009933\r"
+LineBoard_LineSavedColor #009933\r\
+LineBoard_RulerScaleColor #000000\r\
+LineBoard_RulerCaretColor #EC9900\r"
 
 #define TXT_IPLASTIC_VARTHEME_SPECIALCHAR \
 L"SpecialChar_BasicFontStyle 0\r\
@@ -1149,7 +1163,9 @@ LineBoard_BookmarkTextColor #FFFFFF\r\
 LineBoard_BookmarkBkColor #A0A0A0\r\
 LineBoard_BookmarkBorderColor #E5E5E5\r\
 LineBoard_LineUnsavedColor #FF7800\r\
-LineBoard_LineSavedColor #409B1C\r"
+LineBoard_LineSavedColor #409B1C\r\
+LineBoard_RulerScaleColor #000000\r\
+LineBoard_RulerCaretColor #FF7800\r"
 
 #define TXT_LAZY_VARTHEME_SPECIALCHAR \
 L"SpecialChar_BasicFontStyle 0\r\
@@ -1234,7 +1250,9 @@ LineBoard_BookmarkTextColor #FFFFFF\r\
 LineBoard_BookmarkBkColor #7C7C7C\r\
 LineBoard_BookmarkBorderColor #ECECEC\r\
 LineBoard_LineUnsavedColor #FDA91E\r\
-LineBoard_LineSavedColor #04D20F\r"
+LineBoard_LineSavedColor #04D20F\r\
+LineBoard_RulerScaleColor #000000\r\
+LineBoard_RulerCaretColor #FDA91E\r"
 
 #define TXT_MACCLASSIC_VARTHEME_SPECIALCHAR \
 L"SpecialChar_BasicFontStyle 0\r\
@@ -1319,7 +1337,9 @@ LineBoard_BookmarkTextColor #272822\r\
 LineBoard_BookmarkBkColor #F8F8F2\r\
 LineBoard_BookmarkBorderColor #3E3D32\r\
 LineBoard_LineUnsavedColor #FD971F\r\
-LineBoard_LineSavedColor #A6E22E\r"
+LineBoard_LineSavedColor #A6E22E\r\
+LineBoard_RulerScaleColor #F8F8F2\r\
+LineBoard_RulerCaretColor #FD971F\r"
 
 #define TXT_MONOKAI_VARTHEME_SPECIALCHAR \
 L"SpecialChar_BasicFontStyle 0\r\
@@ -1404,7 +1424,9 @@ LineBoard_BookmarkTextColor #FDF6E3\r\
 LineBoard_BookmarkBkColor #586E75\r\
 LineBoard_BookmarkBorderColor #EEE8D5\r\
 LineBoard_LineUnsavedColor #E3A420\r\
-LineBoard_LineSavedColor #99BF00\r"
+LineBoard_LineSavedColor #99BF00\r\
+LineBoard_RulerScaleColor #586E75\r\
+LineBoard_RulerCaretColor #E3A420\r"
 
 #define TXT_SOLARIZEDLIGHT_VARTHEME_SPECIALCHAR \
 L"SpecialChar_BasicFontStyle 0\r\
@@ -1489,7 +1511,9 @@ LineBoard_BookmarkTextColor #002B36\r\
 LineBoard_BookmarkBkColor #839496\r\
 LineBoard_BookmarkBorderColor #07404B\r\
 LineBoard_LineUnsavedColor #AC4113\r\
-LineBoard_LineSavedColor #849900\r"
+LineBoard_LineSavedColor #849900\r\
+LineBoard_RulerScaleColor #839496\r\
+LineBoard_RulerCaretColor #AC4113\r"
 
 #define TXT_SOLARIZEDDARK_VARTHEME_SPECIALCHAR \
 L"SpecialChar_BasicFontStyle 0\r\
@@ -1574,7 +1598,9 @@ LineBoard_BookmarkTextColor #0D0D0D\r\
 LineBoard_BookmarkBkColor #DDE6CF\r\
 LineBoard_BookmarkBorderColor #191919\r\
 LineBoard_LineUnsavedColor #DE9B58\r\
-LineBoard_LineSavedColor #A2D95E\r"
+LineBoard_LineSavedColor #A2D95E\r\
+LineBoard_RulerScaleColor #DDE6CF\r\
+LineBoard_RulerCaretColor #DE9B58\r"
 
 #define TXT_SPACECADET_VARTHEME_SPECIALCHAR \
 L"SpecialChar_BasicFontStyle 0\r\
@@ -1659,7 +1685,9 @@ LineBoard_BookmarkTextColor #060606\r\
 LineBoard_BookmarkBkColor #F8F8F8\r\
 LineBoard_BookmarkBorderColor #16181B\r\
 LineBoard_LineUnsavedColor #F7B02D\r\
-LineBoard_LineSavedColor #A4E13E\r"
+LineBoard_LineSavedColor #A4E13E\r\
+LineBoard_RulerScaleColor #F8F8F8\r\
+LineBoard_RulerCaretColor #F7B02D\r"
 
 #define TXT_SUNBURST_VARTHEME_SPECIALCHAR \
 L"SpecialChar_BasicFontStyle 0\r\
@@ -1744,7 +1772,9 @@ LineBoard_BookmarkTextColor #141414\r\
 LineBoard_BookmarkBkColor #F8F8F8\r\
 LineBoard_BookmarkBorderColor #252327\r\
 LineBoard_LineUnsavedColor #F8DA72\r\
-LineBoard_LineSavedColor #95DA2E\r"
+LineBoard_LineSavedColor #95DA2E\r\
+LineBoard_RulerScaleColor #F8F8F8\r\
+LineBoard_RulerCaretColor #F8DA72\r"
 
 #define TXT_TWILIGHT_VARTHEME_SPECIALCHAR \
 L"SpecialChar_BasicFontStyle 0\r\
@@ -1829,7 +1859,9 @@ LineBoard_BookmarkTextColor #3F3F3F\r\
 LineBoard_BookmarkBkColor #FFFFFF\r\
 LineBoard_BookmarkBorderColor #5D666E\r\
 LineBoard_LineUnsavedColor #FFB13E\r\
-LineBoard_LineSavedColor #AEDB5B\r"
+LineBoard_LineSavedColor #AEDB5B\r\
+LineBoard_RulerScaleColor #FFFFFF\r\
+LineBoard_RulerCaretColor #FFB13E\r"
 
 #define TXT_ZENBURN_VARTHEME_SPECIALCHAR \
 L"SpecialChar_BasicFontStyle 0\r\

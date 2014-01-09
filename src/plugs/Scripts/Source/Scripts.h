@@ -188,12 +188,12 @@ SCRIPTTHREAD* StackGetScriptThreadByName(HTHREADSTACK *hStack, const wchar_t *wp
 void StackDeleteScriptThread(HTHREADSTACK *hStack, SCRIPTTHREAD *lpScriptThread);
 void StackFreeScriptThread(HTHREADSTACK *hStack);
 void FreeScriptResources(SCRIPTTHREAD *lpScriptThread, BOOL bDebug);
-BOOL CloseScriptWindows(SCRIPTTHREAD *lpScriptThread);
-void CloseAllScriptWindows(int *nCloseOK, int *nCloseERR);
-void PostQuitAllScriptWindows();
-int CountAllScriptWindows();
+BOOL CloseScriptThread(SCRIPTTHREAD *lpScriptThread);
+void CloseScriptThreadAll(int *nCloseOK, int *nCloseERR);
+void PostQuitScriptAll();
+BOOL IsAnyMessageLoop();
 void ShowScriptWindows(SCRIPTTHREAD *lpScriptThread, BOOL bShow);
-void ShowAllScriptWindows(BOOL bShow);
+void ShowScriptWindowsAll(BOOL bShow);
 int GetCommandLineArg(const wchar_t *wpCmdLine, wchar_t *wszArg, int nArgMax, const wchar_t **wpNextArg);
 SCRIPTARG* StackInsertArgument(HARGSTACK *hStack);
 SCRIPTARG* StackGetArgumentByIndex(HARGSTACK *hStack, int nIndex);

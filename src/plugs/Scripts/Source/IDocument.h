@@ -46,19 +46,22 @@
 #define ULT_UNLOCKMULTICOPY      0x8
 
 //Document_ScriptHandle type
-#define SH_FIRSTSCRIPT      1
-#define SH_THISSCRIPT       2
-#define SH_FINDSCRIPT       3
-#define SH_GETTHREADHANDLE  11
-#define SH_GETTHREADID      12
-#define SH_GETMESSAGELOOP   13
-#define SH_GETNAME          21
-#define SH_GETFILE          22
-#define SH_GETNCLUDE        23
-#define SH_GETARGUMENTS     24
-#define SH_NEXTSCRIPT       31
-#define SH_NEXTSAMESCRIPT   32
-#define SH_CLOSESCRIPT      33
+#define SH_FIRSTSCRIPT           1
+#define SH_THISSCRIPT            2
+#define SH_FINDSCRIPT            3
+#define SH_GETTHREADHANDLE       11
+#define SH_GETTHREADID           12
+#define SH_GETMESSAGELOOP        13
+#define SH_GETLOCKMULTICOPY      14
+#define SH_GETLOCKSCRIPTSQUEUE   15
+#define SH_GETLOCKPROGRAMTHREAD  16
+#define SH_GETNAME               21
+#define SH_GETFILE               22
+#define SH_GETNCLUDE             23
+#define SH_GETARGUMENTS          24
+#define SH_NEXTSCRIPT            31
+#define SH_NEXTSAMESCRIPT        32
+#define SH_CLOSESCRIPT           33
 
 //Callback type
 #define CIT_DIALOG       1

@@ -1,8 +1,8 @@
 *****************************************************************
-***                 Coder AkelPad plugin v11.9                ***
+***                 Coder AkelPad plugin v12.2                ***
 *****************************************************************
 
-2013 Шенгальц Александр aka Instructor (Shengalts@mail.ru)
+2014 Шенгальц Александр aka Instructor (Shengalts@mail.ru)
 
 
 *** Описание ***
@@ -114,12 +114,28 @@ Call("Coder::HighLight", 4, ID, "#RRGGBB", "#RRGGBB", DIRECTION)
 
 *** Внешний вызов Coder::CodeFold ***
 
-Call("Coder::CodeFold", 1, *BOOL)
+Call("Coder::CodeFold", 1, *WINDOW)
   Параметры:
     1
       Показать/Скрыть список.
-    *BOOL
-      Необязательный параметр. Указатель на переменную, которая получает видимость списка.
+    *WINDOW
+      Необязательный параметр. Указатель на переменную, которая получает дескриптор плавающего окна.
+  Пример (получить дескриптор плавающего окна):
+    WScript.Echo(GetCodeFoldWindow());
+
+    function GetCodeFoldWindow()
+    {
+      var lpWnd;
+      var hWnd=0;
+
+      if (lpWnd=AkelPad.MemAlloc(_X64?8:4 /*sizeof(HWND)*/))
+      {
+        AkelPad.CallW("Coder::CodeFold", 1, lpWnd);
+        hWnd=AkelPad.MemRead(lpWnd, 2 /*DT_QWORD*/);
+        AkelPad.MemFree(lpWnd);
+      }
+      return hWnd;
+    }
 
 
 *** Внешний вызов Coder::Settings ***

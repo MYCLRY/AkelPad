@@ -1,13 +1,14 @@
 *****************************************************************
-***                Sessions AkelPad plugin v7.4               ***
+***                Sessions AkelPad plugin v7.6               ***
 *****************************************************************
 
-2013 Shengalts Aleksander aka Instructor (Shengalts@mail.ru)
+2014 Shengalts Aleksander aka Instructor (Shengalts@mail.ru)
 
 
 *** Description ***
 
-Saves and restores program MDI session.
+1. Working with projects.
+2. Saving and restoring program MDI session.
 
 
 *** Functions ***

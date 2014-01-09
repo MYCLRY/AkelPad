@@ -2,7 +2,7 @@
 ***                SaveFile AkelPad plugin v2.9               ***
 *****************************************************************
 
-2013 Шенгальц Александр aka Instructor (Shengalts@mail.ru)
+2014 Шенгальц Александр aka Instructor (Shengalts@mail.ru)
 
 
 *** Описание ***

@@ -153,7 +153,7 @@ typedef struct _EXTPARAM {
   struct _EXTPARAM *next;
   struct _EXTPARAM *prev;
   DWORD dwType;
-  int nNumber;
+  INT_PTR nNumber;
   char *pString;
   wchar_t *wpString;
   char *pExpanded;
@@ -976,12 +976,12 @@ BOOL CALLBACK MainDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
       //Remove quotes
       for (a=0, b=0; wszHotkeyName[b];)
       {
-        if (wszHotkeyName[b] == '\"')
+        if (wszHotkeyName[b] == L'\"')
           ++b;
         else
           wszHotkeyName[a++]=wszHotkeyName[b++];
       }
-      wszHotkeyName[a]='\0';
+      wszHotkeyName[a]=L'\0';
 
       if (wHotkey)
       {
@@ -1014,7 +1014,7 @@ BOOL CALLBACK MainDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
         wpText=wszHotkeyCommand;
 
         //AutoLoad
-        if (*wpText == '+')
+        if (*wpText == L'+')
         {
           ++wpText;
           nPlus=1;
@@ -1790,10 +1790,10 @@ void CreateHotkeyStack(HSTACK *hStack, const wchar_t *wpText)
       NextString(wpText, wszHotkeyName, MAX_PATH, &wpText, &nMinus);
 
       //AutoLoad
-      while (*wpText == ' ' || *wpText == '\t' || *wpText == '\r' || *wpText == '\n') ++wpText;
+      while (*wpText == L' ' || *wpText == L'\t' || *wpText == L'\r' || *wpText == L'\n') ++wpText;
       wpCommand=wpText;
 
-      if (*wpText == '+')
+      if (*wpText == L'+')
       {
         ++wpText;
         nPlus=1;
@@ -1840,12 +1840,12 @@ void CreateHotkeyStack(HSTACK *hStack, const wchar_t *wpText)
 
           if (!xstrcmpiW(wszBuffer, L"Hotkey"))
           {
-            while (*wpText == ' ' || *wpText == '\t') ++wpText;
+            while (*wpText == L' ' || *wpText == L'\t') ++wpText;
 
             hiElement->dwHotkey=(DWORD)xatoiW(wpText, NULL);
-            while (*wpText != ')' && *wpText != '\0')
+            while (*wpText != L')' && *wpText != L'\0')
               ++wpText;
-            if (*wpText == ')')
+            if (*wpText == L')')
               ++wpText;
           }
         }
@@ -1868,13 +1868,16 @@ int CallHotkey(HSTACK *hStack, WORD wHotkey)
     if (lpElement->dwAction == EXTACT_COMMAND)
     {
       int nCommand=0;
+      LPARAM lParam=0;
 
       if (lpParameter=GetMethodParameter(&lpElement->hParamStack, 1))
-        nCommand=lpParameter->nNumber;
+        nCommand=(int)lpParameter->nNumber;
+      if (lpParameter=GetMethodParameter(&lpElement->hParamStack, 2))
+        lParam=lpParameter->nNumber;
 
       if (nCommand > 0)
       {
-        SendMessage(hMainWnd, WM_COMMAND, nCommand, 0);
+        SendMessage(hMainWnd, WM_COMMAND, nCommand, lParam);
       }
       else if (nCommand == -1)
       {
@@ -1930,7 +1933,7 @@ int CallHotkey(HSTACK *hStack, WORD wHotkey)
                 StructMethodParameters(&lpElement->hParamStack, (unsigned char *)pcp->lParam);
               }
               else pcp->lParam=0;
-  
+
               PostMessage(hMainWnd, AKD_DLLCALLW, (lpElement->bAutoLoad?DLLCF_SWITCHAUTOLOAD|DLLCF_SAVEONEXIT:0), (LPARAM)pcp);
             }
           }
@@ -1941,7 +1944,7 @@ int CallHotkey(HSTACK *hStack, WORD wHotkey)
           pcs.pFunction=wpFunction;
           pcs.lParam=0;
           pcs.dwSupport=0;
-  
+
           if (nStructSize=StructMethodParameters(&lpElement->hParamStack, NULL))
           {
             if (nStructSize > (INT_PTR)sizeof(INT_PTR))
@@ -1970,7 +1973,7 @@ int CallHotkey(HSTACK *hStack, WORD wHotkey)
       if (lpParameter=GetMethodParameter(&lpElement->hParamStack, 2))
         wpWorkDir=lpParameter->wpExpanded;
       if (lpParameter=GetMethodParameter(&lpElement->hParamStack, 3))
-        bWait=lpParameter->nNumber;
+        bWait=(BOOL)lpParameter->nNumber;
 
       if (wpCmdLine)
       {
@@ -1999,9 +2002,9 @@ int CallHotkey(HSTACK *hStack, WORD wHotkey)
       if (lpParameter=GetMethodParameter(&lpElement->hParamStack, 1))
         wpFile=lpParameter->wpExpanded;
       if (lpParameter=GetMethodParameter(&lpElement->hParamStack, 2))
-        nCodePage=lpParameter->nNumber;
+        nCodePage=(int)lpParameter->nNumber;
       if (lpParameter=GetMethodParameter(&lpElement->hParamStack, 3))
-        bBOM=lpParameter->nNumber;
+        bBOM=(BOOL)lpParameter->nNumber;
 
       if (lpElement->dwAction == EXTACT_OPENFILE)
       {
@@ -2049,9 +2052,9 @@ int CallHotkey(HSTACK *hStack, WORD wHotkey)
       if (lpParameter=GetMethodParameter(&lpElement->hParamStack, 1))
         wpFaceName=lpParameter->wpExpanded;
       if (lpParameter=GetMethodParameter(&lpElement->hParamStack, 2))
-        dwFontStyle=lpParameter->nNumber;
+        dwFontStyle=(DWORD)lpParameter->nNumber;
       if (lpParameter=GetMethodParameter(&lpElement->hParamStack, 3))
-        nPointSize=lpParameter->nNumber;
+        nPointSize=(int)lpParameter->nNumber;
 
       if (SendMessage(hMainWnd, AKD_GETEDITINFO, (WPARAM)NULL, (LPARAM)&ei))
       {
@@ -2070,7 +2073,7 @@ int CallHotkey(HSTACK *hStack, WORD wHotkey)
             lfNew.lfWeight=(dwFontStyle == FS_FONTBOLD || dwFontStyle == FS_FONTBOLDITALIC)?FW_BOLD:FW_NORMAL;
             lfNew.lfItalic=(dwFontStyle == FS_FONTITALIC || dwFontStyle == FS_FONTBOLDITALIC)?TRUE:FALSE;
           }
-          if (*wpFaceName != '\0')
+          if (*wpFaceName != L'\0')
           {
             xstrcpynW(lfNew.lfFaceName, wpFaceName, LF_FACESIZE);
           }
@@ -2086,9 +2089,9 @@ int CallHotkey(HSTACK *hStack, WORD wHotkey)
       if (SendMessage(hMainWnd, AKD_GETEDITINFO, (WPARAM)NULL, (LPARAM)&ei))
       {
         if (lpParameter=GetMethodParameter(&lpElement->hParamStack, 1))
-          tr.nCodePageFrom=lpParameter->nNumber;
+          tr.nCodePageFrom=(int)lpParameter->nNumber;
         if (lpParameter=GetMethodParameter(&lpElement->hParamStack, 2))
-          tr.nCodePageTo=lpParameter->nNumber;
+          tr.nCodePageTo=(int)lpParameter->nNumber;
 
         SendMessage(hMainWnd, AKD_RECODESEL, (WPARAM)ei.hWndEdit, (LPARAM)&tr);
       }
@@ -2111,7 +2114,7 @@ int CallHotkey(HSTACK *hStack, WORD wHotkey)
           if (lpParameter=GetMethodParameter(&lpElement->hParamStack, 1))
             wpText=lpParameter->wpExpanded;
           if (lpParameter=GetMethodParameter(&lpElement->hParamStack, 2))
-            bEscSequences=lpParameter->nNumber;
+            bEscSequences=(BOOL)lpParameter->nNumber;
 
           if (bEscSequences)
           {
@@ -2227,15 +2230,15 @@ void ParseMethodParameters(STACKEXTPARAM *hParamStack, const wchar_t *wpText, co
   int nStringLen;
 
   MethodParameter:
-  while (*wpParamBegin == ' ' || *wpParamBegin == '\t') ++wpParamBegin;
+  while (*wpParamBegin == L' ' || *wpParamBegin == L'\t') ++wpParamBegin;
 
-  if (*wpParamBegin == '\"' || *wpParamBegin == '\'' || *wpParamBegin == '`')
+  if (*wpParamBegin == L'\"' || *wpParamBegin == L'\'' || *wpParamBegin == L'`')
   {
     //String
     wchStopChar=*wpParamBegin++;
     nStringLen=0;
 
-    for (wpParamEnd=wpParamBegin; *wpParamEnd != wchStopChar && *wpParamEnd != '\0'; ++wpParamEnd)
+    for (wpParamEnd=wpParamBegin; *wpParamEnd != wchStopChar && *wpParamEnd != L'\0'; ++wpParamEnd)
       ++nStringLen;
 
     if (!StackInsertIndex((stack **)&hParamStack->first, (stack **)&hParamStack->last, (stack **)&lpParameter, -1, sizeof(EXTPARAM)))
@@ -2247,9 +2250,9 @@ void ParseMethodParameters(STACKEXTPARAM *hParamStack, const wchar_t *wpText, co
         lpParameter->dwType=EXTPARAM_CHAR;
         wpString=lpParameter->wpString;
 
-        for (wpParamEnd=wpParamBegin; *wpParamEnd != wchStopChar && *wpParamEnd != '\0'; ++wpParamEnd)
+        for (wpParamEnd=wpParamBegin; *wpParamEnd != wchStopChar && *wpParamEnd != L'\0'; ++wpParamEnd)
           *wpString++=*wpParamEnd;
-        *wpString='\0';
+        *wpString=L'\0';
 
         if (bOldWindows)
         {
@@ -2263,25 +2266,25 @@ void ParseMethodParameters(STACKEXTPARAM *hParamStack, const wchar_t *wpText, co
   else
   {
     //Number
-    for (wpParamEnd=wpParamBegin; *wpParamEnd != ',' && *wpParamEnd != ')' && *wpParamEnd != '\0'; ++wpParamEnd);
+    for (wpParamEnd=wpParamBegin; *wpParamEnd != L',' && *wpParamEnd != L')' && *wpParamEnd != L'\0'; ++wpParamEnd);
 
     if (!StackInsertIndex((stack **)&hParamStack->first, (stack **)&hParamStack->last, (stack **)&lpParameter, -1, sizeof(EXTPARAM)))
     {
       ++hParamStack->nElements;
 
       lpParameter->dwType=EXTPARAM_INT;
-      lpParameter->nNumber=(int)xatoiW(wpParamBegin, NULL);
+      lpParameter->nNumber=xatoiW(wpParamBegin, NULL);
     }
   }
 
-  while (*wpParamEnd != ',' && *wpParamEnd != ')' && *wpParamEnd != '\0')
+  while (*wpParamEnd != L',' && *wpParamEnd != L')' && *wpParamEnd != L'\0')
     ++wpParamEnd;
-  if (*wpParamEnd == ',')
+  if (*wpParamEnd == L',')
   {
     wpParamBegin=++wpParamEnd;
     goto MethodParameter;
   }
-  if (*wpParamEnd == ')')
+  if (*wpParamEnd == L')')
     ++wpParamEnd;
   if (wppText) *wppText=wpParamEnd;
 }
@@ -2316,25 +2319,25 @@ void ExpandMethodParameters(STACKEXTPARAM *hParamStack, const wchar_t *wpFile, c
         {
           for (wpSource=wszSource; *wpSource;)
           {
-            if (*wpSource == '%')
+            if (*wpSource == L'%')
             {
-              if (*++wpSource == '%')
+              if (*++wpSource == L'%')
               {
                 ++wpSource;
-                if (wszTarget) *wpTarget='%';
+                if (wszTarget) *wpTarget=L'%';
                 ++wpTarget;
               }
-              else if (*wpSource == 'f' || *wpSource == 'F')
+              else if (*wpSource == L'f' || *wpSource == L'F')
               {
                 ++wpSource;
                 if (*wpFile) wpTarget+=xstrcpyW(wszTarget?wpTarget:NULL, wpFile) - !wszTarget;
               }
-              else if (*wpSource == 'd' || *wpSource == 'D')
+              else if (*wpSource == L'd' || *wpSource == L'D')
               {
                 ++wpSource;
                 if (*wpFile) wpTarget+=GetFileDir(wpFile, -1, wszTarget?wpTarget:NULL, MAX_PATH) - !wszTarget;
               }
-              else if (*wpSource == 'a' || *wpSource == 'A')
+              else if (*wpSource == L'a' || *wpSource == L'A')
               {
                 ++wpSource;
                 wpTarget+=xstrcpyW(wszTarget?wpTarget:NULL, wpExeDir) - !wszTarget;
@@ -2360,7 +2363,7 @@ void ExpandMethodParameters(STACKEXTPARAM *hParamStack, const wchar_t *wpFile, c
           }
           else
           {
-            *wpTarget='\0';
+            *wpTarget=L'\0';
             break;
           }
         }
@@ -2470,15 +2473,15 @@ int GetMethodName(const wchar_t *wpText, wchar_t *wszStr, int nStrLen, const wch
 {
   int i=0;
 
-  while (*wpText == '\"' || *wpText == ' ' || *wpText == '\t') ++wpText;
+  while (*wpText == L'\"' || *wpText == L' ' || *wpText == L'\t') ++wpText;
 
-  while (*wpText != '(' && *wpText != '\r' && *wpText != '\0')
+  while (*wpText != L'(' && *wpText != L'\r' && *wpText != L'\0')
   {
     if (i < nStrLen) wszStr[i++]=*wpText;
     ++wpText;
   }
-  wszStr[i]='\0';
-  if (*wpText != '\r' && *wpText != '\0') ++wpText;
+  wszStr[i]=L'\0';
+  if (*wpText != L'\r' && *wpText != L'\0') ++wpText;
   if (wppText) *wppText=wpText;
   return i;
 }
@@ -2487,9 +2490,9 @@ int NextString(const wchar_t *wpText, wchar_t *wszStr, int nStrLen, const wchar_
 {
   int i;
 
-  while (*wpText == ' ' || *wpText == '\t' || *wpText == '\r' || *wpText == '\n') ++wpText;
+  while (*wpText == L' ' || *wpText == L'\t' || *wpText == L'\r' || *wpText == L'\n') ++wpText;
 
-  if (*wpText == '-')
+  if (*wpText == L'-')
   {
     if (nMinus) *nMinus=1;
     ++wpText;
@@ -2499,12 +2502,12 @@ int NextString(const wchar_t *wpText, wchar_t *wszStr, int nStrLen, const wchar_
     if (nMinus) *nMinus=0;
   }
 
-  if (*wpText == '\"')
+  if (*wpText == L'\"')
   {
     ++wpText;
     i=0;
 
-    while (*wpText != '\"' && *wpText != '\0')
+    while (*wpText != L'\"' && *wpText != L'\0')
     {
       if (i < nStrLen) wszStr[i++]=*wpText;
       ++wpText;
@@ -2514,14 +2517,14 @@ int NextString(const wchar_t *wpText, wchar_t *wszStr, int nStrLen, const wchar_
   {
     i=0;
 
-    while (*wpText != ' ' && *wpText != '\r' && *wpText != '\0')
+    while (*wpText != L' ' && *wpText != L'\r' && *wpText != L'\0')
     {
       if (i < nStrLen) wszStr[i++]=*wpText;
       ++wpText;
     }
   }
-  wszStr[i]='\0';
-  if (*wpText != '\r' && *wpText != '\0') ++wpText;
+  wszStr[i]=L'\0';
+  if (*wpText != L'\r' && *wpText != L'\0') ++wpText;
   if (wppText) *wppText=wpText;
   return i;
 }
@@ -2530,15 +2533,15 @@ BOOL SkipComment(const wchar_t **wpText)
 {
   for (;;)
   {
-    while (**wpText == ' ' || **wpText == '\t' || **wpText == '\r' || **wpText == '\n') ++*wpText;
+    while (**wpText == L' ' || **wpText == L'\t' || **wpText == L'\r' || **wpText == L'\n') ++*wpText;
 
-    if (**wpText == ';' || **wpText == '#')
+    if (**wpText == L';' || **wpText == L'#')
     {
-      while (**wpText != '\r' && **wpText != '\0') ++*wpText;
+      while (**wpText != L'\r' && **wpText != L'\0') ++*wpText;
     }
     else break;
   }
-  if (**wpText == '\0')
+  if (**wpText == L'\0')
     return FALSE;
   return TRUE;
 }
@@ -2568,43 +2571,43 @@ INT_PTR TranslateEscapeString(HWND hWndEdit, const wchar_t *wpInput, wchar_t *ws
 
   if (SendMessage(hMainWnd, AKD_GETEDITINFO, (WPARAM)hWndEdit, (LPARAM)&ei))
   {
-    for (whex[4]='\0'; *a; ++a)
+    for (whex[4]=L'\0'; *a; ++a)
     {
-      if (*a == '\\')
+      if (*a == L'\\')
       {
-        if (*++a == '\\')
+        if (*++a == L'\\')
         {
-          if (wszOutput) *b='\\';
+          if (wszOutput) *b=L'\\';
           ++b;
         }
-        else if (*a == 'n')
+        else if (*a == L'n')
         {
           if (ei.nNewLine == NEWLINE_MAC)
           {
-            if (wszOutput) *b='\r';
+            if (wszOutput) *b=L'\r';
             ++b;
           }
           else if (ei.nNewLine == NEWLINE_UNIX)
           {
-            if (wszOutput) *b='\n';
+            if (wszOutput) *b=L'\n';
             ++b;
           }
           else if (ei.nNewLine == NEWLINE_WIN)
           {
-            if (wszOutput) *b='\r';
+            if (wszOutput) *b=L'\r';
             ++b;
-            if (wszOutput) *b='\n';
+            if (wszOutput) *b=L'\n';
             ++b;
           }
         }
-        else if (*a == 't')
+        else if (*a == L't')
         {
-          if (wszOutput) *b='\t';
+          if (wszOutput) *b=L'\t';
           ++b;
         }
-        else if (*a == '[')
+        else if (*a == L'[')
         {
-          while (*++a == ' ');
+          while (*++a == L' ');
 
           do
           {
@@ -2618,16 +2621,16 @@ INT_PTR TranslateEscapeString(HWND hWndEdit, const wchar_t *wpInput, wchar_t *ws
             if (!*a) goto Error;
             nDec=(int)hex2decW(whex, 4);
             if (nDec == -1) goto Error;
-            while (*++a == ' ');
+            while (*++a == L' ');
 
             if (wszOutput) *b=(wchar_t)nDec;
             ++b;
           }
-          while (*a && *a != ']');
+          while (*a && *a != L']');
 
           if (!*a) goto Error;
         }
-        else if (*a == 's')
+        else if (*a == L's')
         {
           CHARRANGE64 cr;
 
@@ -2649,7 +2652,7 @@ INT_PTR TranslateEscapeString(HWND hWndEdit, const wchar_t *wpInput, wchar_t *ws
             else b+=cr.cpMax - cr.cpMin;
           }
         }
-        else if (*a == '|')
+        else if (*a == L'|')
         {
           if (lpdwCaret) *lpdwCaret=(DWORD)(b - wszOutput);
         }
@@ -2662,14 +2665,14 @@ INT_PTR TranslateEscapeString(HWND hWndEdit, const wchar_t *wpInput, wchar_t *ws
       }
     }
     if (wszOutput)
-      *b='\0';
+      *b=L'\0';
     else
       ++b;
     return (b - wszOutput);
   }
 
   Error:
-  if (wszOutput) *wszOutput='\0';
+  if (wszOutput) *wszOutput=L'\0';
   return 0;
 }
 
@@ -2742,7 +2745,7 @@ int GetCurFile(wchar_t *wszFile, int nMaxFile)
   {
     return (int)xstrcpynW(wszFile, ei.wszFile, nMaxFile) + 1;
   }
-  wszFile[0]='\0';
+  wszFile[0]=L'\0';
   return 0;
 }
 
@@ -3044,9 +3047,9 @@ void InitCommon(PLUGINDATA *pd)
   {
     int i;
 
-    for (i=0; pd->wszFunction[i] != ':'; ++i)
+    for (i=0; pd->wszFunction[i] != L':'; ++i)
       wszPluginName[i]=pd->wszFunction[i];
-    wszPluginName[i]='\0';
+    wszPluginName[i]=L'\0';
   }
   xprintfW(wszPluginTitle, GetLangStringW(wLangModule, STRID_PLUGIN), wszPluginName);
   xstrcpynW(wszExeDir, pd->wszAkelDir, MAX_PATH);

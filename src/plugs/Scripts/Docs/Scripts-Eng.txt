@@ -1,8 +1,8 @@
 *****************************************************************
-***                 Scripts AkelPad plugin v13.0              ***
+***                 Scripts AkelPad plugin v13.1              ***
 *****************************************************************
 
-2013 Shengalts Aleksander aka Instructor (Shengalts@mail.ru)
+2014 Shengalts Aleksander aka Instructor (Shengalts@mail.ru)
 
 
 *** Description ***
@@ -2056,13 +2056,13 @@ Example:
   var hWndModeless;
   var hWndTestButton;
   var IDC_TEST_BUTTON=10001;
-  
+
   //Open "Find" dialog
   if (hWndModeless=AkelPad.SendMessage(hMainWnd, 1275 /*AKD_GETMODELESS*/, 0, 0))
     AkelPad.SendMessage(hWndModeless, 273 /*WM_COMMAND*/, 2 /*IDCANCEL*/, 0);
   AkelPad.Command(4158 /*IDM_EDIT_FIND*/);
   hWndModeless=AkelPad.SendMessage(hMainWnd, 1275 /*AKD_GETMODELESS*/, 0, 0);
-  
+
   //Create test button
   hWndTestButton=oSys.Call("user32::CreateWindowEx" + _TCHAR,
                          0,               //dwExStyle
@@ -2079,21 +2079,21 @@ Example:
                          0);              //lpParam
   //Set font and text
   SetWindowFontAndText(hWndTestButton, hGuiFont, "Test");
-  
+
   //Subclass dialog
   if (AkelPad.WindowSubClass(hWndModeless, DialogCallback, 273 /*WM_COMMAND*/, 2 /*WM_DESTROY*/))
   {
     //Register dialog for message loop
     AkelPad.WindowRegisterDialog(hWndModeless);
-  
+
     //Message loop
     AkelPad.WindowGetMessage();
-  
+
     //Unregister and unsubclass
     AkelPad.WindowUnregisterDialog(hWndModeless);
     AkelPad.WindowUnsubClass(hWndModeless);
   }
-  
+
   function DialogCallback(hWnd, uMsg, wParam, lParam)
   {
     if (uMsg == 273) //WM_COMMAND
@@ -2110,18 +2110,18 @@ Example:
     }
     return 0;
   }
-  
+
   function SetWindowFontAndText(hWnd, hFont, pText)
   {
     AkelPad.SendMessage(hWnd, 48 /*WM_SETFONT*/, hFont, 1);
     oSys.Call("user32::SetWindowText" + _TCHAR, hWnd, pText);
   }
-  
+
   function LOWORD(dwNumber)
   {
     return (dwNumber & 0xffff);
   }
-  
+
   function HIWORD(dwNumber)
   {
     return (dwNumber >> 16);
@@ -2367,7 +2367,7 @@ Change synchronization object.
 Arguments
   nUnlockType
     0x1  //ULT_UNLOCKSCRIPTSQUEUE   Allow other scripts running with this script at the same time (by default).
-    0x2  //ULT_UNLOCKPROGRAMTHREAD  Unlock main thread from waiting this script. Only if script is called with extenal call with code 2.
+    0x2  //ULT_UNLOCKPROGRAMTHREAD  Unlock main thread from waiting this script. Only if script is called with external call with code 2.
     0x4  //ULT_LOCKMULTICOPY        Deny execution of the multiple script copies. By default execution is not denied.
     0x8  //ULT_UNLOCKMULTICOPY      Allow execution of the multiple script copies.
 
@@ -2399,34 +2399,43 @@ Arguments
         //  vData: script name.
         //  Return value: first found working script handle in stack.
     11  //SH_GETTHREADHANDLE  Retrieve script thread handle.
-        //  vData: script handle.
+        //  vData: script handle. If zero then current script handle is used.
         //  Return value: script thread handle.
     12  //SH_GETTHREADID  Retrieve script thread identifier.
-        //  vData: script handle.
+        //  vData: script handle. If zero then current script handle is used.
         //  Return value: script thread identifier.
     13  //SH_GETMESSAGELOOP  Retrieve message loop existence in script thread.
-        //  vData: script handle.
+        //  vData: script handle. If zero then current script handle is used.
         //  Return value: true - exist, false - not exist.
+    14  //SH_GETLOCKMULTICOPY  Lock execution of the multiple script copies.
+        //  vData: script handle. If zero then current script handle is used.
+        //  Return value: true - on, false - off.
+    15  //SH_GETLOCKSCRIPTSQUEUE  Lock other scripts running with this script at the same time.
+        //  vData: script handle. If zero then current script handle is used.
+        //  Return value: true - on, false - off.
+    16  //SH_GETLOCKPROGRAMTHREAD  Lock main thread from waiting this script (when script is called with external call with code 2).
+        //  vData: script handle. If zero then current script handle is used.
+        //  Return value: true - on, false - off.
     21  //SH_GETNAME  Retrieve script name.
-        //  vData: script handle.
+        //  vData: script handle. If zero then current script handle is used.
         //  Return value: script name.
     22  //SH_GETFILE  Retrieve script file.
-        //  vData: script handle.
+        //  vData: script handle. If zero then current script handle is used.
         //  Return value: script file.
     23  //SH_GETNCLUDE  Retrieve include script file.
-        //  vData: script handle.
+        //  vData: script handle. If zero then current script handle is used.
         //  Return value: include script file.
     24  //SH_GETARGUMENTS  Retrieve script arguments string.
-        //  vData: script handle.
+        //  vData: script handle. If zero then current script handle is used.
         //  Return value: script arguments string.
     31  //SH_NEXTSCRIPT   Retrieve next script handle in stack regardless of the name.
-        //  vData: script handle.
+        //  vData: script handle. If zero then current script handle is used.
         //  Return value: next script handle in stack.
     32  //SH_NEXTSAMESCRIPT  Retrieve next script handle in stack with the same name.
-        //  vData: script handle.
+        //  vData: script handle. If zero then current script handle is used.
         //  Return value: next script handle in stack with the same name.
     33  //SH_CLOSESCRIPT  Exit from script thread's message loop.
-        //  vData: script handle.
+        //  vData: script handle. If zero then current script handle is used.
         //  Return value: zero.
 
 Return Value
@@ -2443,18 +2452,15 @@ Example (deny changing font size by scrolling mouse wheel with Ctrl key):
     //Script is running, second call close it.
     AkelPad.ScriptHandle(hScript, 33 /*SH_CLOSESCRIPT*/);
   }
-  else
+  else if (hSubClass=AkelPad.WindowSubClass(2 /*WSC_EDITPROC*/, EditCallback, 0x020A /*WM_MOUSEWHEEL*/))
   {
-    if (hSubClass=AkelPad.WindowSubClass(2 /*WSC_EDITPROC*/, EditCallback, 0x020A /*WM_MOUSEWHEEL*/))
-    {
-      //Allow other scripts running.
-      AkelPad.ScriptNoMutex();
+    //Allow other scripts running.
+    AkelPad.ScriptNoMutex();
 
-      //Message loop.
-      AkelPad.WindowGetMessage();
+    //Message loop.
+    AkelPad.WindowGetMessage();
 
-      AkelPad.WindowUnsubClass(2 /*WSC_EDITPROC*/);
-    }
+    AkelPad.WindowUnsubClass(2 /*WSC_EDITPROC*/);
   }
 
   function EditCallback(hWnd, uMsg, wParam, lParam)

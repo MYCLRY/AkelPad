@@ -39,6 +39,7 @@ int nFoldLimit=10000;
 int nShowDock=CFSD_AUTO;
 int nFollowCaret=FCO_ANYWHERE;
 BOOL bListSystemColors=FALSE;
+BOOL bListSystemFont=TRUE;
 BOOL bNoPrintCollapsed=FALSE;
 BOOL bCollapseOnOpen=FALSE;
 BOOL bTagMarkEnable=TRUE;
@@ -88,15 +89,17 @@ void __declspec(dllexport) CodeFold(PLUGINDATA *pd)
       {
         if (nAction == DLLA_CODEFOLD_SHOWDOCK)
         {
-          BOOL *lpbIsDock=NULL;
+          HWND *lpWndDock=NULL;
 
           if (IsExtCallParamValid(pd->lParam, 2))
-            lpbIsDock=(BOOL *)GetExtCallParam(pd->lParam, 2);
+            lpWndDock=(HWND *)GetExtCallParam(pd->lParam, 2);
 
-          if (lpbIsDock)
-            *lpbIsDock=(dkCodeFoldDlg && !(dkCodeFoldDlg->dwFlags & DKF_HIDDEN));
-          else
-            SendMessage(hWndCodeFoldDlg, WM_COMMAND, IDC_CODEFOLD_HIDE, 0);
+          if (lpWndDock)
+          {
+            if (dkCodeFoldDlg && !(dkCodeFoldDlg->dwFlags & DKF_HIDDEN))
+              *lpWndDock=dkCodeFoldDlg->hWnd;
+          }
+          else SendMessage(hWndCodeFoldDlg, WM_COMMAND, IDC_CODEFOLD_HIDE, 0);
         }
         else if (nAction == DLLA_CODEFOLD_ADDWINDOW)
         {
@@ -625,6 +628,7 @@ BOOL CALLBACK CodeFold1SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM 
   static HWND hWndFollowCaretOnlyRoot;
   static HWND hWndFollowCaretNone;
   static HWND hWndListSystemColors;
+  static HWND hWndListSystemFont;
   static int nShowDockDlg;
 
   if (uMsg == WM_INITDIALOG)
@@ -639,6 +643,7 @@ BOOL CALLBACK CodeFold1SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM 
     hWndFollowCaretOnlyRoot=GetDlgItem(hDlg, IDC_CODEFOLD_SETUP_FOLLOWCARET_ONLYROOT);
     hWndFollowCaretNone=GetDlgItem(hDlg, IDC_CODEFOLD_SETUP_FOLLOWCARET_NONE);
     hWndListSystemColors=GetDlgItem(hDlg, IDC_CODEFOLD_SETUP_LISTSYSTEMCOLORS);
+    hWndListSystemFont=GetDlgItem(hDlg, IDC_CODEFOLD_SETUP_LISTSYSTEMFONT);
 
     SetDlgItemTextWide(hDlg, IDC_CODEFOLD_SETUP_SHOWDOCK_GROUP, GetLangStringW(wLangModule, STRID_SHOWDOCK_GROUP));
     SetDlgItemTextWide(hDlg, IDC_CODEFOLD_SETUP_SHOWDOCK_AUTO, GetLangStringW(wLangModule, STRID_AUTO));
@@ -652,6 +657,7 @@ BOOL CALLBACK CodeFold1SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM 
     SetDlgItemTextWide(hDlg, IDC_CODEFOLD_SETUP_CHARSLIMIT_GROUP, GetLangStringW(wLangModule, STRID_MAXDOCUMENT));
     SetDlgItemTextWide(hDlg, IDC_CODEFOLD_SETUP_CHARSLIMIT_POSTLABEL, GetLangStringW(wLangModule, STRID_CHARS));
     SetDlgItemTextWide(hDlg, IDC_CODEFOLD_SETUP_LISTSYSTEMCOLORS, GetLangStringW(wLangModule, STRID_LISTSYSTEMCOLORS));
+    SetDlgItemTextWide(hDlg, IDC_CODEFOLD_SETUP_LISTSYSTEMFONT, GetLangStringW(wLangModule, STRID_LISTSYSTEMFONT));
 
     nShowDockDlg=nShowDock;
     if (nShowDockDlg == CFSD_NONE)
@@ -673,6 +679,8 @@ BOOL CALLBACK CodeFold1SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM 
 
     if (bListSystemColors)
       SendMessage(hWndListSystemColors, BM_SETCHECK, BST_CHECKED, 0);
+    if (bListSystemFont)
+      SendMessage(hWndListSystemFont, BM_SETCHECK, BST_CHECKED, 0);
   }
   else if (uMsg == WM_COMMAND)
   {
@@ -718,6 +726,7 @@ BOOL CALLBACK CodeFold1SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM 
     else if (((NMHDR *)lParam)->code == (UINT)PSN_APPLY)
     {
       PSHNOTIFY *pshn=(PSHNOTIFY *)lParam;
+      BOOL bState;
 
       if (nShowDockDlg != nShowDock)
       {
@@ -736,6 +745,14 @@ BOOL CALLBACK CodeFold1SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM 
       nCharsLimit=GetDlgItemInt(hDlg, IDC_CODEFOLD_SETUP_CHARSLIMIT, NULL, FALSE);
 
       bListSystemColors=(BOOL)SendMessage(hWndListSystemColors, BM_GETCHECK, 0, 0);
+
+      bState=(BOOL)SendMessage(hWndListSystemFont, BM_GETCHECK, 0, 0);
+      if (bState != bListSystemFont)
+      {
+        bListSystemFont=bState;
+        if (bListSystemFont)
+          SendMessage(hWndCodeFoldList, WM_SETFONT, (WPARAM)NULL, FALSE);
+      }
 
       if (nInitCodeFold)
       {
@@ -1109,6 +1126,7 @@ BOOL CALLBACK CodeFoldParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM
 
             lpFoldWindow->rcBoard.right=rcLineBoard.right + (lpFoldWindow->rcBoard.right - lpFoldWindow->rcBoard.left);
             lpFoldWindow->rcBoard.left=rcLineBoard.right;
+            lpFoldWindow->rcBoard.top=rcLineBoard.top;
           }
         }
       }
@@ -1495,6 +1513,23 @@ BOOL CALLBACK CodeFoldParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM
       }
     }
   }
+  else if (uMsg == AKD_SETFONT ||
+           uMsg == AKD_SETFONTA ||
+           uMsg == AKD_SETFONTW)
+  {
+    if (dkCodeFoldDlg && !(dkCodeFoldDlg->dwFlags & DKF_HIDDEN))
+    {
+      if (!bListSystemFont)
+      {
+        HFONT hFontEdit;
+
+        *lResult=NewMainProcData->NextProc(hWnd, uMsg, wParam, lParam);
+        hFontEdit=(HFONT)SendMessage(hMainWnd, AKD_GETFONT, (WPARAM)NULL, (LPARAM)NULL);
+        SendMessage(hWndCodeFoldList, WM_SETFONT, (WPARAM)hFontEdit, FALSE);
+        return TRUE;
+      }
+    }
+  }
   return FALSE;
 }
 
@@ -1585,11 +1620,11 @@ BOOL CALLBACK CodeFoldEditMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM l
           int nHPos;
           int nVPos;
           int nCharHeight;
+          int nBoardWidth;
           int i;
           BOOL bCaretFold=FALSE;
 
           GetClientRect(hWnd, &rcBoard);
-          lpFoldWindow->rcBoard.top=rcBoard.top;
           lpFoldWindow->rcBoard.bottom=rcBoard.bottom;
 
           hBufferDC=CreateCompatibleDC(hDC);
@@ -1621,10 +1656,11 @@ BOOL CALLBACK CodeFoldEditMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM l
           FillRect(hBufferDC, &lpFoldWindow->rcBoard, hFirstBkBrush);
 
           hPenOld=(HPEN)SelectObject(hBufferDC, hSecondBkPen);
-          for (i=0; i < lpFoldWindow->rcBoard.bottom + (lpFoldWindow->rcBoard.right - lpFoldWindow->rcBoard.left); i+=2)
+          nBoardWidth=lpFoldWindow->rcBoard.right - lpFoldWindow->rcBoard.left;
+          for (i=lpFoldWindow->rcBoard.top; i < lpFoldWindow->rcBoard.bottom + nBoardWidth; i+=2)
           {
             MoveToEx(hBufferDC, lpFoldWindow->rcBoard.left, i, NULL);
-            LineTo(hBufferDC, lpFoldWindow->rcBoard.right, i - (lpFoldWindow->rcBoard.right - lpFoldWindow->rcBoard.left));
+            LineTo(hBufferDC, lpFoldWindow->rcBoard.right, i - nBoardWidth);
           }
           hCurrentPen=hNormalFoldPen;
           SelectObject(hBufferDC, hCurrentPen);
@@ -1845,7 +1881,7 @@ BOOL CALLBACK CodeFoldEditMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM l
             }
             else SendMessage(hWnd, AEM_GETINDEX, AEGI_NEXTUNCOLLAPSEDLINE, (LPARAM)&ciFirstLine);
           }
-          BitBlt(hDC, lpFoldWindow->rcBoard.left, lpFoldWindow->rcBoard.top, lpFoldWindow->rcBoard.right - lpFoldWindow->rcBoard.left, lpFoldWindow->rcBoard.bottom - lpFoldWindow->rcBoard.top, hBufferDC, lpFoldWindow->rcBoard.left, 0, SRCCOPY);
+          BitBlt(hDC, lpFoldWindow->rcBoard.left, lpFoldWindow->rcBoard.top, lpFoldWindow->rcBoard.right - lpFoldWindow->rcBoard.left, lpFoldWindow->rcBoard.bottom - lpFoldWindow->rcBoard.top, hBufferDC, lpFoldWindow->rcBoard.left, lpFoldWindow->rcBoard.top, SRCCOPY);
 
           //Brushes
           SelectObject(hBufferDC, hBrushOld);
@@ -3153,14 +3189,14 @@ BOOL GetFoldName(FOLDDATA *lpFoldData, const AECHARINDEX *ciInput, AECHARRANGE *
     {
       if (cr.ciMax.nCharInLine < cr.ciMax.lpLine->nLineLen)
       {
-        if (cr.ciMax.lpLine->wpLine[cr.ciMax.nCharInLine] != ' ' &&
-            cr.ciMax.lpLine->wpLine[cr.ciMax.nCharInLine] != '\t')
+        if (cr.ciMax.lpLine->wpLine[cr.ciMax.nCharInLine] != L' ' &&
+            cr.ciMax.lpLine->wpLine[cr.ciMax.nCharInLine] != L'\t')
         {
           AEC_NextChar(&cr.ciMax);
           nNameLen=AEC_WrapLineBeginEx(&cr.ciMax, &cr.ciMin);
 
-          while (cr.ciMin.lpLine->wpLine[cr.ciMin.nCharInLine] == ' ' ||
-                 cr.ciMin.lpLine->wpLine[cr.ciMin.nCharInLine] == '\t')
+          while (cr.ciMin.lpLine->wpLine[cr.ciMin.nCharInLine] == L' ' ||
+                 cr.ciMin.lpLine->wpLine[cr.ciMin.nCharInLine] == L'\t')
           {
             AEC_NextChar(&cr.ciMin);
             --nNameLen;
@@ -3539,11 +3575,18 @@ FOLDWINDOW* SetActiveEdit(HWND hWndEdit, HWND hWndTreeView, DWORD dwFlags)
             dwBk=dwListBkColor;
           }
         }
-
         if ((DWORD)SendMessage(hWndTreeView, TVM_GETTEXTCOLOR, 0, 0) != dwText)
           SendMessage(hWndTreeView, TVM_SETTEXTCOLOR, 0, (LPARAM)dwText);
         if ((DWORD)SendMessage(hWndTreeView, TVM_GETBKCOLOR, 0, 0) != dwBk)
           SendMessage(hWndTreeView, TVM_SETBKCOLOR, 0, (LPARAM)dwBk);
+
+        if (!bListSystemFont)
+        {
+          HFONT hFontEdit;
+
+          hFontEdit=(HFONT)SendMessage(hMainWnd, AKD_GETFONT, (WPARAM)NULL, (LPARAM)NULL);
+          SendMessage(hWndTreeView, WM_SETFONT, (WPARAM)hFontEdit, FALSE);
+        }
       }
 
       if (dkCodeFoldDlg && (dkCodeFoldDlg->dwFlags & DKF_HIDDEN))
@@ -4275,6 +4318,7 @@ void ReadCodeFoldOptions(HANDLE hOptions)
   WideOption(hOptions, L"CharsLimit", PO_DWORD, (LPBYTE)&nCharsLimit, sizeof(DWORD));
   WideOption(hOptions, L"FollowCaret", PO_DWORD, (LPBYTE)&nFollowCaret, sizeof(DWORD));
   WideOption(hOptions, L"ListSystemColors", PO_DWORD, (LPBYTE)&bListSystemColors, sizeof(DWORD));
+  WideOption(hOptions, L"ListSystemFont", PO_DWORD, (LPBYTE)&bListSystemFont, sizeof(DWORD));
   WideOption(hOptions, L"DrawNodeType", PO_DWORD, (LPBYTE)&nDrawNodeType, sizeof(DWORD));
   WideOption(hOptions, L"TagMarkEnable", PO_DWORD, (LPBYTE)&bTagMarkEnable, sizeof(DWORD));
   WideOption(hOptions, L"CollapseOnOpen", PO_DWORD, (LPBYTE)&bCollapseOnOpen, sizeof(DWORD));
@@ -4312,6 +4356,7 @@ void SaveCodeFoldOptions(HANDLE hOptions, DWORD dwFlags)
     WideOption(hOptions, L"CharsLimit", PO_DWORD, (LPBYTE)&nCharsLimit, sizeof(DWORD));
     WideOption(hOptions, L"FollowCaret", PO_DWORD, (LPBYTE)&nFollowCaret, sizeof(DWORD));
     WideOption(hOptions, L"ListSystemColors", PO_DWORD, (LPBYTE)&bListSystemColors, sizeof(DWORD));
+    WideOption(hOptions, L"ListSystemFont", PO_DWORD, (LPBYTE)&bListSystemFont, sizeof(DWORD));
     WideOption(hOptions, L"DrawNodeType", PO_DWORD, (LPBYTE)&nDrawNodeType, sizeof(DWORD));
     WideOption(hOptions, L"TagMarkEnable", PO_DWORD, (LPBYTE)&bTagMarkEnable, sizeof(DWORD));
     WideOption(hOptions, L"CollapseOnOpen", PO_DWORD, (LPBYTE)&bCollapseOnOpen, sizeof(DWORD));

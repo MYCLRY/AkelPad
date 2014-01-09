@@ -1272,33 +1272,33 @@ int ParseBlock(SYNTAXFILE *lpScheme, HSTACK *hHotSpotStack, const wchar_t *wpInp
 
   for (a=0, b=0; b < nInputLen; ++b)
   {
-    if (wpInput[b] == '$')
+    if (wpInput[b] == L'$')
     {
-      if (wpInput[++b] == ';')
+      if (wpInput[++b] == L';')
       {
-        while (++b < nInputLen && wpInput[b] != '\r' && wpInput[b] != '\0');
+        while (++b < nInputLen && wpInput[b] != L'\r' && wpInput[b] != L'\0');
       }
-      else if (wpInput[b] == '$')
+      else if (wpInput[b] == L'$')
       {
-        if (wszOutput) wszOutput[a]='$';
+        if (wszOutput) wszOutput[a]=L'$';
         ++a;
         if (lpHotSpot) ++lpHotSpot->nHotSpotInitLen;
       }
-      else if (wpInput[b] == '\\')
+      else if (wpInput[b] == L'\\')
       {
         if (++b >= nInputLen) break;
         if (wszOutput) wszOutput[a]=wpInput[b];
         ++a;
         if (lpHotSpot) ++lpHotSpot->nHotSpotInitLen;
       }
-      else if (wpInput[b] == '[')
+      else if (wpInput[b] == L'[')
       {
         if (wszOutput) lpHotSpot=StackInsertHotSpot(hHotSpotStack, a);
       }
-      else if (wpInput[b] == '{')
+      else if (wpInput[b] == L'{')
       {
         wpVarNameStart=wpInput + b + 1;
-        for (nVarNameLen=0; ++b < nInputLen && wpInput[b] != '}'; ++nVarNameLen);
+        for (nVarNameLen=0; ++b < nInputLen && wpInput[b] != L'}'; ++nVarNameLen);
         if (b >= nInputLen) break;
 
         if (lpElement=StackGetVarByName(&lpVarThemeActive->hVarStack, wpVarNameStart, nVarNameLen))
@@ -1310,16 +1310,16 @@ int ParseBlock(SYNTAXFILE *lpScheme, HSTACK *hHotSpotStack, const wchar_t *wpInp
       }
       continue;
     }
-    else if (wpInput[b] == '\n')
+    else if (wpInput[b] == L'\n')
     {
       //Skip '\n'
       continue;
     }
-    else if (wpInput[b] == '\r')
+    else if (wpInput[b] == L'\r')
     {
       ++nLines;
     }
-    else if (wpInput[b] == ']')
+    else if (wpInput[b] == L']')
     {
       if (lpHotSpot)
       {
@@ -1333,7 +1333,7 @@ int ParseBlock(SYNTAXFILE *lpScheme, HSTACK *hHotSpotStack, const wchar_t *wpInp
     if (lpHotSpot) ++lpHotSpot->nHotSpotInitLen;
   }
   if (wszOutput)
-    wszOutput[a]='\0';
+    wszOutput[a]=L'\0';
   else
     ++a;
   if (nOutputLines) *nOutputLines=nLines;
@@ -1404,7 +1404,7 @@ BOOL GetEditTitlePart(STACKDELIM *hDelimiterStack, wchar_t *wszTitle, int nTitle
     }
 
     //Empty word
-    wszTitle[0]='\0';
+    wszTitle[0]=L'\0';
     *nMin=cr.cpMin;
     *nMax=cr.cpMin;
     return TRUE;
@@ -1514,8 +1514,8 @@ void CompleteTitlePart(BLOCKINFO *lpBlockInfo, INT_PTR nMin, INT_PTR nMax)
             wpLine=(wchar_t *)gtr.pText;
 
             //Get spaces
-            for (nSpaceCount=0; wpLine[nSpaceCount] == ' ' || wpLine[nSpaceCount] == '\t'; ++nSpaceCount);
-            wpLine[nSpaceCount]='\0';
+            for (nSpaceCount=0; wpLine[nSpaceCount] == L' ' || wpLine[nSpaceCount] == L'\t'; ++nSpaceCount);
+            wpLine[nSpaceCount]=L'\0';
 
             if (nSpaceCount)
             {
@@ -1525,7 +1525,7 @@ void CompleteTitlePart(BLOCKINFO *lpBlockInfo, INT_PTR nMin, INT_PTR nMax)
               {
                 for (a=0, b=0; b < lpBlockMaster->nBlockLen;)
                 {
-                  if (lpBlockMaster->wpBlock[b] == '\r')
+                  if (lpBlockMaster->wpBlock[b] == L'\r')
                   {
                     wpIndentBlock[a++]=lpBlockMaster->wpBlock[b++];
 
@@ -1541,7 +1541,7 @@ void CompleteTitlePart(BLOCKINFO *lpBlockInfo, INT_PTR nMin, INT_PTR nMax)
                   }
                   else wpIndentBlock[a++]=lpBlockMaster->wpBlock[b++];
                 }
-                wpIndentBlock[a]='\0';
+                wpIndentBlock[a]=L'\0';
               }
             }
             SendMessage(hMainWnd, AKD_FREETEXT, 0, (LPARAM)gtr.pText);

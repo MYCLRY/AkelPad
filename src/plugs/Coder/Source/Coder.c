@@ -2375,7 +2375,7 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
         if (ReadFile(hFile, wszText, dwFileSize, &dwBytesRead, NULL))
         {
           dwUnicodeLen=dwBytesRead / sizeof(wchar_t);
-          wszText[dwUnicodeLen++]='\0';
+          wszText[dwUnicodeLen++]=L'\0';
           if (wszText[0] == 0xFEFF)
           {
             ++wpText;
@@ -2396,13 +2396,13 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
           {
             SectionStart:
             if (!SkipComment(&wpText)) goto FreeText;
-            if (*wpText == '\r' || *wpText == '\n')
+            if (*wpText == L'\r' || *wpText == L'\n')
             {
               do
               {
                 ++wpText;
               }
-              while (*wpText == '\r' || *wpText == '\n');
+              while (*wpText == L'\r' || *wpText == L'\n');
 
               goto SectionStart;
             }
@@ -2424,7 +2424,7 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                   //Wildcard
                   if ((nWildcardLen=GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, &bQuoteString, lpVarStack)) || bQuoteString)
                   {
-                    if (!bQuoteString && wszBuffer[0] == ';') break;
+                    if (!bQuoteString && wszBuffer[0] == L';') break;
 
                     if (wpWildcard=(wchar_t *)GlobalAlloc(GPTR, (nWildcardLen + 1) * sizeof(wchar_t)))
                       xmemcpy(wpWildcard, wszBuffer, (nWildcardLen + 1) * sizeof(wchar_t));
@@ -2466,7 +2466,7 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                   if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
                   {
                     dwFlags=(DWORD)xatoiW(wszBuffer, NULL);
-                    if (dwFlags == 0 && wszBuffer[0] != '0') break;
+                    if (dwFlags == 0 && wszBuffer[0] != L'0') break;
                   }
                   else goto SectionStart;
 
@@ -2480,22 +2480,22 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                   //Color
                   if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
                   {
-                    if (*wszBuffer == '#')
+                    if (*wszBuffer == L'#')
                     {
                       dwColor1=GetColorValueFromStrW(wszBuffer + 1);
                     }
-                    else if (*wszBuffer != '0') break;
+                    else if (*wszBuffer != L'0') break;
                   }
                   else break;
 
                   //Background color
                   if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
                   {
-                    if (*wszBuffer == '#')
+                    if (*wszBuffer == L'#')
                     {
                       dwColor2=GetColorValueFromStrW(wszBuffer + 1);
                     }
-                    else if (*wszBuffer != '0') break;
+                    else if (*wszBuffer != L'0') break;
                   }
                   else break;
 
@@ -2548,7 +2548,7 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                 lpSyntaxFile->lfFont.lfClipPrecision=CLIP_DEFAULT_PRECIS;
                 lpSyntaxFile->lfFont.lfQuality=DEFAULT_QUALITY;
                 lpSyntaxFile->lfFont.lfPitchAndFamily=DEFAULT_PITCH;
-                lpSyntaxFile->lfFont.lfFaceName[0]='\0';
+                lpSyntaxFile->lfFont.lfFaceName[0]=L'\0';
 
                 //Font style
                 if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
@@ -2560,7 +2560,7 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                     lpSyntaxFile->lfFont.lfWeight=(dwFontStyle == AEHLS_FONTBOLD || dwFontStyle == AEHLS_FONTBOLDITALIC)?FW_BOLD:FW_NORMAL;
                     lpSyntaxFile->lfFont.lfItalic=(dwFontStyle == AEHLS_FONTITALIC || dwFontStyle == AEHLS_FONTBOLDITALIC)?TRUE:FALSE;
                   }
-                  else if (wszBuffer[0] != '0') break;
+                  else if (wszBuffer[0] != L'0') break;
                 }
 
                 //Font size
@@ -2576,7 +2576,7 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                       ReleaseDC(hMainWnd, hDC);
                     }
                   }
-                  else if (wszBuffer[0] != '0') break;
+                  else if (wszBuffer[0] != L'0') break;
                 }
 
                 //Face name
@@ -2599,177 +2599,177 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                 //Basic text color
                 if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
                 {
-                  if (*wszBuffer == '#')
+                  if (*wszBuffer == L'#')
                   {
                     lpSyntaxFile->aecColors.crBasicText=GetColorValueFromStrW(wszBuffer + 1);
                     lpSyntaxFile->aecColors.dwFlags|=AECLR_BASICTEXT;
                   }
-                  else if (*wszBuffer != '0') break;
+                  else if (*wszBuffer != L'0') break;
                 }
 
                 //Basic bkgrnd color
                 if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
                 {
-                  if (*wszBuffer == '#')
+                  if (*wszBuffer == L'#')
                   {
                     lpSyntaxFile->aecColors.crBasicBk=GetColorValueFromStrW(wszBuffer + 1);
                     lpSyntaxFile->aecColors.dwFlags|=AECLR_BASICBK;
                   }
-                  else if (*wszBuffer != '0') break;
+                  else if (*wszBuffer != L'0') break;
                 }
 
                 //Sel text color
                 if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
                 {
-                  if (*wszBuffer == '#')
+                  if (*wszBuffer == L'#')
                   {
                     lpSyntaxFile->aecColors.crSelText=GetColorValueFromStrW(wszBuffer + 1);
                     lpSyntaxFile->aecColors.dwFlags|=AECLR_SELTEXT;
                   }
-                  else if (*wszBuffer != '0') break;
+                  else if (*wszBuffer != L'0') break;
                 }
 
                 //Sel bkgrnd color
                 if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
                 {
-                  if (*wszBuffer == '#')
+                  if (*wszBuffer == L'#')
                   {
                     lpSyntaxFile->aecColors.crSelBk=GetColorValueFromStrW(wszBuffer + 1);
                     lpSyntaxFile->aecColors.dwFlags|=AECLR_SELBK;
                   }
-                  else if (*wszBuffer != '0') break;
+                  else if (*wszBuffer != L'0') break;
                 }
 
                 //Line text color
                 if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
                 {
-                  if (*wszBuffer == '#')
+                  if (*wszBuffer == L'#')
                   {
                     lpSyntaxFile->aecColors.crActiveLineText=GetColorValueFromStrW(wszBuffer + 1);
                     lpSyntaxFile->aecColors.dwFlags|=AECLR_ACTIVELINETEXT;
                   }
-                  else if (*wszBuffer != '0') break;
+                  else if (*wszBuffer != L'0') break;
                 }
 
                 //Line bkgrnd color
                 if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
                 {
-                  if (*wszBuffer == '#')
+                  if (*wszBuffer == L'#')
                   {
                     lpSyntaxFile->aecColors.crActiveLineBk=GetColorValueFromStrW(wszBuffer + 1);
                     lpSyntaxFile->aecColors.dwFlags|=AECLR_ACTIVELINEBK;
                   }
-                  else if (*wszBuffer != '0') break;
+                  else if (*wszBuffer != L'0') break;
                 }
 
                 //Line border color
                 if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
                 {
-                  if (*wszBuffer == '#')
+                  if (*wszBuffer == L'#')
                   {
                     lpSyntaxFile->aecColors.crActiveLineBorder=GetColorValueFromStrW(wszBuffer + 1);
                     lpSyntaxFile->aecColors.dwFlags|=AECLR_ACTIVELINEBORDER;
                   }
-                  else if (*wszBuffer != '0') break;
+                  else if (*wszBuffer != L'0') break;
                 }
 
                 //Alt line text color
                 if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
                 {
-                  if (*wszBuffer == '#')
+                  if (*wszBuffer == L'#')
                   {
                     lpSyntaxFile->aecColors.crAltLineText=GetColorValueFromStrW(wszBuffer + 1);
                     lpSyntaxFile->aecColors.dwFlags|=AECLR_ALTLINETEXT;
                   }
-                  else if (*wszBuffer != '0') break;
+                  else if (*wszBuffer != L'0') break;
                 }
 
                 //Alt line bkgrnd color
                 if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
                 {
-                  if (*wszBuffer == '#')
+                  if (*wszBuffer == L'#')
                   {
                     lpSyntaxFile->aecColors.crAltLineBk=GetColorValueFromStrW(wszBuffer + 1);
                     lpSyntaxFile->aecColors.dwFlags|=AECLR_ALTLINEBK;
                   }
-                  else if (*wszBuffer != '0') break;
+                  else if (*wszBuffer != L'0') break;
                 }
 
                 //Alt border color
                 if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
                 {
-                  if (*wszBuffer == '#')
+                  if (*wszBuffer == L'#')
                   {
                     lpSyntaxFile->aecColors.crAltLineBorder=GetColorValueFromStrW(wszBuffer + 1);
                     lpSyntaxFile->aecColors.dwFlags|=AECLR_ALTLINEBORDER;
                   }
-                  else if (*wszBuffer != '0') break;
+                  else if (*wszBuffer != L'0') break;
                 }
 
                 //Column color
                 if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
                 {
-                  if (*wszBuffer == '#')
+                  if (*wszBuffer == L'#')
                   {
                     lpSyntaxFile->aecColors.crActiveColumn=GetColorValueFromStrW(wszBuffer + 1);
                     lpSyntaxFile->aecColors.dwFlags|=AECLR_ACTIVECOLUMN;
                   }
-                  else if (*wszBuffer != '0') break;
+                  else if (*wszBuffer != L'0') break;
                 }
 
                 //Marker color
                 if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
                 {
-                  if (*wszBuffer == '#')
+                  if (*wszBuffer == L'#')
                   {
                     lpSyntaxFile->aecColors.crColumnMarker=GetColorValueFromStrW(wszBuffer + 1);
                     lpSyntaxFile->aecColors.dwFlags|=AECLR_COLUMNMARKER;
                   }
-                  else if (*wszBuffer != '0') break;
+                  else if (*wszBuffer != L'0') break;
                 }
 
                 //Caret color
                 if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
                 {
-                  if (*wszBuffer == '#')
+                  if (*wszBuffer == L'#')
                   {
                     lpSyntaxFile->aecColors.crCaret=GetColorValueFromStrW(wszBuffer + 1);
                     lpSyntaxFile->aecColors.dwFlags|=AECLR_CARET;
                   }
-                  else if (*wszBuffer != '0') break;
+                  else if (*wszBuffer != L'0') break;
                 }
 
                 //URL color
                 if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
                 {
-                  if (*wszBuffer == '#')
+                  if (*wszBuffer == L'#')
                   {
                     lpSyntaxFile->aecColors.crUrlText=GetColorValueFromStrW(wszBuffer + 1);
                     lpSyntaxFile->aecColors.dwFlags|=AECLR_URLTEXT;
                   }
-                  else if (*wszBuffer != '0') break;
+                  else if (*wszBuffer != L'0') break;
                 }
 
                 //Active URL color
                 if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
                 {
-                  if (*wszBuffer == '#')
+                  if (*wszBuffer == L'#')
                   {
                     lpSyntaxFile->aecColors.crUrlCursorText=GetColorValueFromStrW(wszBuffer + 1);
                     lpSyntaxFile->aecColors.dwFlags|=AECLR_URLCURSORTEXT;
                   }
-                  else if (*wszBuffer != '0') break;
+                  else if (*wszBuffer != L'0') break;
                 }
 
                 //Visit URL color
                 if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
                 {
-                  if (*wszBuffer == '#')
+                  if (*wszBuffer == L'#')
                   {
                     lpSyntaxFile->aecColors.crUrlVisitText=GetColorValueFromStrW(wszBuffer + 1);
                     lpSyntaxFile->aecColors.dwFlags|=AECLR_URLVISITTEXT;
                   }
-                  else if (*wszBuffer != '0') break;
+                  else if (*wszBuffer != L'0') break;
                 }
 
                 break;
@@ -2809,7 +2809,7 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                 if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
                 {
                   lpSyntaxFile->dwAutoMarkFlags=(DWORD)xatoiW(wszBuffer, NULL);
-                  if (lpSyntaxFile->dwAutoMarkFlags == 0 && wszBuffer[0] != '0') break;
+                  if (lpSyntaxFile->dwAutoMarkFlags == 0 && wszBuffer[0] != L'0') break;
                 }
 
                 //AutoMark font style
@@ -2821,21 +2821,21 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                 //AutoMark text color
                 if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
                 {
-                  if (*wszBuffer == '#')
+                  if (*wszBuffer == L'#')
                   {
                     lpSyntaxFile->dwAutoMarkTextColor=GetColorValueFromStrW(wszBuffer + 1);
                   }
-                  else if (*wszBuffer != '0') break;
+                  else if (*wszBuffer != L'0') break;
                 }
 
                 //AutoMark background color
                 if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
                 {
-                  if (*wszBuffer == '#')
+                  if (*wszBuffer == L'#')
                   {
                     lpSyntaxFile->dwAutoMarkBkColor=GetColorValueFromStrW(wszBuffer + 1);
                   }
-                  else if (*wszBuffer != '0') break;
+                  else if (*wszBuffer != L'0') break;
                 }
 
                 break;
@@ -2862,7 +2862,7 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                   if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
                   {
                     dwFlags=(DWORD)xatoiW(wszBuffer, NULL);
-                    if (dwFlags == 0 && wszBuffer[0] != '0') break;
+                    if (dwFlags == 0 && wszBuffer[0] != L'0') break;
                   }
                   else goto SectionStart;
 
@@ -2876,22 +2876,22 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                   //Color
                   if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
                   {
-                    if (*wszBuffer == '#')
+                    if (*wszBuffer == L'#')
                     {
                       dwColor1=GetColorValueFromStrW(wszBuffer + 1);
                     }
-                    else if (*wszBuffer != '0') break;
+                    else if (*wszBuffer != L'0') break;
                   }
                   else break;
 
                   //Background color
                   if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
                   {
-                    if (*wszBuffer == '#')
+                    if (*wszBuffer == L'#')
                     {
                       dwColor2=GetColorValueFromStrW(wszBuffer + 1);
                     }
-                    else if (*wszBuffer != '0') break;
+                    else if (*wszBuffer != L'0') break;
                   }
                   else break;
 
@@ -2987,7 +2987,7 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                   if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
                   {
                     dwFlags=(DWORD)xatoiW(wszBuffer, NULL);
-                    if (dwFlags == 0 && wszBuffer[0] != '0') break;
+                    if (dwFlags == 0 && wszBuffer[0] != L'0') break;
                   }
                   else goto SectionStart;
 
@@ -3048,7 +3048,7 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                   if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
                   {
                     dwFlags=(DWORD)xatoiW(wszBuffer, NULL);
-                    if (dwFlags == 0 && wszBuffer[0] != '0') break;
+                    if (dwFlags == 0 && wszBuffer[0] != L'0') break;
                   }
                   else goto SectionStart;
 
@@ -3062,22 +3062,22 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                   //Color
                   if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
                   {
-                    if (*wszBuffer == '#')
+                    if (*wszBuffer == L'#')
                     {
                       dwColor1=GetColorValueFromStrW(wszBuffer + 1);
                     }
-                    else if (*wszBuffer != '0') break;
+                    else if (*wszBuffer != L'0') break;
                   }
                   else break;
 
                   //Background color
                   if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
                   {
-                    if (*wszBuffer == '#')
+                    if (*wszBuffer == L'#')
                     {
                       dwColor2=GetColorValueFromStrW(wszBuffer + 1);
                     }
-                    else if (*wszBuffer != '0') break;
+                    else if (*wszBuffer != L'0') break;
                   }
                   else break;
 
@@ -3131,121 +3131,121 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                 //First background color
                 if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
                 {
-                  if (*wszBuffer == '#')
+                  if (*wszBuffer == L'#')
                   {
                     lpSyntaxFile->dwPanelFirstBkColor=GetColorValueFromStrW(wszBuffer + 1);
                   }
-                  else if (*wszBuffer != '0') break;
+                  else if (*wszBuffer != L'0') break;
                 }
 
                 //Second background color
                 if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
                 {
-                  if (*wszBuffer == '#')
+                  if (*wszBuffer == L'#')
                   {
                     lpSyntaxFile->dwPanelSecondBkColor=GetColorValueFromStrW(wszBuffer + 1);
                   }
-                  else if (*wszBuffer != '0') break;
+                  else if (*wszBuffer != L'0') break;
                 }
 
                 //Normal fold color
                 if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
                 {
-                  if (*wszBuffer == '#')
+                  if (*wszBuffer == L'#')
                   {
                     lpSyntaxFile->dwPanelNormalFoldColor=GetColorValueFromStrW(wszBuffer + 1);
                   }
-                  else if (*wszBuffer != '0') break;
+                  else if (*wszBuffer != L'0') break;
                 }
 
                 //Active fold color
                 if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
                 {
-                  if (*wszBuffer == '#')
+                  if (*wszBuffer == L'#')
                   {
                     lpSyntaxFile->dwPanelActiveFoldColor=GetColorValueFromStrW(wszBuffer + 1);
                   }
-                  else if (*wszBuffer != '0') break;
+                  else if (*wszBuffer != L'0') break;
                 }
 
                 //Normal node open background color
                 if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
                 {
-                  if (*wszBuffer == '#')
+                  if (*wszBuffer == L'#')
                   {
                     lpSyntaxFile->dwPanelNormalNodeOpenBkColor=GetColorValueFromStrW(wszBuffer + 1);
                   }
-                  else if (*wszBuffer != '0') break;
+                  else if (*wszBuffer != L'0') break;
                 }
 
                 //Normal node close background color
                 if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
                 {
-                  if (*wszBuffer == '#')
+                  if (*wszBuffer == L'#')
                   {
                     lpSyntaxFile->dwPanelNormalNodeCloseBkColor=GetColorValueFromStrW(wszBuffer + 1);
                   }
-                  else if (*wszBuffer != '0') break;
+                  else if (*wszBuffer != L'0') break;
                 }
 
                 //Active node open background color
                 if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
                 {
-                  if (*wszBuffer == '#')
+                  if (*wszBuffer == L'#')
                   {
                     lpSyntaxFile->dwPanelActiveNodeOpenBkColor=GetColorValueFromStrW(wszBuffer + 1);
                   }
-                  else if (*wszBuffer != '0') break;
+                  else if (*wszBuffer != L'0') break;
                 }
 
                 //Active node close background color
                 if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
                 {
-                  if (*wszBuffer == '#')
+                  if (*wszBuffer == L'#')
                   {
                     lpSyntaxFile->dwPanelActiveNodeCloseBkColor=GetColorValueFromStrW(wszBuffer + 1);
                   }
-                  else if (*wszBuffer != '0') break;
+                  else if (*wszBuffer != L'0') break;
                 }
 
                 //Normal node open sign color
                 if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
                 {
-                  if (*wszBuffer == '#')
+                  if (*wszBuffer == L'#')
                   {
                     lpSyntaxFile->dwPanelNormalNodeOpenSignColor=GetColorValueFromStrW(wszBuffer + 1);
                   }
-                  else if (*wszBuffer != '0') break;
+                  else if (*wszBuffer != L'0') break;
                 }
 
                 //Normal node close sign color
                 if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
                 {
-                  if (*wszBuffer == '#')
+                  if (*wszBuffer == L'#')
                   {
                     lpSyntaxFile->dwPanelNormalNodeCloseSignColor=GetColorValueFromStrW(wszBuffer + 1);
                   }
-                  else if (*wszBuffer != '0') break;
+                  else if (*wszBuffer != L'0') break;
                 }
 
                 //Active node open sign color
                 if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
                 {
-                  if (*wszBuffer == '#')
+                  if (*wszBuffer == L'#')
                   {
                     lpSyntaxFile->dwPanelActiveNodeOpenSignColor=GetColorValueFromStrW(wszBuffer + 1);
                   }
-                  else if (*wszBuffer != '0') break;
+                  else if (*wszBuffer != L'0') break;
                 }
 
                 //Active node close sign color
                 if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
                 {
-                  if (*wszBuffer == '#')
+                  if (*wszBuffer == L'#')
                   {
                     lpSyntaxFile->dwPanelActiveNodeCloseSignColor=GetColorValueFromStrW(wszBuffer + 1);
                   }
-                  else if (*wszBuffer != '0') break;
+                  else if (*wszBuffer != L'0') break;
                 }
 
                 break;
@@ -3262,21 +3262,21 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                 //List text color
                 if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
                 {
-                  if (*wszBuffer == '#')
+                  if (*wszBuffer == L'#')
                   {
                     lpSyntaxFile->dwListTextColor=GetColorValueFromStrW(wszBuffer + 1);
                   }
-                  else if (*wszBuffer != '0') break;
+                  else if (*wszBuffer != L'0') break;
                 }
 
                 //List background color
                 if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
                 {
-                  if (*wszBuffer == '#')
+                  if (*wszBuffer == L'#')
                   {
                     lpSyntaxFile->dwListBkColor=GetColorValueFromStrW(wszBuffer + 1);
                   }
-                  else if (*wszBuffer != '0') break;
+                  else if (*wszBuffer != L'0') break;
                 }
 
                 break;
@@ -3296,7 +3296,7 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                 if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
                 {
                   lpSyntaxFile->dwTagMarkFlags=(DWORD)xatoiW(wszBuffer, NULL);
-                  if (lpSyntaxFile->dwTagMarkFlags == 0 && wszBuffer[0] != '0') break;
+                  if (lpSyntaxFile->dwTagMarkFlags == 0 && wszBuffer[0] != L'0') break;
                 }
 
                 //TagMark font style
@@ -3308,21 +3308,21 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                 //TagMark text color
                 if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
                 {
-                  if (*wszBuffer == '#')
+                  if (*wszBuffer == L'#')
                   {
                     lpSyntaxFile->dwTagMarkTextColor=GetColorValueFromStrW(wszBuffer + 1);
                   }
-                  else if (*wszBuffer != '0') break;
+                  else if (*wszBuffer != L'0') break;
                 }
 
                 //TagMark background color
                 if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
                 {
-                  if (*wszBuffer == '#')
+                  if (*wszBuffer == L'#')
                   {
                     lpSyntaxFile->dwTagMarkBkColor=GetColorValueFromStrW(wszBuffer + 1);
                   }
-                  else if (*wszBuffer != '0') break;
+                  else if (*wszBuffer != L'0') break;
                 }
 
                 break;
@@ -3344,7 +3344,7 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                   if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
                   {
                     dwFlags=(DWORD)xatoiW(wszBuffer, NULL);
-                    if (dwFlags == 0 && wszBuffer[0] != '0') break;
+                    if (dwFlags == 0 && wszBuffer[0] != L'0') break;
                   }
                   else goto SectionStart;
 
@@ -3414,7 +3414,7 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                   if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
                   {
                     dwFlags=(DWORD)xatoiW(wszBuffer, NULL);
-                    if (dwFlags == 0 && wszBuffer[0] != '0') break;
+                    if (dwFlags == 0 && wszBuffer[0] != L'0') break;
                   }
                   else goto SectionStart;
 
@@ -3428,22 +3428,22 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                   //Color
                   if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
                   {
-                    if (*wszBuffer == '#')
+                    if (*wszBuffer == L'#')
                     {
                       dwColor1=GetColorValueFromStrW(wszBuffer + 1);
                     }
-                    else if (*wszBuffer != '0') break;
+                    else if (*wszBuffer != L'0') break;
                   }
                   else break;
 
                   //Background color
                   if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
                   {
-                    if (*wszBuffer == '#')
+                    if (*wszBuffer == L'#')
                     {
                       dwColor2=GetColorValueFromStrW(wszBuffer + 1);
                     }
-                    else if (*wszBuffer != '0') break;
+                    else if (*wszBuffer != L'0') break;
                   }
                   else break;
 
@@ -3561,18 +3561,18 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                 while (*wpText)
                 {
                   //Skip comment
-                  if (*wpText == '$' && (*(wpText + 1) == ';' || *(wpText + 1) == '#') && *(wpText - 1) != '$')
-                    while (*++wpText != '\r' && *wpText != '\0');
+                  if (*wpText == L'$' && (*(wpText + 1) == L';' || *(wpText + 1) == L'#') && *(wpText - 1) != L'$')
+                    while (*++wpText != L'\r' && *wpText != L'\0');
 
-                  if (*wpText == '$' && (*(wpText + 1) == '~' || *(wpText + 1) == '=') && *(wpText - 1) != '$')
+                  if (*wpText == L'$' && (*(wpText + 1) == L'~' || *(wpText + 1) == L'=') && *(wpText - 1) != L'$')
                   {
-                    if (*(wpText + 1) == '~')
+                    if (*(wpText + 1) == L'~')
                       bExactTitle=FALSE;
                     else
                       bExactTitle=TRUE;
                     wpText+=2;
                     wpTitleBegin=wpText;
-                    while (*wpText != ' ' && *wpText != '\t' && *wpText != '\r' && *wpText != '\0') ++wpText;
+                    while (*wpText != L' ' && *wpText != L'\t' && *wpText != L'\r' && *wpText != L'\0') ++wpText;
                     nTitleLen=(int)(wpText - wpTitleBegin);
 
                     if (nTitleLen)
@@ -3580,7 +3580,7 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                       if (wszTitle=(wchar_t *)GlobalAlloc(GPTR, (nTitleLen + 1) * sizeof(wchar_t)))
                       {
                         xmemcpy(wszTitle, wpTitleBegin, nTitleLen * sizeof(wchar_t));
-                        wszTitle[nTitleLen]='\0';
+                        wszTitle[nTitleLen]=L'\0';
 
                         if (lpTitleInfo=StackInsertTitle(&hTitleStack))
                         {
@@ -3595,7 +3595,7 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                       else break;
                     }
                   }
-                  if (*wpText == '\r')
+                  if (*wpText == L'\r')
                   {
                     NextLine(&wpText);
                     break;
@@ -3610,11 +3610,11 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                   while (*wpText)
                   {
                     //Skip comment
-                    if (*wpText == '$' && (*(wpText + 1) == ';' || *(wpText + 1) == '#') && *(wpText - 1) != '$')
-                      while (*++wpText != '\r' && *wpText != '\0');
+                    if (*wpText == L'$' && (*(wpText + 1) == L';' || *(wpText + 1) == L'#') && *(wpText - 1) != L'$')
+                      while (*++wpText != L'\r' && *wpText != L'\0');
 
                     //Find next abbreviation definition
-                    if (*wpText == '$' && (*(wpText + 1) == '~' || *(wpText + 1) == '=') && *(wpText - 1) != '$')
+                    if (*wpText == L'$' && (*(wpText + 1) == L'~' || *(wpText + 1) == L'=') && *(wpText - 1) != L'$')
                       break;
                     ++wpText;
                   }
@@ -3626,8 +3626,8 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                     if (wszBlockParsed=(wchar_t *)GlobalAlloc(GPTR, nBlockParsedLen * sizeof(wchar_t)))
                     {
                       nBlockParsedLen=ParseBlock(lpSyntaxFile, &hHotSpotStack, wpBlockBegin, nBlockLen, wszBlockParsed, &nLinesInBlock);
-                      if (nBlockParsedLen > 0 && wszBlockParsed[nBlockParsedLen - 1] == '\r') wszBlockParsed[--nBlockParsedLen]='\0';
-                      if (nBlockParsedLen > 0 && wszBlockParsed[nBlockParsedLen - 1] == '\r') wszBlockParsed[--nBlockParsedLen]='\0';
+                      if (nBlockParsedLen > 0 && wszBlockParsed[nBlockParsedLen - 1] == L'\r') wszBlockParsed[--nBlockParsedLen]=L'\0';
+                      if (nBlockParsedLen > 0 && wszBlockParsed[nBlockParsedLen - 1] == L'\r') wszBlockParsed[--nBlockParsedLen]=L'\0';
 
                       for (lpTitleInfo=(TITLEINFO *)hTitleStack.first; lpTitleInfo; lpTitleInfo=lpTitleInfo->next)
                       {
@@ -4400,7 +4400,7 @@ int ParseStringToVars(STACKVAR *lpVarStack, const wchar_t *wpText)
     //Var name
     if (nVarNameLen=GetWord(wpCount, wszVarName, MAX_PATH, &wpCount, NULL, lpVarStack))
     {
-      if (wszVarName[0] == ';')
+      if (wszVarName[0] == L';')
         continue;
     }
     else break;
@@ -4408,7 +4408,7 @@ int ParseStringToVars(STACKVAR *lpVarStack, const wchar_t *wpText)
     //Var value
     if (nVarValueLen=GetWord(wpCount, wszVarValue, MAX_PATH, &wpCount, NULL, lpVarStack))
     {
-      if (wszVarName[0] == '#')
+      if (wszVarName[0] == L'#')
       {
         //Make length at least 7 wide characters for "#RRGGBB"
         nVarValueLen=max(nVarValueLen, 7);
@@ -4468,16 +4468,16 @@ int GetWord(wchar_t *wpText, wchar_t *wszWord, int nWordLenMax, wchar_t **wpNext
   wchar_t wchStopChar;
   int nWordLen;
 
-  while (*wpText == ' ' || *wpText == '\t') ++wpText;
+  while (*wpText == L' ' || *wpText == L'\t') ++wpText;
 
-  if (*wpText == '\"' || *wpText == '\'' || *wpText == '`')
+  if (*wpText == L'\"' || *wpText == L'\'' || *wpText == L'`')
   {
     if (bQuote) *bQuote=TRUE;
     wchStopChar=*wpText;
     wpCount=++wpText;
 
     //Parse: "param" or 'param' or `param`
-    while (*wpCount != wchStopChar && *wpCount != '\r' && *wpCount != '\0')
+    while (*wpCount != wchStopChar && *wpCount != L'\r' && *wpCount != L'\0')
       ++wpCount;
 
     if (wpNextWord)
@@ -4493,9 +4493,9 @@ int GetWord(wchar_t *wpText, wchar_t *wszWord, int nWordLenMax, wchar_t **wpNext
     wpCount=wpText;
 
     //Variable
-    if (*wpText == '$' && *(wpText + 1) == '{')
+    if (*wpText == L'$' && *(wpText + 1) == L'{')
     {
-      for (wpCount=wpText + 2; *wpCount != '}' && *wpCount != '\0'; ++wpCount);
+      for (wpCount=wpText + 2; *wpCount != L'}' && *wpCount != L'\0'; ++wpCount);
 
       if (!lpVarStack || !(lpVarInfo=StackGetVarByName(lpVarStack, wpText + 2, (int)(wpCount - (wpText + 2)))))
       {
@@ -4508,7 +4508,7 @@ int GetWord(wchar_t *wpText, wchar_t *wszWord, int nWordLenMax, wchar_t **wpNext
     }
 
     //Parse: param1 param2 param3
-    while (*wpCount != ' ' && *wpCount != '\t' && *wpCount != '\r' && *wpCount != '\0')
+    while (*wpCount != L' ' && *wpCount != L'\t' && *wpCount != L'\r' && *wpCount != L'\0')
       ++wpCount;
 
     if (wpNextWord)
@@ -4521,7 +4521,7 @@ int GetWord(wchar_t *wpText, wchar_t *wszWord, int nWordLenMax, wchar_t **wpNext
   {
     nWordLen=min((int)(wpCount - wpText), nWordLenMax - 1);
     xmemcpy(wszWord, wpText, nWordLen * sizeof(wchar_t));
-    wszWord[nWordLen]='\0';
+    wszWord[nWordLen]=L'\0';
   }
   else nWordLen=(int)xstrcpynW(wszWord, lpVarInfo->wpVarValue, nWordLenMax);
 
@@ -4539,9 +4539,9 @@ INT_PTR ExpandVars(const wchar_t *wpString, INT_PTR nStringLen, wchar_t *wszBuff
 
   while (wpSource < wpSourceMax && wpTarget < wpTargetMax)
   {
-    if (*wpSource == '$' && *(wpSource + 1) == '{')
+    if (*wpSource == L'$' && *(wpSource + 1) == L'{')
     {
-      for (wpVarCount=wpSource + 2; *wpVarCount != '}' && *wpVarCount != '\0'; ++wpVarCount);
+      for (wpVarCount=wpSource + 2; *wpVarCount != L'}' && *wpVarCount != L'\0'; ++wpVarCount);
 
       if (lpVarStack && (lpVarInfo=StackGetVarByName(lpVarStack, wpSource + 2, (int)(wpVarCount - (wpSource + 2)))))
       {
@@ -4570,7 +4570,7 @@ INT_PTR ExpandVars(const wchar_t *wpString, INT_PTR nStringLen, wchar_t *wszBuff
   if (wpTarget < wpTargetMax)
   {
     if (wszBuffer)
-      *wpTarget='\0';
+      *wpTarget=L'\0';
     else
       ++wpTarget;
   }
@@ -4579,9 +4579,9 @@ INT_PTR ExpandVars(const wchar_t *wpString, INT_PTR nStringLen, wchar_t *wszBuff
 
 BOOL NextLine(wchar_t **wpText)
 {
-  while (**wpText != '\r' && **wpText != '\0') ++*wpText;
-  if (**wpText == '\0') return FALSE;
-  if (*++*wpText == '\n') ++*wpText;
+  while (**wpText != L'\r' && **wpText != L'\0') ++*wpText;
+  if (**wpText == L'\0') return FALSE;
+  if (*++*wpText == L'\n') ++*wpText;
   return TRUE;
 }
 
@@ -4589,16 +4589,16 @@ BOOL SkipComment(wchar_t **wpText)
 {
   for (;;)
   {
-    while (**wpText == ' ' || **wpText == '\t') ++*wpText;
+    while (**wpText == L' ' || **wpText == L'\t') ++*wpText;
 
-    if (**wpText == ';')
+    if (**wpText == L';')
     {
-      while (**wpText != '\r' && **wpText != '\0') ++*wpText;
+      while (**wpText != L'\r' && **wpText != L'\0') ++*wpText;
       NextLine(wpText);
     }
     else break;
   }
-  if (**wpText == '\0')
+  if (**wpText == L'\0')
     return FALSE;
   return TRUE;
 }
@@ -4670,12 +4670,12 @@ int GetBaseName(const wchar_t *wpFile, wchar_t *wszBaseName, int nBaseNameMaxLen
 
   for (i=nFileLen - 1; i >= 0; --i)
   {
-    if (wpFile[i] == '\\')
+    if (wpFile[i] == L'\\')
       break;
 
     if (nEndOffset == -1)
     {
-      if (wpFile[i] == '.')
+      if (wpFile[i] == L'.')
         nEndOffset=i;
     }
   }
@@ -5011,7 +5011,7 @@ void ReadSyntaxFiles()
         if (!lpSyntaxFile->bExists)
         {
           StackFreeWildcard(&lpSyntaxFile->hWildcardStack);
-          StackDelete((stack**)&hSyntaxFilesStack.first, (stack**)&hSyntaxFilesStack.last, (stack*)lpSyntaxFile);
+          StackDelete((stack **)&hSyntaxFilesStack.first, (stack **)&hSyntaxFilesStack.last, (stack *)lpSyntaxFile);
           dwSaveCache|=SC_SAVE|SC_CLEAR;
         }
       }
@@ -5153,7 +5153,7 @@ void ClearCache(BOOL bForceNewCache)
   if (nInitMain)
   {
     HWND hWndCurEdit=GetCurEdit();
-    int nTmp=UC_NONE;
+    DWORD dwTmp=UC_NONE;
 
     //Free syntax files
     StackFreeSyntaxFiles(&hSyntaxFilesStack);
@@ -5176,14 +5176,14 @@ void ClearCache(BOOL bForceNewCache)
     //Read syntax files
     if (bForceNewCache)
     {
-      nTmp=dwUseCache;
+      dwTmp=dwUseCache;
       dwUseCache=UC_NONE;
     }
     ReadOptions(OF_HIGHLIGHT|OF_CODEFOLD|OF_AUTOCOMPLETE);
     ReadSyntaxFiles();
     if (bForceNewCache)
     {
-      dwUseCache=nTmp;
+      dwUseCache=dwTmp;
     }
 
     //Update edit rectangle
@@ -5574,6 +5574,8 @@ const wchar_t* GetLangStringW(LANGID wLangID, int nStringID)
       return L"\x0441\x0438\x043C\x0432\x043E\x043B\x043E\x0432";
     if (nStringID == STRID_LISTSYSTEMCOLORS)
       return L"\x0421\x0438\x0441\x0442\x0435\x043C\x043D\x044B\x0435\x0020\x0446\x0432\x0435\x0442\x0430\x0020\x0432\x0020\x0441\x043F\x0438\x0441\x043A\x0435";
+    if (nStringID == STRID_LISTSYSTEMFONT)
+      return L"\x0421\x0438\x0441\x0442\x0435\x043C\x043D\x044B\x0439\x0020\x0448\x0440\x0438\x0444\x0442\x0020\x0432\x0020\x0441\x043F\x0438\x0441\x043A\x0435";
     if (nStringID == STRID_COMPLETENONSYNTAXDOCUMENT)
       return L"\x0414\x043E\x043F\x043E\x043B\x043D\x044F\x0442\x044C\x0020\x0442\x0430\x043A\x0436\x0435\x0020\x0438\x0437\x0020\x0434\x043E\x043A\x0443\x043C\x0435\x043D\x0442\x0430\x0020\x0431\x0435\x0437\x0020\x0441\x0438\x043D\x0442\x0430\x043A\x0441\x0438\x0447\x0435\x0441\x043A\x043E\x0439\x0020\x0442\x0435\x043C\x044B";
     if (nStringID == STRID_SAVETYPEDCASE)
@@ -5776,6 +5778,8 @@ const wchar_t* GetLangStringW(LANGID wLangID, int nStringID)
       return L"characters";
     if (nStringID == STRID_LISTSYSTEMCOLORS)
       return L"System colors in list";
+    if (nStringID == STRID_LISTSYSTEMFONT)
+      return L"System font in list";
     if (nStringID == STRID_COMPLETENONSYNTAXDOCUMENT)
       return L"Complete also document without syntax theme";
     if (nStringID == STRID_SAVETYPEDCASE)
@@ -5826,9 +5830,9 @@ void InitCommon(PLUGINDATA *pd)
   {
     int i;
 
-    for (i=0; pd->wszFunction[i] != ':'; ++i)
+    for (i=0; pd->wszFunction[i] != L':'; ++i)
       wszPluginName[i]=pd->wszFunction[i];
-    wszPluginName[i]='\0';
+    wszPluginName[i]=L'\0';
   }
   xprintfW(wszPluginTitle, GetLangStringW(wLangModule, STRID_PLUGIN), wszPluginName);
   xprintfW(wszCoderDir, L"%s\\AkelFiles\\Plugs\\Coder", pd->wszAkelDir);

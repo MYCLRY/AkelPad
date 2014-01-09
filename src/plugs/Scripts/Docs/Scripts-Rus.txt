@@ -1,8 +1,8 @@
 *****************************************************************
-***                 Scripts AkelPad plugin v13.0              ***
+***                 Scripts AkelPad plugin v13.1              ***
 *****************************************************************
 
-2013 Шенгальц Александр aka Instructor (Shengalts@mail.ru)
+2014 Шенгальц Александр aka Instructor (Shengalts@mail.ru)
 
 
 *** Описание ***
@@ -2058,13 +2058,13 @@ ____________________________
   var hWndModeless;
   var hWndTestButton;
   var IDC_TEST_BUTTON=10001;
-  
+
   //Open "Find" dialog
   if (hWndModeless=AkelPad.SendMessage(hMainWnd, 1275 /*AKD_GETMODELESS*/, 0, 0))
     AkelPad.SendMessage(hWndModeless, 273 /*WM_COMMAND*/, 2 /*IDCANCEL*/, 0);
   AkelPad.Command(4158 /*IDM_EDIT_FIND*/);
   hWndModeless=AkelPad.SendMessage(hMainWnd, 1275 /*AKD_GETMODELESS*/, 0, 0);
-  
+
   //Create test button
   hWndTestButton=oSys.Call("user32::CreateWindowEx" + _TCHAR,
                          0,               //dwExStyle
@@ -2081,21 +2081,21 @@ ____________________________
                          0);              //lpParam
   //Set font and text
   SetWindowFontAndText(hWndTestButton, hGuiFont, "Test");
-  
+
   //Subclass dialog
   if (AkelPad.WindowSubClass(hWndModeless, DialogCallback, 273 /*WM_COMMAND*/, 2 /*WM_DESTROY*/))
   {
     //Register dialog for message loop
     AkelPad.WindowRegisterDialog(hWndModeless);
-  
+
     //Message loop
     AkelPad.WindowGetMessage();
-  
+
     //Unregister and unsubclass
     AkelPad.WindowUnregisterDialog(hWndModeless);
     AkelPad.WindowUnsubClass(hWndModeless);
   }
-  
+
   function DialogCallback(hWnd, uMsg, wParam, lParam)
   {
     if (uMsg == 273) //WM_COMMAND
@@ -2112,18 +2112,18 @@ ____________________________
     }
     return 0;
   }
-  
+
   function SetWindowFontAndText(hWnd, hFont, pText)
   {
     AkelPad.SendMessage(hWnd, 48 /*WM_SETFONT*/, hFont, 1);
     oSys.Call("user32::SetWindowText" + _TCHAR, hWnd, pText);
   }
-  
+
   function LOWORD(dwNumber)
   {
     return (dwNumber & 0xffff);
   }
-  
+
   function HIWORD(dwNumber)
   {
     return (dwNumber >> 16);
@@ -2401,34 +2401,43 @@ ____________________
         //  vData: имя скрипта.
         //  Возвращаемое значение: дескриптор первого найденного работающего скрипта стеке.
     11  //SH_GETTHREADHANDLE  Получить дескриптор потока скрипта.
-        //  vData: дескриптор скрипта.
+        //  vData: дескриптор скрипта. Если ноль, то используется дескриптор текущего скрипта.
         //  Возвращаемое значение: дескриптор потока скрипта.
     12  //SH_GETTHREADID  Получить идентификатор потока скрипта.
-        //  vData: дескриптор скрипта.
+        //  vData: дескриптор скрипта. Если ноль, то используется дескриптор текущего скрипта.
         //  Возвращаемое значение: идентификатор потока скрипта.
     13  //SH_GETMESSAGELOOP  Получить наличие цикла сообщений в потоке скрипта.
-        //  vData: дескриптор скрипта.
+        //  vData: дескриптор скрипта. Если ноль, то используется дескриптор текущего скрипта.
+        //  Возвращаемое значение: true - присутствует, false - отсутствует.
+    14  //SH_GETLOCKMULTICOPY  Блокировка запуска нескольких копий скрипта.
+        //  vData: дескриптор скрипта. Если ноль, то используется дескриптор текущего скрипта.
+        //  Возвращаемое значение: true - присутствует, false - отсутствует.
+    15  //SH_GETLOCKSCRIPTSQUEUE  Блокировка одновременной работы других скриптов во время работы данного скрипта.
+        //  vData: дескриптор скрипта. Если ноль, то используется дескриптор текущего скрипта.
+        //  Возвращаемое значение: true - присутствует, false - отсутствует.
+    16  //SH_GETLOCKPROGRAMTHREAD  Блокировка потока программы, ожидающего завершения скрипта (при внешнем вызове скрипта с кодом 2).
+        //  vData: дескриптор скрипта. Если ноль, то используется дескриптор текущего скрипта.
         //  Возвращаемое значение: true - присутствует, false - отсутствует.
     21  //SH_GETNAME  Получить имя скрипта.
-        //  vData: дескриптор скрипта.
+        //  vData: дескриптор скрипта. Если ноль, то используется дескриптор текущего скрипта.
         //  Возвращаемое значение: имя скрипта.
     22  //SH_GETFILE  Получить файл скрипта.
-        //  vData: дескриптор скрипта.
+        //  vData: дескриптор скрипта. Если ноль, то используется дескриптор текущего скрипта.
         //  Возвращаемое значение: файл скрипта.
     23  //SH_GETNCLUDE  Получить файл подсоединяемого скрипта.
-        //  vData: дескриптор скрипта.
+        //  vData: дескриптор скрипта. Если ноль, то используется дескриптор текущего скрипта.
         //  Возвращаемое значение: файл подсоединяемого скрипта.
     24  //SH_GETARGUMENTS  Получить строку аргументов скрипта.
-        //  vData: дескриптор скрипта.
+        //  vData: дескриптор скрипта. Если ноль, то используется дескриптор текущего скрипта.
         //  Возвращаемое значение: строка аргументов скрипта.
     31  //SH_NEXTSCRIPT   Получить дескриптор следующего скрипта в стеке независимо от имени.
-        //  vData: дескриптор скрипта.
+        //  vData: дескриптор скрипта. Если ноль, то используется дескриптор текущего скрипта.
         //  Возвращаемое значение: дескриптор следующего скрипта в стеке независимо от имени.
     32  //SH_NEXTSAMESCRIPT  Получить дескриптор следующего скрипта в стеке с тем же именем.
-        //  vData: дескриптор скрипта.
+        //  vData: дескриптор скрипта. Если ноль, то используется дескриптор текущего скрипта.
         //  Возвращаемое значение: дескриптор следующего скрипта в стеке с тем же именем.
     33  //SH_CLOSESCRIPT  Выйти из цикла сообщений потока скрипта.
-        //  vData: дескриптор скрипта.
+        //  vData: дескриптор скрипта. Если ноль, то используется дескриптор текущего скрипта.
         //  Возвращаемое значение: ноль.
 
 Возвращаемое значение
@@ -2445,18 +2454,15 @@ ____________________
     //Script is running, second call close it.
     AkelPad.ScriptHandle(hScript, 33 /*SH_CLOSESCRIPT*/);
   }
-  else
+  else if (hSubClass=AkelPad.WindowSubClass(2 /*WSC_EDITPROC*/, EditCallback, 0x020A /*WM_MOUSEWHEEL*/))
   {
-    if (hSubClass=AkelPad.WindowSubClass(2 /*WSC_EDITPROC*/, EditCallback, 0x020A /*WM_MOUSEWHEEL*/))
-    {
-      //Allow other scripts running.
-      AkelPad.ScriptNoMutex();
+    //Allow other scripts running.
+    AkelPad.ScriptNoMutex();
 
-      //Message loop.
-      AkelPad.WindowGetMessage();
+    //Message loop.
+    AkelPad.WindowGetMessage();
 
-      AkelPad.WindowUnsubClass(2 /*WSC_EDITPROC*/);
-    }
+    AkelPad.WindowUnsubClass(2 /*WSC_EDITPROC*/);
   }
 
   function EditCallback(hWnd, uMsg, wParam, lParam)

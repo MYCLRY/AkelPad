@@ -150,7 +150,7 @@ typedef struct _EXTPARAM {
   struct _EXTPARAM *next;
   struct _EXTPARAM *prev;
   DWORD dwType;
-  int nNumber;
+  INT_PTR nNumber;
   char *pString;
   wchar_t *wpString;
   char *pExpanded;
@@ -1302,7 +1302,7 @@ BOOL CreateToolbarData(TOOLBARDATA *hToolbarData, const wchar_t *wpText)
                         int nCommand=0;
 
                         if (lpParameter=GetMethodParameter(&lpButton->hParamStack, 1))
-                          nCommand=lpParameter->nNumber;
+                          nCommand=(int)lpParameter->nNumber;
 
                         if (nCommand == IDM_FILE_OPEN)
                         {
@@ -1431,12 +1431,12 @@ int ParseRows(STACKROW *lpRowListStack)
 
   if (*wpCount)
   {
-    while (nRow=(int)xatoiW(wpCount, &wpCount))
+    while (nRow=(int)xatoiW(wpCount, (const wchar_t **)&wpCount))
     {
       nShow=ROWSHOW_ON;
       if (*wpCount == L'(')
       {
-        nShow=(int)xatoiW(++wpCount, &wpCount);
+        nShow=(int)xatoiW(++wpCount, (const wchar_t **)&wpCount);
         if (*wpCount == L')') ++wpCount;
       }
 
@@ -1602,7 +1602,7 @@ void UpdateToolbar(TOOLBARDATA *hToolbarData)
         int nCommand=0;
 
         if (lpParameter=GetMethodParameter(&lpButton->hParamStack, 1))
-          nCommand=lpParameter->nNumber;
+          nCommand=(int)lpParameter->nNumber;
 
         if (nCommand)
         {
@@ -1703,13 +1703,16 @@ void CallToolbar(TOOLBARDATA *hToolbarData, int nItem)
     if (lpElement->dwAction == EXTACT_COMMAND)
     {
       int nCommand=0;
+      LPARAM lParam=0;
 
       if (lpParameter=GetMethodParameter(&lpElement->hParamStack, 1))
-        nCommand=lpParameter->nNumber;
+        nCommand=(int)lpParameter->nNumber;
+      if (lpParameter=GetMethodParameter(&lpElement->hParamStack, 2))
+        lParam=lpParameter->nNumber;
 
       if (nCommand)
       {
-        SendMessage(hMainWnd, WM_COMMAND, nCommand, 0);
+        SendMessage(hMainWnd, WM_COMMAND, nCommand, lParam);
       }
     }
     else if (lpElement->dwAction == EXTACT_CALL)
@@ -1773,7 +1776,7 @@ void CallToolbar(TOOLBARDATA *hToolbarData, int nItem)
       if (lpParameter=GetMethodParameter(&lpElement->hParamStack, 2))
         wpWorkDir=lpParameter->wpExpanded;
       if (lpParameter=GetMethodParameter(&lpElement->hParamStack, 3))
-        bWait=lpParameter->nNumber;
+        bWait=(BOOL)lpParameter->nNumber;
 
       if (wpCmdLine)
       {
@@ -1802,9 +1805,9 @@ void CallToolbar(TOOLBARDATA *hToolbarData, int nItem)
       if (lpParameter=GetMethodParameter(&lpElement->hParamStack, 1))
         wpFile=lpParameter->wpExpanded;
       if (lpParameter=GetMethodParameter(&lpElement->hParamStack, 2))
-        nCodePage=lpParameter->nNumber;
+        nCodePage=(int)lpParameter->nNumber;
       if (lpParameter=GetMethodParameter(&lpElement->hParamStack, 3))
-        bBOM=lpParameter->nNumber;
+        bBOM=(BOOL)lpParameter->nNumber;
 
       if (lpElement->dwAction == EXTACT_OPENFILE)
       {
@@ -1852,9 +1855,9 @@ void CallToolbar(TOOLBARDATA *hToolbarData, int nItem)
       if (lpParameter=GetMethodParameter(&lpElement->hParamStack, 1))
         wpFaceName=lpParameter->wpExpanded;
       if (lpParameter=GetMethodParameter(&lpElement->hParamStack, 2))
-        dwFontStyle=lpParameter->nNumber;
+        dwFontStyle=(DWORD)lpParameter->nNumber;
       if (lpParameter=GetMethodParameter(&lpElement->hParamStack, 3))
-        nPointSize=lpParameter->nNumber;
+        nPointSize=(int)lpParameter->nNumber;
 
       if (SendMessage(hMainWnd, AKD_GETEDITINFO, (WPARAM)NULL, (LPARAM)&ei))
       {
@@ -1889,9 +1892,9 @@ void CallToolbar(TOOLBARDATA *hToolbarData, int nItem)
       if (SendMessage(hMainWnd, AKD_GETEDITINFO, (WPARAM)NULL, (LPARAM)&ei))
       {
         if (lpParameter=GetMethodParameter(&lpElement->hParamStack, 1))
-          tr.nCodePageFrom=lpParameter->nNumber;
+          tr.nCodePageFrom=(int)lpParameter->nNumber;
         if (lpParameter=GetMethodParameter(&lpElement->hParamStack, 2))
-          tr.nCodePageTo=lpParameter->nNumber;
+          tr.nCodePageTo=(int)lpParameter->nNumber;
 
         SendMessage(hMainWnd, AKD_RECODESEL, (WPARAM)ei.hWndEdit, (LPARAM)&tr);
       }
@@ -1914,7 +1917,7 @@ void CallToolbar(TOOLBARDATA *hToolbarData, int nItem)
           if (lpParameter=GetMethodParameter(&lpElement->hParamStack, 1))
             wpText=lpParameter->wpExpanded;
           if (lpParameter=GetMethodParameter(&lpElement->hParamStack, 2))
-            bEscSequences=lpParameter->nNumber;
+            bEscSequences=(BOOL)lpParameter->nNumber;
 
           if (bEscSequences)
           {
@@ -2117,7 +2120,7 @@ void ParseMethodParameters(STACKEXTPARAM *hParamStack, const wchar_t *wpText, co
       ++hParamStack->nElements;
 
       lpParameter->dwType=EXTPARAM_INT;
-      lpParameter->nNumber=(int)xatoiW(wpParamBegin, NULL);
+      lpParameter->nNumber=xatoiW(wpParamBegin, NULL);
     }
   }
 
@@ -2322,7 +2325,7 @@ int StructMethodParameters(STACKEXTPARAM *hParamStack, unsigned char *lpStruct)
 
 EXTPARAM* GetMethodParameter(STACKEXTPARAM *hParamStack, int nIndex)
 {
-  EXTPARAM *lpParameter = NULL;
+  EXTPARAM *lpParameter;
 
   if (!StackGetElement((stack *)hParamStack->first, (stack *)hParamStack->last, (stack **)&lpParameter, nIndex))
     return lpParameter;

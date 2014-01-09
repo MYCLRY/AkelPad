@@ -85,9 +85,9 @@ void __declspec(dllexport) HighLight(PLUGINDATA *pd)
         }
         else
         {
-          if (pColorText && *(wchar_t *)pColorText == '#')
+          if (pColorText && *(wchar_t *)pColorText == L'#')
             dwColorText=GetColorValueFromStrW((wchar_t *)pColorText + 1);
-          if (pColorBk && *(wchar_t *)pColorBk == '#')
+          if (pColorBk && *(wchar_t *)pColorBk == L'#')
             dwColorBk=GetColorValueFromStrW((wchar_t *)pColorBk + 1);
         }
 
@@ -159,9 +159,9 @@ void __declspec(dllexport) HighLight(PLUGINDATA *pd)
         }
         else
         {
-          if (pColorText && *(wchar_t *)pColorText == '#')
+          if (pColorText && *(wchar_t *)pColorText == L'#')
             dwColorText=GetColorValueFromStrW((wchar_t *)pColorText + 1);
-          if (pColorBk && *(wchar_t *)pColorBk == '#')
+          if (pColorBk && *(wchar_t *)pColorBk == L'#')
             dwColorBk=GetColorValueFromStrW((wchar_t *)pColorBk + 1);
         }
 
@@ -230,9 +230,9 @@ void __declspec(dllexport) HighLight(PLUGINDATA *pd)
         }
         else
         {
-          if (pColorText && *(wchar_t *)pColorText == '#')
+          if (pColorText && *(wchar_t *)pColorText == L'#')
             dwColorText=GetColorValueFromStrW((wchar_t *)pColorText + 1);
-          if (pColorBk && *(wchar_t *)pColorBk == '#')
+          if (pColorBk && *(wchar_t *)pColorBk == L'#')
             dwColorBk=GetColorValueFromStrW((wchar_t *)pColorBk + 1);
         }
 
@@ -273,9 +273,9 @@ void __declspec(dllexport) HighLight(PLUGINDATA *pd)
         }
         else
         {
-          if (pColorText && *(wchar_t *)pColorText == '#')
+          if (pColorText && *(wchar_t *)pColorText == L'#')
             dwColorText=GetColorValueFromStrW((wchar_t *)pColorText + 1);
-          if (pColorBk && *(wchar_t *)pColorBk == '#')
+          if (pColorBk && *(wchar_t *)pColorBk == L'#')
             dwColorBk=GetColorValueFromStrW((wchar_t *)pColorBk + 1);
         }
 

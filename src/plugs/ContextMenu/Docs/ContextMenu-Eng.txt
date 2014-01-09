@@ -1,8 +1,8 @@
 *****************************************************************
-***              ContextMenu AkelPad plugin v14.2             ***
+***              ContextMenu AkelPad plugin v14.4             ***
 *****************************************************************
 
-2013 Shengalts Aleksander aka Instructor (Shengalts@mail.ru)
+2014 Shengalts Aleksander aka Instructor (Shengalts@mail.ru)
 
 
 *** Description ***
@@ -94,7 +94,7 @@ Menu item creation:
       at absence of the menu item text, and also use of method Command(), plugin uses main menu
       item text instead, to which Command() method refers.
 
-    Command(number)
+    Command(number, [parameter])
       Command(4162)
         method calls the internal command at number 4162. In this case this code
         is responsible for opening a dialog box "Go to line...".

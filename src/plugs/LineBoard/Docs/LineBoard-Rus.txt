@@ -1,13 +1,13 @@
 *****************************************************************
-***               LineBoard AkelPad plugin v10.1              ***
+***               LineBoard AkelPad plugin v11.0              ***
 *****************************************************************
 
-2013 Шенгальц Александр aka Instructor (Shengalts@mail.ru)
+2014 Шенгальц Александр aka Instructor (Shengalts@mail.ru)
 
 
 *** Описание ***
 
-1. Показывает номера строк.
+1. Показывает номера строк и столбцов.
 2. Добавляет поддержку закладок.
 
 Замечания:
@@ -31,6 +31,59 @@ Call("LineBoard::Main", 1)
     1
       Ожидать пока плагин не инициализируется.
 
+Call("LineBoard::Main", 2, *HEIGHT)
+  Параметры:
+    2
+      Получить высоту линейки.
+    *HEIGHT
+      Указатель на память, которая получает высоту линейки.
+  Пример:
+    WScript.Echo(GetRulerHeight());
+
+    function GetRulerHeight()
+    {
+      var lpHeight;
+      var nHeight=0;
+
+      if (lpHeight=AkelPad.MemAlloc(4 /*sizeof(int)*/))
+      {
+        AkelPad.CallW("LineBoard::Main", 2, lpHeight);
+        nHeight=AkelPad.MemRead(lpHeight, 3 /*DT_DWORD*/);
+        AkelPad.MemFree(lpHeight);
+      }
+      return nHeight;
+    }
+
+Call("LineBoard::Main", 3, HEIGHT)
+  Параметры:
+    3
+      Установить высоту линейки.
+    HEIGHT
+      Высота линейки. Если новое значение линейки совпадает с текущим, то линейка скрывается (устанавливается значение 0).
+
+Call("LineBoard::Main", 4, *BOOL)
+  Параметры:
+    4
+      Показать/Скрыть панель.
+    *BOOL
+      Необязательный параметр. Указатель на переменную, которая получает видимость панели.
+  Пример (получить видимость панели):
+    WScript.Echo(IsLineBoardVisible());
+
+    function IsLineBoardVisible()
+    {
+      var lpVisible;
+      var bVisible=false;
+
+      if (lpVisible=AkelPad.MemAlloc(4 /*sizeof(BOOL)*/))
+      {
+        AkelPad.CallW("LineBoard::Main", 4, lpVisible);
+        bVisible=AkelPad.MemRead(lpVisible, 3 /*DT_DWORD*/);
+        AkelPad.MemFree(lpVisible);
+      }
+      return bVisible;
+    }
+
 Call("LineBoard::Main", 11, WINDOW, DOCUMENT, *RECT)
   Параметры:
     11
@@ -40,7 +93,23 @@ Call("LineBoard::Main", 11, WINDOW, DOCUMENT, *RECT)
     DOCUMENT
       Дескриптор документа.
     *RECT
-      Указатель на память, которая получает прямоугольник панели.
+      Указатель на память, который получает прямоугольник панели.
+  Пример:
+    WScript.Echo(GetBoardWidth(AkelPad.GetEditWnd(), 0));
+
+    function GetBoardWidth(hWndEdit, hDocEdit)
+    {
+      var lpRect;
+      var nWidth=0;
+
+      if (lpRect=AkelPad.MemAlloc(16 /*sizeof(RECT)*/))
+      {
+        AkelPad.CallW("LineBoard::Main", 11, hWndEdit, hDocEdit, lpRect);
+        nWidth=AkelPad.MemRead(lpRect + 8 /*offsetof(RECT, right)*/, 3 /*DT_DWORD*/);
+        AkelPad.MemFree(lpRect);
+      }
+      return nWidth;
+    }
 
 Call("LineBoard::Main", 12, WINDOW, DOCUMENT, *BOOKMARK, *BOOKMARKLENGTH)
   Параметры:
@@ -51,9 +120,36 @@ Call("LineBoard::Main", 12, WINDOW, DOCUMENT, *BOOKMARK, *BOOKMARKLENGTH)
     DOCUMENT
       Дескриптор документа.
     *BOOKMARK
-      Указатель на память, которая получает строку с номерами закладок через запятую. Может быть NULL. Тип строки Unicode.
+      Указатель на память, который получает строку с номерами закладок через запятую. Может быть NULL. Тип строки Unicode.
     *BOOKMARKLENGTH
       Количество символов в BOOKMARK. Может быть NULL.
+  Пример:
+    WScript.Echo(GetBookmarksString(AkelPad.GetEditWnd(), 0));
+
+    function GetBookmarksString(hWndEdit, hDocEdit)
+    {
+      var pBookmarksStr="";
+      var lpBookmarksStr;
+      var nBookmarksLen;
+      var lpBookmarksLen;
+
+      if (lpBookmarksLen=AkelPad.MemAlloc(4 /*sizeof(int)*/))
+      {
+        AkelPad.CallW("LineBoard::Main", 12, hWndEdit, hDocEdit, 0, lpBookmarksLen);
+
+        if ((nBookmarksLen=AkelPad.MemRead(lpBookmarksLen, 3 /*DT_DWORD*/)) > 1)
+        {
+          if (lpBookmarksStr=AkelPad.MemAlloc(nBookmarksLen * 2 /*sizeof(wchar_t)*/))
+          {
+            AkelPad.CallW("LineBoard::Main", 12, hWndEdit, hDocEdit, lpBookmarksStr, 0);
+            pBookmarksStr=AkelPad.MemRead(lpBookmarksStr, 1 /*DT_UNICODE*/);
+            AkelPad.MemFree(lpBookmarksStr);
+          }
+        }
+        AkelPad.MemFree(lpBookmarksLen);
+      }
+      return pBookmarksStr;
+    }
 
 Call("LineBoard::Main", 13, WINDOW, DOCUMENT, "BOOKMARK")
   Параметры:
