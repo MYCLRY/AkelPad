@@ -8621,9 +8621,9 @@ BOOL AutodetectMultibyte(DWORD dwLangID, const unsigned char *pBuffer, UINT_PTR 
 
   if (dwLangID == LANG_RUSSIAN)
   {
-    xstrcpyA(szANSIwatermark, "\xE0\xE1\xE2\xE5\xE8\xED\xEE\xEF\xF0\xF2\xC0\xC1\xC2\xC5\xC8\xCD\xCE\xCF\xD2");  //àáâåèíú@ðòÀÁÂÅÈÍÎÏÒ
-    xstrcpyA(szKOIwatermark,  "\xC1\xC2\xD7\xC5\xC9\xCE\xCF\xD2\xD4\xE1\xE2\xF7\xE5\xE9\xEE\xEF\xF0\xF2\xF4");  //ÁÂ×ÅÉÎÏÒÔáâ÷åéîEòô
-    xstrcpyA(szOEMwatermark,  "\xAE\xA5\xA0\xA8\xAA\xAC\xAD\xE2\x8E\x45\x80\x88\x8A\x8C\x8D\x92\xB0\xB1\xB2\xB3\xBA\xDB\xCD");  //üDàèEûQÎEÀÈÊÌÍÒ         Graphic simbols: \xB0\xB1\xB2\xB3\xBA\xDB\xCD
+    xstrcpyA(szANSIwatermark, "\xE0\xE1\xE2\xE5\xE8\xED\xEE\xEF\xF0\xF2\xC0\xC1\xC2\xC5\xC8\xCD\xCE\xCF\xD2");  //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+    xstrcpyA(szKOIwatermark,  "\xC1\xC2\xD7\xC5\xC9\xCE\xCF\xD2\xD4\xE1\xE2\xF7\xE5\xE9\xEE\xEF\xF0\xF2\xF4");  //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+    xstrcpyA(szOEMwatermark,  "\xAE\xA5\xA0\xA8\xAA\xAC\xAD\xE2\x8E\x45\x80\x88\x8A\x8C\x8D\x92\xB0\xB1\xB2\xB3\xBA\xDB\xCD");  //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Eï¿½ï¿½ï¿½ï¿½ï¿½ï¿½         Graphic simbols: \xB0\xB1\xB2\xB3\xBA\xDB\xCD
     xstrcpyA(szUTF8watermark, "\xD0\xD1");
   }
   else if (IsLangEasternEurope(dwLangID))
@@ -9989,6 +9989,7 @@ INT_PTR TextFindW(FRAMEDATA *lpFrame, DWORD dwFlags, const wchar_t *wpFindIt, in
 INT_PTR TextReplaceW(FRAMEDATA *lpFrame, DWORD dwFlags, const wchar_t *wpFindIt, int nFindItLen, const wchar_t *wpReplaceWith, int nReplaceWithLen, BOOL bAll, INT_PTR *nReplaceCount)
 {
   AECHARRANGE crInitialSel;
+  AECHARRANGE crFullText;
   AECHARRANGE crRange;
   AECHARRANGE crInsert;
   AECHARINDEX ciFirstVisibleBefore;
@@ -9996,6 +9997,7 @@ INT_PTR TextReplaceW(FRAMEDATA *lpFrame, DWORD dwFlags, const wchar_t *wpFindIt,
   PATREPLACE pr;
   wchar_t *wszFindItEsc=(wchar_t *)wpFindIt;
   wchar_t *wszReplaceWithEsc=(wchar_t *)wpReplaceWith;
+  wchar_t *wszFullText;
   wchar_t *wszRangeText;
   wchar_t *wszResultText=NULL;
   int nFindItLenEsc;
@@ -10004,7 +10006,9 @@ INT_PTR TextReplaceW(FRAMEDATA *lpFrame, DWORD dwFlags, const wchar_t *wpFindIt,
   int nReplaceSelNewLine;
   INT_PTR nMin=0;
   INT_PTR nMax=0;
+  INT_PTR nMaxBackward=0;
   INT_PTR nFirstVisible;
+  INT_PTR nFullTextLen;
   INT_PTR nRangeTextLen;
   INT_PTR nResultTextLen;
   INT_PTR nChanges=0;
@@ -10161,26 +10165,54 @@ INT_PTR TextReplaceW(FRAMEDATA *lpFrame, DWORD dwFlags, const wchar_t *wpFindIt,
     }
     else nGetTextNewLine=AELB_ASIS;
 
-    if (nRangeTextLen=ExGetRangeTextW(lpFrame->ei.hWndEdit, &crRange.ciMin, &crRange.ciMax, bColumnSel, &wszRangeText, nGetTextNewLine, TRUE))
+    //Check for possible backward offset
+    crFullText.ciMin=crRange.ciMin;
+    crFullText.ciMax=crRange.ciMax;
+
+    if (dwFlags & FRF_REGEXP)
     {
+      STACKREGROUP sreg;
+
+      sreg.first=0;
+      sreg.last=0;
+      sreg.dwOptions=pr.dwOptions & (REPE_MATCHCASE|REPE_MULTILINE|REPE_WHOLEWORD|REPE_NONEWLINEDOT);
+      sreg.wpDelim=pr.wpDelim;
+      sreg.wpMaxDelim=pr.wpMaxDelim;
+      if (lpFrame->nCompileErrorOffset=PatCompile(&sreg, pr.wpPat, pr.wpMaxPat))
+        goto End;
+      PatFree(&sreg);
+
+      if (sreg.nMaxBackward)
+      {
+        AECHARINDEX ciCount=crFullText.ciMin;
+        INT_PTR nCount=sreg.nMaxBackward;
+
+        //Find backward offset
+        while (nCount > 0 && AEC_PrevChar(&ciCount))
+          --nCount;
+        if (!nCount)
+        {
+          crFullText.ciMin=ciCount;
+          nMaxBackward=sreg.nMaxBackward;
+        }
+      }
+    }
+
+    if (nFullTextLen=ExGetRangeTextW(lpFrame->ei.hWndEdit, &crFullText.ciMin, &crFullText.ciMax, bColumnSel, &wszFullText, nGetTextNewLine, TRUE))
+    {
+      wszRangeText=wszFullText + nMaxBackward;
+      nRangeTextLen=nFullTextLen - nMaxBackward;
+
       //Calculate result string length
       if (dwFlags & FRF_REGEXP)
       {
         pr.wpStr=wszRangeText;
         pr.wpMaxStr=wszRangeText + nRangeTextLen;
+        pr.wpText=wszFullText;
+        pr.wpMaxText=pr.wpMaxStr;
         pr.dwOptions|=REPE_GLOBAL;
-        if (!AEC_IsFirstCharInLine(&crRange.ciMin))
-          pr.dwOptions|=REPE_NOSTARTLINEBEGIN;
-        if (!AEC_IsLastCharInLine(&crRange.ciMax))
-          pr.dwOptions|=REPE_NOENDLINEFINISH;
-        if (!AEC_IsFirstCharInFile(&crRange.ciMin))
-          pr.dwOptions|=REPE_NOSTARTSTRBEGIN;
-        if (!AEC_IsLastCharInFile(&crRange.ciMax))
-          pr.dwOptions|=REPE_NOENDSTRFINISH;
-        if (!AE_PatIsCharBoundary(&crRange.ciMin, pr.wpDelim, pr.wpMaxDelim))
-          pr.dwOptions|=REPE_NOSTARTBOUNDARY;
-        if (!AE_PatIsCharBoundary(&crRange.ciMax, pr.wpDelim, pr.wpMaxDelim))
-          pr.dwOptions|=REPE_NOENDBOUNDARY;
+        if (dwFlags & FRF_WHOLEWORD)
+          pr.dwOptions|=REPE_WHOLEWORD;
         pr.wszResult=NULL;
         nResultTextLen=PatReplace(&pr);
 
@@ -10265,7 +10297,8 @@ INT_PTR TextReplaceW(FRAMEDATA *lpFrame, DWORD dwFlags, const wchar_t *wpFindIt,
           if (wszResultText != wszRangeText)
           {
             //Data for ReplaceSelW now in wszResultText
-            FreeText(wszRangeText);
+            FreeText(wszFullText);
+            wszFullText=NULL;
             wszRangeText=NULL;
           }
 
@@ -10366,7 +10399,7 @@ INT_PTR TextReplaceW(FRAMEDATA *lpFrame, DWORD dwFlags, const wchar_t *wpFindIt,
         if (wszResultText != wszRangeText)
           FreeWideStr(wszResultText);
       }
-      if (wszRangeText) FreeText(wszRangeText);
+      if (wszFullText) FreeText(wszFullText);
     }
   }
   else
@@ -20987,6 +21020,8 @@ void UpdateTitle(FRAMEDATA *lpFrame)
 
         pr.wpStr=wpFileName;
         pr.wpMaxStr=pr.wpStr + xstrlenW(pr.wpStr);
+        pr.wpText=pr.wpStr;
+        pr.wpMaxText=pr.wpMaxStr;
         pr.wpPat=moCur.wszTabNameFind;
         pr.wpMaxPat=pr.wpPat + xstrlenW(pr.wpPat);
         pr.wpRep=moCur.wszTabNameRep;

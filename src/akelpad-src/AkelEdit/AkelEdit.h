@@ -3656,7 +3656,7 @@ Example:
  AECHARINDEX ciCaret;
  POINT64 ptGlobal;
 
- SendMessage(hWndEdit, AEM_GETCARETPOS, (LPARAM)NULL, (WPARAM)&ptGlobal);
+ SendMessage(hWndEdit, AEM_GETCARETPOS, (WPARAM)NULL, (LPARAM)&ptGlobal);
  SendMessage(hWndEdit, AEM_CHARFROMGLOBALPOS, (WPARAM)&ptGlobal, (LPARAM)&ciCaret);
 
 
@@ -3848,7 +3848,7 @@ _________________
 Scroll the specified point into view in an edit control.
 
 wParam                    == not used.
-(AESCROLLTOPOINT *)lParam == pointer to a AESCROLLTOPOINT structure.
+(AESCROLLTOPOINT *)lParam == pointer to a AESCROLLTOPOINT structure. If lParam is NULL, then do smart scroll to caret position.
 
 Return Value
  See AECSE_* defines.
@@ -3932,7 +3932,7 @@ Example:
  POINT ptClient;
  POINT64 ptGlobal;
 
- SendMessage(hWndEdit, AEM_GETCARETPOS, (LPARAM)&ptClient, (WPARAM)&ptGlobal);
+ SendMessage(hWndEdit, AEM_GETCARETPOS, (WPARAM)&ptClient, (LPARAM)&ptGlobal);
 
 
 AEM_GETCARETHORZINDENT

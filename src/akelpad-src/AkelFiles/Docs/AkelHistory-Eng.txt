@@ -1,10 +1,13 @@
 
 AkelPad 4.8.7 ()
 ----------------------------
+Added: (?(condition)pattern-true|pattern-false) conditional patterns.
 Added: (?^pattern) negative pattern match.
+Added: (?<=pattern) and (?<!pattern) now works for single replace.
 Added: possibility to use backreferences in character set, for example, "([ab])[\1]".
 
 Fixed: read/write recent files additional information.
+Fixed: "Replace all" with options "Regular expressions" and "Whole word".
 Fixed: command line parsing without open frames (MDI).
 
 

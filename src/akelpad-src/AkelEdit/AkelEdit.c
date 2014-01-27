@@ -130,7 +130,7 @@ AKELEDIT *lpAkelEditPrev=NULL;
 AKELEDIT *lpAkelEditDrag=NULL;
 UINT cfAkelEditColumnSel=0;
 UINT cfAkelEditText=0;
-HMODULE hAkelEditMsimg32=NULL;
+HANDLE hAkelEditMsimg32=NULL;
 BOOL bAkelEditMsimg32Free=FALSE;
 BOOL (WINAPI *AkelEditAlphaBlendPtr)(HDC, int, int, int, int, HDC, int, int, int, int, BLENDFUNCTION)=NULL;
 
@@ -1126,6 +1126,8 @@ LRESULT CALLBACK AE_EditProc(AKELEDIT *ae, UINT uMsg, WPARAM wParam, LPARAM lPar
     {
       AESCROLLTOPOINT *stp=(AESCROLLTOPOINT *)lParam;
 
+      if (!stp)
+        return AE_ScrollToPoint(ae, NULL);
       return AE_ScrollToPointEx(ae, stp->dwFlags, &stp->ptPos, stp->nOffsetX, stp->nOffsetY);
     }
     if (uMsg == AEM_LOCKSCROLL)
@@ -13819,6 +13821,7 @@ void AE_PaintCheckHighlightOpenItem(AKELEDIT *ae, AETEXTOUT *to, AEHLPAINT *hlp,
             INT_PTR nColorLen;
             DWORD dwActiveText=hlp->dwDefaultText;
             DWORD dwActiveBk=hlp->dwDefaultBk;
+            DWORD dwFontStyle=hlp->dwFontStyle;
 
             if (lpREGroup=AE_PatCharInGroup((STACKREGROUP *)hlp->qm.lpQuote->lpREGroupStack, &to->ciDrawLine))
             {
@@ -13870,10 +13873,15 @@ void AE_PaintCheckHighlightOpenItem(AKELEDIT *ae, AETEXTOUT *to, AEHLPAINT *hlp,
                 }
 
                 //if (lpREGroupColor->dwFontStyle != AEHLS_NONE)
-                  hlp->dwFontStyle=lpREGroupColor->dwFontStyle;
+                  dwFontStyle=lpREGroupColor->dwFontStyle;
               }
             }
-            if (dwActiveText != hlp->dwActiveText || dwActiveBk != hlp->dwActiveBk)
+            else
+            {
+              //if (hlp->qm.lpQuote->dwFontStyle != AEHLS_NONE)
+                dwFontStyle=hlp->qm.lpQuote->dwFontStyle;
+            }
+            if (dwActiveText != hlp->dwActiveText || dwActiveBk != hlp->dwActiveBk || dwFontStyle != hlp->dwFontStyle)
             {
               if (!(hlp->dwPaintType & AEHPT_SELECTION))
               {
@@ -13882,6 +13890,7 @@ void AE_PaintCheckHighlightOpenItem(AKELEDIT *ae, AETEXTOUT *to, AEHLPAINT *hlp,
               }
               hlp->dwActiveText=dwActiveText;
               hlp->dwActiveBk=dwActiveBk;
+              hlp->dwFontStyle=dwFontStyle;
             }
           }
           else
