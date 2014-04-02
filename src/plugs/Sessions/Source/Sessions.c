@@ -28,6 +28,8 @@
 #define StackMoveBefore
 #define StackMoveIndex
 #define StackCopy
+#define StackJoin
+#define StackSplit
 #define StackClear
 #include "StackFunc.h"
 
@@ -210,6 +212,7 @@
 //Dialog messages
 #define AKDLL_SETUP             (WM_USER + 100)
 #define AKDLL_UPDATESAVEBUTTON  (WM_USER + 101)
+#define AKDLL_GETCARETITEM      (WM_USER + 102)
 
 typedef struct _SESSIONITEM {
   struct _SESSIONITEM *next;
@@ -366,6 +369,7 @@ void FreeSessions(STACKSESSION *hStack);
 
 SESSIONITEM* StackAddItem(SESSION *ss, SESSIONITEM *siParent, SESSIONITEM *siAfterThis);
 int StackItemIndex(SESSION *ss, SESSIONITEM *si);
+BOOL StackFindSelRange(SESSION *ss, SESSIONITEM *lpItemInRange, SESSIONITEM **lppStartRangeItem, int *lpnStartRangeIndex, SESSIONITEM **lppEndRangeItem, int *lpnEndRangeIndex);
 SESSIONITEM* StackNextItem(SESSIONITEM *siItem, SESSIONITEM *siRoot);
 SESSIONITEM* StackNextItemNoChild(SESSIONITEM *si);
 SESSIONITEM* StackPrevItem(SESSIONITEM *siItem, SESSIONITEM *siRoot);
@@ -687,6 +691,7 @@ LRESULT CALLBACK MainDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
   static HWND hWndSettingsButton;
   static HWND hWndOKButton;
   static HMENU hMenuItems;
+  static HTREEITEM hItemCaretPrev;
   static SESSION ssCurrentTmp;
   static DIALOGRESIZE drs[]={{&hWndTitleText,      DRS_SIZE|DRS_X, 0},
                              {&hWndTitleClose,     DRS_MOVE|DRS_X, 0},
@@ -827,6 +832,10 @@ LRESULT CALLBACK MainDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
       EnableWindow(hWndSaveButton, bEnable);
       EnableWindow(hWndCopyButton, !bEnable);
     }
+  }
+  else if (uMsg == AKDLL_GETCARETITEM)
+  {
+    hItemCaretPrev=(HTREEITEM)SendMessage(hWndItemsList, TVM_GETNEXTITEM, TVGN_CARET, (LPARAM)NULL);
   }
   else if (uMsg == WM_CONTEXTMENU)
   {
@@ -1683,6 +1692,7 @@ LRESULT CALLBACK MainDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
             //Multi-selection
             SESSIONITEM *lpOldItem=(SESSIONITEM *)pnmtv->itemOld.lParam;
             SESSIONITEM *lpNewItem=(SESSIONITEM *)pnmtv->itemNew.lParam;
+            SESSIONITEM *lpCount;
 
             if (lpOldItem && GetKeyState(VK_CONTROL) < 0)
             {
@@ -1698,33 +1708,87 @@ LRESULT CALLBACK MainDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
             }
             else if (lpOldItem && GetKeyState(VK_SHIFT) < 0)
             {
-              SESSIONITEM *lpStartItem=lpOldItem;
-              SESSIONITEM *lpEndItem=lpNewItem;
+              SESSIONITEM *lpStartItem;
+              SESSIONITEM *lpEndItem;
+              SESSIONITEM *lpSwitchItem=NULL;
+              SESSIONITEM *lpFirstSelItem;
+              SESSIONITEM *lpLastSelItem;
               int nOldIndex;
               int nNewIndex;
+              int nFirstSelIndex;
+              int nLastSelIndex;
+              BOOL bSelect;
 
               if ((nOldIndex=StackItemIndex(lpVirtualSession, lpOldItem)) &&
                   (nNewIndex=StackItemIndex(lpVirtualSession, lpNewItem)))
               {
-                if (nNewIndex < nOldIndex)
+                if (StackFindSelRange(lpVirtualSession, lpOldItem, &lpFirstSelItem, &nFirstSelIndex, &lpLastSelItem, &nLastSelIndex))
                 {
-                  lpStartItem=lpNewItem;
-                  lpEndItem=lpOldItem;
-                }
+                  if (nNewIndex < nOldIndex && nNewIndex < nFirstSelIndex)
+                    lpStartItem=lpNewItem;
+                  else if (nFirstSelIndex < nOldIndex)
+                    lpStartItem=lpFirstSelItem;
+                  else
+                    lpStartItem=lpOldItem;
 
-                //Select range
-                for (; lpStartItem; lpStartItem=StackNextItem(lpStartItem, NULL))
-                {
-                  SelectItem(hWndItemsList, lpStartItem, TRUE);
-                  if (lpStartItem == lpEndItem)
-                    break;
+                  if (nNewIndex >= nOldIndex && nNewIndex >= nLastSelIndex)
+                    lpEndItem=lpNewItem;
+                  else if (nLastSelIndex >= nOldIndex)
+                    lpEndItem=lpLastSelItem;
+                  else
+                    lpEndItem=lpOldItem;
+
+                  if (lpFirstSelItem == lpLastSelItem ?
+                      nNewIndex > nOldIndex :
+                      hItemCaretPrev == lpLastSelItem->hItem)
+                  {
+                    if (nOldIndex < nNewIndex)
+                      bSelect=TRUE;
+                    else
+                    {
+                      if (nFirstSelIndex <= nNewIndex)
+                        lpSwitchItem=lpNewItem;
+                      else
+                        lpSwitchItem=lpFirstSelItem;
+                      bSelect=TRUE;
+                    }
+                  }
+                  else
+                  {
+                    if (nOldIndex >= nNewIndex)
+                      bSelect=TRUE;
+                    else
+                    {
+                      if (nLastSelIndex >= nNewIndex)
+                        lpSwitchItem=lpNewItem;
+                      else
+                        lpSwitchItem=lpLastSelItem;
+                      bSelect=FALSE;
+                    }
+                  }
+
+                  //Select range
+                  for (lpCount=lpStartItem; lpCount; lpCount=StackNextItem(lpCount, NULL))
+                  {
+                    if (lpCount == lpSwitchItem && !bSelect)
+                    {
+                      lpSwitchItem=NULL;
+                      bSelect=!bSelect;
+                    }
+                    SelectItem(hWndItemsList, lpCount, bSelect);
+                    if (lpCount == lpSwitchItem && bSelect)
+                    {
+                      lpSwitchItem=NULL;
+                      bSelect=!bSelect;
+                    }
+                    if (lpCount == lpEndItem)
+                      break;
+                  }
                 }
               }
             }
             else
             {
-              SESSIONITEM *lpCount;
-
               //Reset selection
               for (lpCount=lpVirtualSession->hItemsStack.first; lpCount; lpCount=StackNextItem(lpCount, NULL))
               {
@@ -1734,6 +1798,14 @@ LRESULT CALLBACK MainDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
               if (lpNewItem)
                 SelectItem(hWndItemsList, lpNewItem, TRUE);
             }
+
+            //Update selection for Win7
+            for (lpCount=lpVirtualSession->hItemsStack.first; lpCount; lpCount=StackNextItem(lpCount, NULL))
+            {
+              if ((lpCount->dwState & TVIS_SELECTED) && lpCount != lpNewItem)
+                SelectItem(hWndItemsList, lpCount, TRUE);
+            }
+            PostMessage(hDlg, AKDLL_GETCARETITEM, 0, 0);
           }
           bSelChanged=TRUE;
         }
@@ -2257,9 +2329,9 @@ LRESULT CALLBACK NewTreeViewProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPa
           hItemCursor=tvhti.hItem;
       }
 
-      if (hItemCursor && (siCursor=(SESSIONITEM *)TreeItemParam(hWnd, hItemCursor)) && (siCursor->dwState & TVIS_SELECTED) && GetKeyState(VK_CONTROL) >= 0)
+      if (hItemCursor && (siCursor=(SESSIONITEM *)TreeItemParam(hWnd, hItemCursor)) && (siCursor->dwState & TVIS_SELECTED) && GetKeyState(VK_SHIFT) >= 0 && GetKeyState(VK_CONTROL) >= 0)
       {
-        //Cursor item is selected, so don't process click without Ctrl, because we can start dragging.
+        //Cursor item is selected, so don't process click without Ctrl and Shift, because we can start dragging.
       }
       else
       {
@@ -3450,6 +3522,7 @@ void CopySession(SESSION *ssSource, SESSION *ssTarget)
   xstrcpynW(ssTarget->wszSessionName, ssSource->wszSessionName, MAX_PATH);
   ssTarget->bModified=ssSource->bModified;
   CopySessionLevel(ssSource->hItemsStack.first, ssSource->hItemsStack.last, &ssTarget->hItemsStack.first, &ssTarget->hItemsStack.last, NULL);
+  ssTarget->hItemsStack.nElements=ssSource->hItemsStack.nElements;
   lpSourceSubling=ssSource->hItemsStack.first;
   lpTargetSubling=ssTarget->hItemsStack.first;
 
@@ -3574,6 +3647,67 @@ int StackItemIndex(SESSION *ss, SESSIONITEM *si)
     ++nIndex;
   }
   return 0;
+}
+
+BOOL StackFindSelRange(SESSION *ss, SESSIONITEM *lpItemInRange, SESSIONITEM **lppStartRangeItem, int *lpnStartRangeIndex, SESSIONITEM **lppEndRangeItem, int *lpnEndRangeIndex)
+{
+  SESSIONITEM *lpStartRangeItem=NULL;
+  SESSIONITEM *lpEndRangeItem=NULL;
+  SESSIONITEM *lpCount;
+  int nStartRangeIndex=0;
+  int nEndRangeIndex=0;
+  int nIndex=1;
+  BOOL bFound=FALSE;
+
+  for (lpCount=ss->hItemsStack.first; lpCount; lpCount=StackNextItem(lpCount, NULL))
+  {
+    if (lpCount->dwState & TVIS_SELECTED)
+    {
+      if (!lpStartRangeItem)
+      {
+        lpStartRangeItem=lpCount;
+        nStartRangeIndex=nIndex;
+      }
+      lpEndRangeItem=lpCount;
+      nEndRangeIndex=nIndex;
+      if (lpItemInRange == lpCount)
+        bFound=TRUE;
+    }
+    else
+    {
+      if (bFound) break;
+      lpStartRangeItem=NULL;
+    }
+    ++nIndex;
+  }
+  if (bFound)
+  {
+    if (lppStartRangeItem) *lppStartRangeItem=lpStartRangeItem;
+    if (lpnStartRangeIndex) *lpnStartRangeIndex=nStartRangeIndex;
+    if (lppEndRangeItem) *lppEndRangeItem=lpEndRangeItem;
+    if (lpnEndRangeIndex) *lpnEndRangeIndex=nEndRangeIndex;
+  }
+  return bFound;
+}
+
+SESSIONITEM* StackEndSelRange(SESSION *ss, int *lpnIndex)
+{
+  SESSIONITEM *lpCount;
+  SESSIONITEM *lpLastSelItem=NULL;
+  int nLastSelIndex=0;
+  int nIndex=1;
+
+  for (lpCount=ss->hItemsStack.first; lpCount; lpCount=StackNextItem(lpCount, NULL))
+  {
+    if (lpCount->dwState & TVIS_SELECTED)
+    {
+      lpLastSelItem=lpCount;
+      nLastSelIndex=nIndex;
+    }
+    ++nIndex;
+  }
+  if (lpnIndex) *lpnIndex=nLastSelIndex;
+  return lpLastSelItem;
 }
 
 SESSIONITEM* StackNextItem(SESSIONITEM *siItem, SESSIONITEM *siRoot)
@@ -4135,6 +4269,7 @@ BOOL TreeMoveItem(HWND hWndTreeView, HTREEITEM hItemCaret, SESSION *ss, SESSIONI
   SESSIONITEM **siLastSrc;
   SESSIONITEM **siFirstDst;
   SESSIONITEM **siLastDst;
+  SESSIONITEM *siCount;
 
   if (siItem == siParent)
     return FALSE;
@@ -4174,6 +4309,13 @@ BOOL TreeMoveItem(HWND hWndTreeView, HTREEITEM hItemCaret, SESSION *ss, SESSIONI
   if (*siFirstSrc == *siFirstDst && *siLastSrc == *siLastDst &&
       (siBeforeThis == siItem || siBeforeThis == siItem->next))
     return FALSE;
+
+  //Check that siAfterThis not child for siItem
+  for (siCount=siAfterThis; siCount; siCount=siCount->parent)
+  {
+    if (siCount == siItem)
+      return FALSE;
+  }
 
   //Move in stacks
   StackSplit((stack **)siFirstSrc, (stack **)siLastSrc, (stack *)siItem, (stack *)siItem);

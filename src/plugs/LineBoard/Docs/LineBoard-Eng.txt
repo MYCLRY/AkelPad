@@ -1,5 +1,5 @@
 *****************************************************************
-***               LineBoard AkelPad plugin v11.0              ***
+***               LineBoard AkelPad plugin v11.1              ***
 *****************************************************************
 
 2014 Shengalts Aleksander aka Instructor (Shengalts@mail.ru)
@@ -167,6 +167,51 @@ Call("LineBoard::Main", 14, WINDOW, DOCUMENT)
     14
       Delete all bookmarks.
     WINDOW
-      Edit window handle.
+      Optional parameter. Edit window handle.
     DOCUMENT
-      Edit document handle.
+      Optional parameter. Edit document handle.
+
+Call("LineBoard::Main", 15, WINDOW, DOCUMENT)
+  Parameters:
+    15
+      Set bookmark on current line or toggle bookmark if no hotkey set for delete bookmark.
+    WINDOW
+      Optional parameter. Edit window handle.
+    DOCUMENT
+      Optional parameter. Edit document handle.
+
+Call("LineBoard::Main", 16, WINDOW, DOCUMENT)
+  Parameters:
+    16
+      Delete bookmark from current line.
+    WINDOW
+      Optional parameter. Edit window handle.
+    DOCUMENT
+      Optional parameter. Edit document handle.
+
+Call("LineBoard::Main", 17, WINDOW, DOCUMENT)
+  Parameters:
+    17
+      Show bookmarks menu.
+    WINDOW
+      Optional parameter. Edit window handle.
+    DOCUMENT
+      Optional parameter. Edit document handle.
+
+Call("LineBoard::Main", 18, WINDOW, DOCUMENT)
+  Parameters:
+    18
+      Go to next bookmark.
+    WINDOW
+      Optional parameter. Edit window handle.
+    DOCUMENT
+      Optional parameter. Edit document handle.
+
+Call("LineBoard::Main", 19, WINDOW, DOCUMENT)
+  Parameters:
+    19
+      Go to previous bookmark.
+    WINDOW
+      Optional parameter. Edit window handle.
+    DOCUMENT
+      Optional parameter. Edit document handle.

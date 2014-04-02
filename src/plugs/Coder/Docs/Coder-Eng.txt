@@ -1,5 +1,5 @@
 *****************************************************************
-***                 Coder AkelPad plugin v12.2                ***
+***                 Coder AkelPad plugin v12.3                ***
 *****************************************************************
 
 2014 Shengalts Aleksander aka Instructor (Shengalts@mail.ru)
@@ -100,6 +100,7 @@ Call("Coder::HighLight", 4, ID, "#RRGGBB", "#RRGGBB", DIRECTION)
     ID
       Mark ID (default is 0). If zero, find any marks.
       If -1, find automatically assigned IDs by color.
+      If -2, find selected text marks.
     "#RRGGBB"
       Text color, ignored if "0".
     "#RRGGBB"

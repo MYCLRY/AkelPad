@@ -5559,13 +5559,13 @@ const wchar_t* GetLangStringW(LANGID wLangID, int nStringID)
 {\r\
     \"\x0412\x043A\x043B\x044E\x0447\x0438\x0442\x044C\" +Call(\"LineBoard::Main\")\r\
     SEPARATOR1\r\
-    \"\x0421\x043F\x0438\x0441\x043E\x043A\x0020\x0437\x0430\x043A\x043B\x0430\x0434\x043E\x043A\" Call(\"LineBoard::Main::BookmarkList\")\r\
-    \"\x041F\x0435\x0440\x0435\x0439\x0442\x0438\x0020\x043A\x0020\x0441\x043B\x0435\x0434\x0443\x044E\x0449\x0435\x0439\x0020\x0437\x0430\x043A\x043B\x0430\x0434\x043A\x0435\" Call(\"LineBoard::Main::NextBookmark\")\r\
-    \"\x041F\x0435\x0440\x0435\x0439\x0442\x0438\x0020\x043A\x0020\x043F\x0440\x0435\x0434\x044B\x0434\x0443\x0449\x0435\x0439\x0020\x0437\x0430\x043A\x043B\x0430\x0434\x043A\x0435\" Call(\"LineBoard::Main::PrevBookmark\")\r\
+    -\"\x041C\x0435\x043D\x044E\x0020\x0437\x0430\x043A\x043B\x0430\x0434\x043E\x043A\" Call(\"LineBoard::Main\", 17)\r\
+    -\"\x041F\x0435\x0440\x0435\x0439\x0442\x0438\x0020\x043A\x0020\x0441\x043B\x0435\x0434\x0443\x044E\x0449\x0435\x0439\x0020\x0437\x0430\x043A\x043B\x0430\x0434\x043A\x0435\" Call(\"LineBoard::Main\", 18)\r\
+    -\"\x041F\x0435\x0440\x0435\x0439\x0442\x0438\x0020\x043A\x0020\x043F\x0440\x0435\x0434\x044B\x0434\x0443\x0449\x0435\x0439\x0020\x0437\x0430\x043A\x043B\x0430\x0434\x043A\x0435\" Call(\"LineBoard::Main\", 19)\r\
     SEPARATOR1\r\
-    \"\x0423\x0441\x0442\x0430\x043D\x043E\x0432\x0438\x0442\x044C\x0020\x0437\x0430\x043A\x043B\x0430\x0434\x043A\x0443\" Call(\"LineBoard::Main::SetBookmark\")\r\
-    \"\x0423\x0434\x0430\x043B\x0438\x0442\x044C\x0020\x0437\x0430\x043A\x043B\x0430\x0434\x043A\x0443\" Call(\"LineBoard::Main::DelBookmark\")\r\
-    \"\x0423\x0434\x0430\x043B\x0438\x0442\x044C\x0020\x0432\x0441\x0435\x0020\x0437\x0430\x043A\x043B\x0430\x0434\x043A\x0438\" Call(\"LineBoard::Main::DelAllBookmark\")\r\
+    -\"\x0423\x0441\x0442\x0430\x043D\x043E\x0432\x0438\x0442\x044C\x0020\x0437\x0430\x043A\x043B\x0430\x0434\x043A\x0443\" Call(\"LineBoard::Main\", 15)\r\
+    -\"\x0423\x0434\x0430\x043B\x0438\x0442\x044C\x0020\x0437\x0430\x043A\x043B\x0430\x0434\x043A\x0443\" Call(\"LineBoard::Main\", 16)\r\
+    -\"\x0423\x0434\x0430\x043B\x0438\x0442\x044C\x0020\x0432\x0441\x0435\x0020\x0437\x0430\x043A\x043B\x0430\x0434\x043A\x0438\" Call(\"LineBoard::Main\", 14)\r\
     SEPARATOR1\r\
     \"\x041D\x0430\x0441\x0442\x0440\x043E\x0438\x0442\x044C...\" Call(\"LineBoard::Settings\")\r\
 }\r\
@@ -6107,13 +6107,13 @@ EXPLORER\r";
 {\r\
     \"Enable\" +Call(\"LineBoard::Main\")\r\
     SEPARATOR1\r\
-    \"Bookmark list\" Call(\"LineBoard::Main::BookmarkList\")\r\
-    \"Go to next bookmark\" Call(\"LineBoard::Main::NextBookmark\")\r\
-    \"Go to previous bookmark\" Call(\"LineBoard::Main::PrevBookmark\")\r\
+    -\"Bookmark menu\" Call(\"LineBoard::Main\", 17)\r\
+    -\"Go to next bookmark\" Call(\"LineBoard::Main\", 18)\r\
+    -\"Go to previous bookmark\" Call(\"LineBoard::Main\", 19)\r\
     SEPARATOR1\r\
-    \"Set bookmark\" Call(\"LineBoard::Main::SetBookmark\")\r\
-    \"Delete bookmark\" Call(\"LineBoard::Main::DelBookmark\")\r\
-    \"Delete all bookmarks\" Call(\"LineBoard::Main::DelAllBookmark\")\r\
+    -\"Set bookmark\" Call(\"LineBoard::Main\", 15)\r\
+    -\"Delete bookmark\" Call(\"LineBoard::Main\", 16)\r\
+    -\"Delete all bookmarks\" Call(\"LineBoard::Main\", 14)\r\
     SEPARATOR1\r\
     \"Settings...\" Call(\"LineBoard::Settings\")\r\
 }\r\

@@ -1811,6 +1811,7 @@ BOOL UnmarkSelection(HIGHLIGHTWINDOW *lpHighlightWindow, DWORD dwMarkID, DWORD d
 BOOL FindMark(HIGHLIGHTWINDOW *lpHighlightWindow, DWORD dwMarkID, DWORD dwColorText, DWORD dwColorBk, BOOL bFindUp)
 {
   AEFINDTEXTW ft;
+  AECHARRANGE crSel;
   MARKTEXT *lpSingleMarkText=NULL;
   MARKTEXT *lpMarkText;
   MARKTEXT *lpNextMarkText;
@@ -1820,15 +1821,37 @@ BOOL FindMark(HIGHLIGHTWINDOW *lpHighlightWindow, DWORD dwMarkID, DWORD dwColorT
   if (!lpHighlightWindow->hMarkTextsStack.first)
     return FALSE;
 
-  SendMessage(lpHighlightWindow->hWndEdit, AEM_EXGETSEL, (WPARAM)&ft.crSearch.ciMin, (LPARAM)&ft.crSearch.ciMax);
+  SendMessage(lpHighlightWindow->hWndEdit, AEM_EXGETSEL, (WPARAM)&crSel.ciMin, (LPARAM)&crSel.ciMax);
   if (bFindUp)
   {
-    if (!AEC_PrevCharEx(&ft.crSearch.ciMin, &ciCount))
+    if (!AEC_PrevCharEx(&crSel.ciMin, &ciCount))
       return FALSE;
   }
-  else ciCount=ft.crSearch.ciMax;
+  else ciCount=crSel.ciMax;
 
-  if (dwMarkID != MARKID_AUTOASSIGN && dwMarkID != 0)
+  if (dwMarkID == MARKID_SELECTION)
+  {
+    for (lpMarkText=lpHighlightWindow->hMarkTextsStack.first; lpMarkText; lpMarkText=lpNextMarkText)
+    {
+      lpNextMarkText=lpMarkText->next;
+      lpMarkItem=(AEMARKTEXTITEMW *)lpMarkText->hMarkTextHandle;
+
+      if (lpMarkText->dwMarkID != MARKID_SELECTION)
+      {
+        ft.dwFlags=(lpMarkItem->dwFlags & AEHLF_MATCHCASE)?AEFR_MATCHCASE:0;
+        ft.pText=lpMarkItem->pMarkText;
+        ft.dwTextLen=lpMarkItem->nMarkTextLen;
+        if (IsMatch(&ft, &crSel.ciMin) && !AEC_IndexCompare(&ft.crFound.ciMax, &crSel.ciMax))
+        {
+          dwColorText=lpMarkItem->crText;
+          dwColorBk=lpMarkItem->crBk;
+          dwMarkID=0;
+        }
+      }
+    }
+    if (dwMarkID) return FALSE;
+  }
+  if (dwMarkID > 0 && dwMarkID < MARKID_AUTOMIN)
   {
     if (lpSingleMarkText=StackGetMarkByColorID(lpHighlightWindow, dwMarkID, dwColorText, dwColorBk))
     {
@@ -1856,7 +1879,7 @@ BOOL FindMark(HIGHLIGHTWINDOW *lpHighlightWindow, DWORD dwMarkID, DWORD dwColorT
 
         if (lpMarkText->dwMarkID != MARKID_SELECTION)
         {
-          if (dwMarkID == 0 ||
+          if ((dwMarkID == 0 || (dwMarkID == MARKID_AUTOASSIGN && lpMarkText->dwMarkID >= MARKID_AUTOMIN)) &&
               ((dwColorText == (DWORD)-1 || lpMarkItem->crText == dwColorText) &&
                (dwColorBk == (DWORD)-1 || lpMarkItem->crBk == dwColorBk)))
           {

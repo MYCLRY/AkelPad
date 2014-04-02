@@ -63,7 +63,12 @@
 #define DLLA_LINEBOARD_GETBOARDRECT     11
 #define DLLA_LINEBOARD_GETBOOKMARKS     12
 #define DLLA_LINEBOARD_SETBOOKMARKS     13
-#define DLLA_LINEBOARD_DELBOOKMARKS     14
+#define DLLA_LINEBOARD_DELALLBOOKMARK   14
+#define DLLA_LINEBOARD_SETBOOKMARK      15
+#define DLLA_LINEBOARD_DELBOOKMARK      16
+#define DLLA_LINEBOARD_BOOKMARKLIST     17
+#define DLLA_LINEBOARD_NEXTBOOKMARK     18
+#define DLLA_LINEBOARD_PREVBOOKMARK     19
 #define DLLA_LINEBOARD_ADDWINDOW        50
 #define DLLA_LINEBOARD_DELWINDOW        51
 #define DLLA_LINEBOARD_GETWINDOW        52
@@ -264,7 +269,6 @@ wchar_t wszPluginName[MAX_PATH];
 wchar_t wszPluginTitle[MAX_PATH];
 HINSTANCE hInstanceDLL;
 HWND hMainWnd;
-HWND hWndEdit;
 HWND hMdiClient;
 BOOL bOldWindows;
 BOOL bOldRichEdit;
@@ -279,7 +283,6 @@ BOOL bRememberBookmarks=TRUE;
 BOOL bCoderTheme=TRUE;
 DWORD dwStatusPosType=0;
 HSTACK hWindowStack={0};
-WINDOWBOARD *lpCurrentWindowBoard;
 FRAMEDATA *lpFrameLostFocus=NULL;
 COLORREF crBoardText=RGB(0x00, 0x00, 0x00);
 COLORREF crBoardBk=RGB(0xE8, 0xE4, 0xE0);
@@ -514,30 +517,29 @@ void __declspec(dllexport) Main(PLUGINDATA *pd)
             }
           }
         }
-        else if (nAction == DLLA_LINEBOARD_DELBOOKMARKS)
+        else if (nAction == DLLA_LINEBOARD_DELALLBOOKMARK)
         {
-          WINDOWBOARD *lpBoard;
-          RECT rcBoard;
-          HWND hWndEdit=NULL;
-          AEHDOC hDocEdit=NULL;
-
-          if (IsExtCallParamValid(pd->lParam, 2))
-            hWndEdit=(HWND)GetExtCallParam(pd->lParam, 2);
-          if (IsExtCallParamValid(pd->lParam, 3))
-            hDocEdit=(AEHDOC)GetExtCallParam(pd->lParam, 3);
-
-          if (lpBoard=StackGetBoard(&hWindowStack, hWndEdit, hDocEdit, GB_READ))
-          {
-            StackFreeBookmark(lpBoard);
-            SaveRecentFile(lpBoard);
-
-            if (bShowBoard)
-            {
-              GetClientRect(lpBoard->hWndEdit, &rcBoard);
-              rcBoard.right=lpBoard->nBoardWidth;
-              InvalidateRect(lpBoard->hWndEdit, &rcBoard, FALSE);
-            }
-          }
+          DelAllBookmarkProc(NULL, pd->lParam, pd->dwSupport);
+        }
+        else if (nAction == DLLA_LINEBOARD_SETBOOKMARK)
+        {
+          SetBookmarkProc(NULL, pd->lParam, pd->dwSupport);
+        }
+        else if (nAction == DLLA_LINEBOARD_DELBOOKMARK)
+        {
+          DelBookmarkProc(NULL, pd->lParam, pd->dwSupport);
+        }
+        else if (nAction == DLLA_LINEBOARD_BOOKMARKLIST)
+        {
+          BookmarkListProc(NULL, pd->lParam, pd->dwSupport);
+        }
+        else if (nAction == DLLA_LINEBOARD_NEXTBOOKMARK)
+        {
+          NextBookmarkProc(NULL, pd->lParam, pd->dwSupport);
+        }
+        else if (nAction == DLLA_LINEBOARD_PREVBOOKMARK)
+        {
+          PrevBookmarkProc(NULL, pd->lParam, pd->dwSupport);
         }
         else if (nAction == DLLA_LINEBOARD_ADDWINDOW)
         {
@@ -1823,16 +1825,17 @@ BOOL CALLBACK EditMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, L
   }
   else if (uMsg == WM_LBUTTONDBLCLK)
   {
+    WINDOWBOARD *lpBoard;
     POINT pt;
 
-    if (lpCurrentWindowBoard=StackGetBoard(&hWindowStack, hWnd, NULL, GB_READ))
+    if (lpBoard=StackGetBoard(&hWindowStack, hWnd, NULL, GB_READ))
     {
       if (bShowBoard)
       {
         pt.x=LOWORD(lParam);
         pt.y=HIWORD(lParam);
 
-        if (pt.x < lpCurrentWindowBoard->nBoardWidth)
+        if (pt.x < lpBoard->nBoardWidth)
         {
           BOOKMARK *lpBookmark;
           RECT rcBookmark;
@@ -1842,20 +1845,20 @@ BOOL CALLBACK EditMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, L
           nClickChar=(int)SendMessage(hWnd, EM_CHARFROMPOS, 0, (LPARAM)&pt);
           nClickLine=(int)SendMessage(hWnd, EM_EXLINEFROMCHAR, 0, nClickChar);
 
-          if (StackGetBookmark(lpCurrentWindowBoard, nClickLine) >= 0)
+          if (StackGetBookmark(lpBoard, nClickLine) >= 0)
           {
-            if (StackDeleteBookmark(lpCurrentWindowBoard, nClickLine))
+            if (StackDeleteBookmark(lpBoard, nClickLine))
             {
-              SaveRecentFile(lpCurrentWindowBoard);
-              StackGetBookmarkRect(lpCurrentWindowBoard, nClickLine, &rcBookmark);
+              SaveRecentFile(lpBoard);
+              StackGetBookmarkRect(lpBoard, nClickLine, &rcBookmark);
               InvalidateRect(hWnd, &rcBookmark, FALSE);
             }
           }
           else
           {
-            if (lpBookmark=StackInsertBookmark(lpCurrentWindowBoard, nClickLine))
+            if (lpBookmark=StackInsertBookmark(lpBoard, nClickLine))
             {
-              SaveRecentFile(lpCurrentWindowBoard);
+              SaveRecentFile(lpBoard);
               UpdateEdit(hWnd, UE_FIRSTPIXEL);
             }
           }
@@ -1870,30 +1873,43 @@ BOOL CALLBACK EditMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, L
 
 BOOL CALLBACK SetBookmarkProc(void *lpParameter, LPARAM lParam, DWORD dwSupport)
 {
+  WINDOWBOARD *lpBoard;
+  HWND hWndEdit=NULL;
+  AEHDOC hDocEdit=NULL;
   BOOKMARK *lpBookmark;
   int nCurrentLine;
 
-  if (hWndEdit=GetFocusEdit())
+  if (lParam)
   {
-    if (lpCurrentWindowBoard=StackGetBoard(&hWindowStack, hWndEdit, NULL, GB_READ))
+    if (IsExtCallParamValid(lParam, 2))
+      hWndEdit=(HWND)GetExtCallParam(lParam, 2);
+    if (IsExtCallParamValid(lParam, 3))
+      hDocEdit=(AEHDOC)GetExtCallParam(lParam, 3);
+  }
+  if (!hWndEdit)
+    hWndEdit=GetFocusEdit();
+
+  if (hWndEdit)
+  {
+    if (lpBoard=StackGetBoard(&hWindowStack, hWndEdit, hDocEdit, GB_READ))
     {
-      nCurrentLine=GetCurrentLine(lpCurrentWindowBoard->hWndEdit);
+      nCurrentLine=GetCurrentLine(lpBoard->hWndEdit);
 
       //Toggle bookmark
       if (!dwDelBookmark)
       {
-        if (StackGetBookmark(lpCurrentWindowBoard, nCurrentLine) >= 0)
+        if (StackGetBookmark(lpBoard, nCurrentLine) >= 0)
         {
-          DelBookmarkProc(NULL, 0, 0);
+          DelBookmarkProc(NULL, lParam, dwSupport);
           return TRUE;
         }
       }
 
       //Set bookmark
-      if (lpBookmark=StackInsertBookmark(lpCurrentWindowBoard, nCurrentLine))
+      if (lpBookmark=StackInsertBookmark(lpBoard, nCurrentLine))
       {
-        SaveRecentFile(lpCurrentWindowBoard);
-        if (bShowBoard) UpdateEdit(lpCurrentWindowBoard->hWndEdit, UE_FIRSTPIXEL);
+        SaveRecentFile(lpBoard);
+        if (bShowBoard) UpdateEdit(lpBoard->hWndEdit, UE_FIRSTPIXEL);
       }
     }
   }
@@ -1902,20 +1918,33 @@ BOOL CALLBACK SetBookmarkProc(void *lpParameter, LPARAM lParam, DWORD dwSupport)
 
 BOOL CALLBACK DelBookmarkProc(void *lpParameter, LPARAM lParam, DWORD dwSupport)
 {
+  WINDOWBOARD *lpBoard;
+  HWND hWndEdit=NULL;
+  AEHDOC hDocEdit=NULL;
   RECT rcBookmark;
   int nCurrentLine;
 
-  if (hWndEdit=GetFocusEdit())
+  if (lParam)
   {
-    if (lpCurrentWindowBoard=StackGetBoard(&hWindowStack, hWndEdit, NULL, GB_READ))
-    {
-      nCurrentLine=GetCurrentLine(lpCurrentWindowBoard->hWndEdit);
+    if (IsExtCallParamValid(lParam, 2))
+      hWndEdit=(HWND)GetExtCallParam(lParam, 2);
+    if (IsExtCallParamValid(lParam, 3))
+      hDocEdit=(AEHDOC)GetExtCallParam(lParam, 3);
+  }
+  if (!hWndEdit)
+    hWndEdit=GetFocusEdit();
 
-      if (StackDeleteBookmark(lpCurrentWindowBoard, nCurrentLine))
+  if (hWndEdit)
+  {
+    if (lpBoard=StackGetBoard(&hWindowStack, hWndEdit, hDocEdit, GB_READ))
+    {
+      nCurrentLine=GetCurrentLine(lpBoard->hWndEdit);
+
+      if (StackDeleteBookmark(lpBoard, nCurrentLine))
       {
-        SaveRecentFile(lpCurrentWindowBoard);
-        StackGetBookmarkRect(lpCurrentWindowBoard, nCurrentLine, &rcBookmark);
-        if (bShowBoard) InvalidateRect(lpCurrentWindowBoard->hWndEdit, &rcBookmark, FALSE);
+        SaveRecentFile(lpBoard);
+        StackGetBookmarkRect(lpBoard, nCurrentLine, &rcBookmark);
+        if (bShowBoard) InvalidateRect(lpBoard->hWndEdit, &rcBookmark, FALSE);
       }
     }
   }
@@ -1924,20 +1953,33 @@ BOOL CALLBACK DelBookmarkProc(void *lpParameter, LPARAM lParam, DWORD dwSupport)
 
 BOOL CALLBACK DelAllBookmarkProc(void *lpParameter, LPARAM lParam, DWORD dwSupport)
 {
+  WINDOWBOARD *lpBoard;
+  HWND hWndEdit=NULL;
+  AEHDOC hDocEdit=NULL;
   RECT rcBoard;
 
-  if (hWndEdit=GetFocusEdit())
+  if (lParam)
   {
-    if (lpCurrentWindowBoard=StackGetBoard(&hWindowStack, hWndEdit, NULL, GB_READ))
+    if (IsExtCallParamValid(lParam, 2))
+      hWndEdit=(HWND)GetExtCallParam(lParam, 2);
+    if (IsExtCallParamValid(lParam, 3))
+      hDocEdit=(AEHDOC)GetExtCallParam(lParam, 3);
+  }
+  if (!hWndEdit)
+    hWndEdit=GetFocusEdit();
+
+  if (hWndEdit)
+  {
+    if (lpBoard=StackGetBoard(&hWindowStack, hWndEdit, hDocEdit, GB_READ))
     {
-      StackFreeBookmark(lpCurrentWindowBoard);
-      SaveRecentFile(lpCurrentWindowBoard);
+      StackFreeBookmark(lpBoard);
+      SaveRecentFile(lpBoard);
 
       if (bShowBoard)
       {
-        GetClientRect(lpCurrentWindowBoard->hWndEdit, &rcBoard);
-        rcBoard.right=lpCurrentWindowBoard->nBoardWidth;
-        InvalidateRect(lpCurrentWindowBoard->hWndEdit, &rcBoard, FALSE);
+        GetClientRect(lpBoard->hWndEdit, &rcBoard);
+        rcBoard.right=lpBoard->nBoardWidth;
+        InvalidateRect(lpBoard->hWndEdit, &rcBoard, FALSE);
       }
     }
   }
@@ -1952,15 +1994,28 @@ BOOL CALLBACK BookmarkListProc(void *lpParameter, LPARAM lParam, DWORD dwSupport
 
 BOOL CALLBACK NextBookmarkProc(void *lpParameter, LPARAM lParam, DWORD dwSupport)
 {
+  WINDOWBOARD *lpBoard;
+  HWND hWndEdit=NULL;
+  AEHDOC hDocEdit=NULL;
   int nBookmarkLine;
 
-  if (hWndEdit=GetFocusEdit())
+  if (lParam)
   {
-    if (lpCurrentWindowBoard=StackGetBoard(&hWindowStack, hWndEdit, NULL, GB_READ))
+    if (IsExtCallParamValid(lParam, 2))
+      hWndEdit=(HWND)GetExtCallParam(lParam, 2);
+    if (IsExtCallParamValid(lParam, 3))
+      hDocEdit=(AEHDOC)GetExtCallParam(lParam, 3);
+  }
+  if (!hWndEdit)
+    hWndEdit=GetFocusEdit();
+
+  if (hWndEdit)
+  {
+    if (lpBoard=StackGetBoard(&hWindowStack, hWndEdit, hDocEdit, GB_READ))
     {
-      if ((nBookmarkLine=StackGetNextBookmark(lpCurrentWindowBoard, GetCurrentLine(lpCurrentWindowBoard->hWndEdit))) >= 0)
+      if ((nBookmarkLine=StackGetNextBookmark(lpBoard, GetCurrentLine(lpBoard->hWndEdit))) >= 0)
       {
-        SetCurrentLine(lpCurrentWindowBoard->hWndEdit, nBookmarkLine);
+        SetCurrentLine(lpBoard->hWndEdit, nBookmarkLine);
       }
     }
   }
@@ -1969,15 +2024,28 @@ BOOL CALLBACK NextBookmarkProc(void *lpParameter, LPARAM lParam, DWORD dwSupport
 
 BOOL CALLBACK PrevBookmarkProc(void *lpParameter, LPARAM lParam, DWORD dwSupport)
 {
+  WINDOWBOARD *lpBoard;
+  HWND hWndEdit=NULL;
+  AEHDOC hDocEdit=NULL;
   int nBookmarkLine;
 
-  if (hWndEdit=GetFocusEdit())
+  if (lParam)
   {
-    if (lpCurrentWindowBoard=StackGetBoard(&hWindowStack, hWndEdit, NULL, GB_READ))
+    if (IsExtCallParamValid(lParam, 2))
+      hWndEdit=(HWND)GetExtCallParam(lParam, 2);
+    if (IsExtCallParamValid(lParam, 3))
+      hDocEdit=(AEHDOC)GetExtCallParam(lParam, 3);
+  }
+  if (!hWndEdit)
+    hWndEdit=GetFocusEdit();
+
+  if (hWndEdit)
+  {
+    if (lpBoard=StackGetBoard(&hWindowStack, hWndEdit, hDocEdit, GB_READ))
     {
-      if ((nBookmarkLine=StackGetPrevBookmark(lpCurrentWindowBoard, GetCurrentLine(lpCurrentWindowBoard->hWndEdit))) >= 0)
+      if ((nBookmarkLine=StackGetPrevBookmark(lpBoard, GetCurrentLine(lpBoard->hWndEdit))) >= 0)
       {
-        SetCurrentLine(lpCurrentWindowBoard->hWndEdit, nBookmarkLine);
+        SetCurrentLine(lpBoard->hWndEdit, nBookmarkLine);
       }
     }
   }
@@ -2591,6 +2659,7 @@ BOOL RestoreRecentFile(WINDOWBOARD *lpBoard)
 void ShowBoookmarksMenu(WINDOWBOARD *lpBoard, int x, int y, BOOL bSettings)
 {
   BOOKMARK *lpBookmark;
+  HWND hWndEdit;
   HMENU hMenuBookmarks;
   POINT pt;
   wchar_t wszFormat[64];
@@ -2606,12 +2675,11 @@ void ShowBoookmarksMenu(WINDOWBOARD *lpBoard, int x, int y, BOOL bSettings)
   if (lpBoard)
   {
     hWndEdit=lpBoard->hWndEdit;
-    lpCurrentWindowBoard=lpBoard;
   }
   else
   {
     if (hWndEdit=GetFocusEdit())
-      lpCurrentWindowBoard=StackGetBoard(&hWindowStack, hWndEdit, NULL, GB_READ);
+      lpBoard=StackGetBoard(&hWindowStack, hWndEdit, NULL, GB_READ);
   }
 
   if (hWndEdit)
@@ -2623,26 +2691,26 @@ void ShowBoookmarksMenu(WINDOWBOARD *lpBoard, int x, int y, BOOL bSettings)
         SendMessage(hWndEdit, WM_KEYUP, VK_MENU, 0);
     }
 
-    if (lpCurrentWindowBoard)
+    if (lpBoard)
     {
       if (hMenuBookmarks=CreatePopupMenu())
       {
          //Get max line
          if (!(dwStatusPosType & SPT_LINEWRAP))
-           nLine=(int)SendMessage(lpCurrentWindowBoard->hWndEdit, AEM_GETLINENUMBER, AEGL_LINEUNWRAPCOUNT, 0);
+           nLine=(int)SendMessage(lpBoard->hWndEdit, AEM_GETLINENUMBER, AEGL_LINEUNWRAPCOUNT, 0);
          else
-           nLine=(int)SendMessage(lpCurrentWindowBoard->hWndEdit, AEM_GETLINENUMBER, AEGL_LINECOUNT, 0);
+           nLine=(int)SendMessage(lpBoard->hWndEdit, AEM_GETLINENUMBER, AEGL_LINECOUNT, 0);
          nLineDigits=(int)xprintfW(NULL, L"%d", nLine) - 1;
          xprintfW(wszFormat, L"%%0%dd:%s%%.%%ds", nLineDigits, wpSpaces);
          //Format is now something like: L"%02d:    %.%ds"
 
          //Fill menu
-         for (lpBookmark=lpCurrentWindowBoard->hBookmarkStack.first; lpBookmark; lpBookmark=lpBookmark->next)
+         for (lpBookmark=lpBoard->hBookmarkStack.first; lpBookmark; lpBookmark=lpBookmark->next)
          {
            wpLine=lpBookmark->lpPoint->ciPoint.lpLine->wpLine;
            nLine=lpBookmark->lpPoint->ciPoint.nLine;
            if (!(dwStatusPosType & SPT_LINEWRAP))
-             nLine=(int)SendMessage(lpCurrentWindowBoard->hWndEdit, AEM_GETUNWRAPLINE, nLine, 0);
+             nLine=(int)SendMessage(lpBoard->hWndEdit, AEM_GETUNWRAPLINE, nLine, 0);
 
            //Skip leading spaces
            for (i=0; wpLine[i] == ' ' || wpLine[i] == '\t'; ++i);
@@ -2664,10 +2732,10 @@ void ShowBoookmarksMenu(WINDOWBOARD *lpBoard, int x, int y, BOOL bSettings)
          }
 
          //Show menu
-         if (x < 0 && y < 0 && SendMessage(lpCurrentWindowBoard->hWndEdit, AEM_GETCARETPOS, (WPARAM)&pt, 0))
+         if (x < 0 && y < 0 && SendMessage(lpBoard->hWndEdit, AEM_GETCARETPOS, (WPARAM)&pt, 0))
          {
-           pt.y+=(int)SendMessage(lpCurrentWindowBoard->hWndEdit, AEM_GETCHARSIZE, AECS_HEIGHT, 0);
-           ClientToScreen(lpCurrentWindowBoard->hWndEdit, &pt);
+           pt.y+=(int)SendMessage(lpBoard->hWndEdit, AEM_GETCHARSIZE, AECS_HEIGHT, 0);
+           ClientToScreen(lpBoard->hWndEdit, &pt);
          }
          else
          {
@@ -2675,11 +2743,11 @@ void ShowBoookmarksMenu(WINDOWBOARD *lpBoard, int x, int y, BOOL bSettings)
            pt.y=y;
          }
 
-         if (lpCurrentWindowBoard->hWndParent)
+         if (lpBoard->hWndParent)
            SetFocus(hMainWnd);
          nIndex=TrackPopupMenu(hMenuBookmarks, TPM_RETURNCMD|TPM_NONOTIFY|TPM_LEFTBUTTON|TPM_RIGHTBUTTON, pt.x, pt.y, 0, hMainWnd, NULL);
-         if (lpCurrentWindowBoard->hWndParent)
-           SetFocus(lpCurrentWindowBoard->hWndParent);
+         if (lpBoard->hWndParent)
+           SetFocus(lpBoard->hWndParent);
 
          if (bSettings && nCount == nIndex)
          {
@@ -2690,11 +2758,11 @@ void ShowBoookmarksMenu(WINDOWBOARD *lpBoard, int x, int y, BOOL bSettings)
            //Go to bookmark
            if (nIndex)
            {
-             for (lpBookmark=lpCurrentWindowBoard->hBookmarkStack.first; lpBookmark; lpBookmark=lpBookmark->next)
+             for (lpBookmark=lpBoard->hBookmarkStack.first; lpBookmark; lpBookmark=lpBookmark->next)
              {
                if (!--nIndex)
                {
-                 SetCurrentLine(lpCurrentWindowBoard->hWndEdit, lpBookmark->lpPoint->ciPoint.nLine);
+                 SetCurrentLine(lpBoard->hWndEdit, lpBookmark->lpPoint->ciPoint.nLine);
                  break;
                }
              }
@@ -3322,12 +3390,36 @@ void UninitMain()
     }
 
     //Remove hotkeys
-    if (pfwSetBookmark) SendMessage(hMainWnd, AKD_DLLDELETE, 0, (LPARAM)pfwSetBookmark);
-    if (pfwDelBookmark) SendMessage(hMainWnd, AKD_DLLDELETE, 0, (LPARAM)pfwDelBookmark);
-    if (pfwDelAllBookmark) SendMessage(hMainWnd, AKD_DLLDELETE, 0, (LPARAM)pfwDelAllBookmark);
-    if (pfwBookmarkList) SendMessage(hMainWnd, AKD_DLLDELETE, 0, (LPARAM)pfwBookmarkList);
-    if (pfwNextBookmark) SendMessage(hMainWnd, AKD_DLLDELETE, 0, (LPARAM)pfwNextBookmark);
-    if (pfwPrevBookmark) SendMessage(hMainWnd, AKD_DLLDELETE, 0, (LPARAM)pfwPrevBookmark);
+    if (pfwSetBookmark)
+    {
+      SendMessage(hMainWnd, AKD_DLLDELETE, 0, (LPARAM)pfwSetBookmark);
+      pfwSetBookmark=NULL;
+    }
+    if (pfwDelBookmark)
+    {
+      SendMessage(hMainWnd, AKD_DLLDELETE, 0, (LPARAM)pfwDelBookmark);
+      pfwDelBookmark=NULL;
+    }
+    if (pfwDelAllBookmark)
+    {
+      SendMessage(hMainWnd, AKD_DLLDELETE, 0, (LPARAM)pfwDelAllBookmark);
+      pfwDelAllBookmark=NULL;
+    }
+    if (pfwBookmarkList)
+    {
+      SendMessage(hMainWnd, AKD_DLLDELETE, 0, (LPARAM)pfwBookmarkList);
+      pfwBookmarkList=NULL;
+    }
+    if (pfwNextBookmark)
+    {
+      SendMessage(hMainWnd, AKD_DLLDELETE, 0, (LPARAM)pfwNextBookmark);
+      pfwNextBookmark=NULL;
+    }
+    if (pfwPrevBookmark)
+    {
+      SendMessage(hMainWnd, AKD_DLLDELETE, 0, (LPARAM)pfwPrevBookmark);
+      pfwPrevBookmark=NULL;
+    }
 
     //Remove subclass
     if (NewMainProcData)
