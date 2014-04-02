@@ -1,5 +1,5 @@
 !define PRODUCT_NAME "AkelUpdater"
-!define PRODUCT_VERSION "3.7"
+!define PRODUCT_VERSION "4.0"
 
 Name "AkelUpdater"
 OutFile "AkelUpdater.exe"
@@ -7,11 +7,50 @@ SetCompressor /SOLID lzma
 CRCCheck off
 RequestExecutionLevel user
 
+############  File info  ############
+VIAddVersionKey FileDescription "AkelPad text editor updater"
+VIAddVersionKey LegalCopyright "© 2014 Shengalts Aleksander aka Instructor"
+VIAddVersionKey ProductName "${PRODUCT_NAME}"
+VIAddVersionKey FileVersion "${PRODUCT_VERSION}"
+VIAddVersionKey Comments ""
+VIAddVersionKey LegalTrademarks ""
+VIProductVersion ${PRODUCT_VERSION}.0.0
+
+############  Functions  ############
+!addplugindir "."
+!include "WordFunc.nsh"
+!insertmacro WordFind
+!insertmacro WordFind2X
+!insertmacro WordReplace
+!include "FileFunc.nsh"
+!insertmacro GetParameters
+!insertmacro GetOptions
+!insertmacro GetParent
+!insertmacro GetFileName
+!insertmacro GetBaseName
+!insertmacro GetFileVersion
+!insertmacro VersionCompare
+!include "LogicLib.nsh"
+!include "WinMessages.nsh"
+
+############  MUI  ############
+icon "AkelUpdater.ico"
+ChangeUI all "Pages\default.exe"
+Caption "${PRODUCT_NAME}"
+SubCaption 4 " "
+BrandingText "${PRODUCT_NAME} ${PRODUCT_VERSION}"
+MiscButtonText " " "" "" "$(close)"
+CompletedText "$(completed)"
+ShowInstDetails show
+XPStyle on
+
+############  Defines  ############
 !define LANG_ENGLISH  1033
 !define LANG_RUSSIAN  1049
 
-LangString InstallAlreadyRun ${LANG_ENGLISH} 'AkelPad running.$\n$\nAfter closing AkelPad, select Retry.$\n$\nIf you want abort installation, select Cancel.'
-LangString InstallAlreadyRun ${LANG_RUSSIAN} 'AkelPad запущен.$\n$\nПосле того, как Вы закроете AkelPad, выберите Повтор.$\n$\nЕсли Вы хотите прервать установку, выберите Отмена.'
+############  Strings  ############
+LangString InstallAlreadyRun ${LANG_ENGLISH} 'To install updates close AkelPad and select Retry.$\n$\nIf you want abort installation, select Cancel.'
+LangString InstallAlreadyRun ${LANG_RUSSIAN} 'Для установки обновлений закройте AkelPad и выберите Повтор.$\n$\nЕсли Вы хотите прервать установку, выберите Отмена.'
 LangString lng ${LANG_ENGLISH} 'eng'
 LangString lng ${LANG_RUSSIAN} 'rus'
 LangString url ${LANG_ENGLISH} 'URL'
@@ -52,41 +91,12 @@ LangString error ${LANG_ENGLISH} 'Error'
 LangString error ${LANG_RUSSIAN} 'Ошибка'
 LangString close ${LANG_ENGLISH} '&Close'
 LangString close ${LANG_RUSSIAN} '&Закрыть'
+LangString run ${LANG_ENGLISH} 'Run AkelPad'
+LangString run ${LANG_RUSSIAN} 'Запустить AkelPad'
 LangString completed ${LANG_ENGLISH} 'Completed'
 LangString completed ${LANG_RUSSIAN} 'Завершено'
 
-icon "AkelUpdater.ico"
-Caption "${PRODUCT_NAME}"
-SubCaption 4 " "
-BrandingText "${PRODUCT_NAME} ${PRODUCT_VERSION}"
-MiscButtonText " " "" "" "$(close)"
-CompletedText "$(completed)"
-ShowInstDetails show
-XPStyle on
-
-VIAddVersionKey FileDescription "AkelPad text editor updater"
-VIAddVersionKey LegalCopyright "© 2011 Shengalts Aleksander aka Instructor"
-VIAddVersionKey ProductName "${PRODUCT_NAME}"
-VIAddVersionKey FileVersion "${PRODUCT_VERSION}"
-VIAddVersionKey Comments ""
-VIAddVersionKey LegalTrademarks ""
-VIProductVersion ${PRODUCT_VERSION}.0.0
-
-!addplugindir "."
-!include "WordFunc.nsh"
-!insertmacro WordFind
-!insertmacro WordFind2X
-!insertmacro WordReplace
-!include "FileFunc.nsh"
-!insertmacro GetParameters
-!insertmacro GetOptions
-!insertmacro GetParent
-!insertmacro GetFileName
-!insertmacro GetBaseName
-!insertmacro GetFileVersion
-!insertmacro VersionCompare
-!include "LogicLib.nsh"
-
+############  Variables  ############
 Var PARAMETERS
 Var PROXYPARAM
 Var PROXYVALUE
@@ -117,12 +127,15 @@ Var LANGEXIST
 Var ZIPMIRROR
 Var ZIPLANG
 Var DLONLY
+Var AUTO
+Var NORUN
 Var NOCOPIES
 Var ZIPXLANG
 Var UNZIP
 Var NOTEPAD
 Var FILEHANDLE
 Var FILELINE
+Var LASTEXTRACTERROR
 
 Function .onInit
   #Help message
@@ -153,6 +166,12 @@ Function .onInit
      |   /DLONLY$\n\
      |     Don't update, download only.$\n\
      |$\n\
+     |   /AUTO$\n\
+     |     Automatically choose Update if possible or Cancel/Close otherwise.$\n\
+     |$\n\
+     |   /NORUN$\n\
+     |     Turn off "Run AkelPad" checkbox.$\n\
+     |$\n\
      |   /NOCOPIES$\n\
      |     Don't load DLLs to find original plugin name.$\n\
      |$\n\
@@ -179,6 +198,8 @@ Function .onInit
   StrCpy $EXEBIT 0
   StrCpy $ZIPLANG $(lng)
   StrCpy $DLONLY 0
+  StrCpy $AUTO 0
+  StrCpy $NORUN 0
   StrCpy $NOCOPIES 0
   StrCpy $PROXYPARAM /NUL
   StrCpy $PROXYVALUE /NUL
@@ -242,6 +263,16 @@ Function .onInit
     StrCpy $DLONLY 1
   ${EndIf}
 
+  ${GetOptions} $PARAMETERS "/AUTO" $0
+  ${IfNot} ${Errors}
+    StrCpy $AUTO 1
+  ${EndIf}
+
+  ${GetOptions} $PARAMETERS "/NORUN" $0
+  ${IfNot} ${Errors}
+    StrCpy $NORUN 1
+  ${EndIf}
+
   ${GetOptions} $PARAMETERS "/NOCOPIES" $0
   ${IfNot} ${Errors}
     StrCpy $NOCOPIES 1
@@ -292,7 +323,7 @@ Function .onInit
   ${EndIf}
 
   ;Show dialog (Result: $0="ExeVersion|DllCount", $1="Download mirror", $2="Language")
-  AkelUpdater::List ${PRODUCT_VERSION} $ZIPLANG $EXEBIT $NOCOPIES "$PLUGINSDIR\AkelUpdaterHelp.exe"
+  AkelUpdater::List ${PRODUCT_VERSION} $ZIPLANG $EXEBIT $AUTO $NOCOPIES "$PLUGINSDIR\AkelUpdaterHelp.exe"
   StrCpy $ZIPMIRROR $1
   StrCpy $ZIPLANG $2
 
@@ -467,12 +498,18 @@ Function FillStack
 FunctionEnd
 
 Section
-  ;Hide buttons
-  GetDlgItem $0 $HWNDPARENT 2
-  ShowWindow $0 0
+  StrCpy $LASTEXTRACTERROR 0
 
+  ;Hide button
   GetDlgItem $0 $HWNDPARENT 3
   AkelUpdater::Collapse $0
+
+  ;Checkbox
+  GetDlgItem $0 $HWNDPARENT 2001
+  SendMessage $0 ${WM_SETTEXT} 1 'STR:$(run)'
+  ${If} $NORUN == 0
+    SendMessage $0 ${BM_SETCHECK} 1 0
+  ${EndIf}
 
   ;Extract "AkelPad-x.x.x-bin-lng.zip"
   ${While} $EXEVERSIONFULL != 0
@@ -482,6 +519,7 @@ Section
     Pop $0
     ${If} $0 != 0
       DetailPrint "$(error) ($0): AkelPad-$EXEVERSIONFULL$BITSUFFIXMINUS-bin-$ZIPLANG.zip"
+      StrCpy $LASTEXTRACTERROR $0
       ${Break}
     ${EndIf}
     DetailPrint "$(done): AkelPad-$EXEVERSIONFULL$BITSUFFIXMINUS-bin-$ZIPLANG.zip"
@@ -511,6 +549,7 @@ Section
     Pop $0
     ${If} $0 != 0
       DetailPrint "$(error) ($0): LangsPack$BITSUFFIXMINUS.zip"
+      StrCpy $LASTEXTRACTERROR $0
     ${EndIf}
   ${EndIf}
 
@@ -536,6 +575,7 @@ Section
     Pop $0
     ${If} $0 != 0
       DetailPrint "$(error) ($0): $AKELPLUGIN $(plugin)"
+      StrCpy $LASTEXTRACTERROR $0
       ${Continue}
     ${Else}
       DetailPrint "$(done): $AKELPLUGIN $(plugin)"
@@ -557,7 +597,25 @@ Section
       DetailPrint "$(done): $PLUGINCOPY ($AKELPLUGIN $(plugin))"
     ${Loop}
   ${Loop}
+
+  ${If} $AUTO == 1
+    Call .onInstSuccess
+    Quit
+  ${EndIf}
 SectionEnd
+
+Function .onInstSuccess
+  GetDlgItem $0 $HWNDPARENT 2001
+  SendMessage $0 ${BM_GETCHECK} 0 0 $1
+  ${If} $1 == 1
+    ${If} $NOTEPAD == 1
+      Exec "$AKELPADDIR\notepad.exe"
+    ${Else}
+      Exec "$AKELPADDIR\AkelPad.exe"
+    ${EndIf}
+  ${EndIf}
+  SetErrorLevel $LASTEXTRACTERROR
+FunctionEnd
 
 Function ServiceCallback
   Pop $0  ;Archive name
