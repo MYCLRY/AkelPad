@@ -308,7 +308,7 @@ HRESULT STDMETHODCALLTYPE SystemFunction_RegisterCallback(ISystemFunction *this,
     int nIndex;
 
     //Find unhooked element if any
-    if (lpCallback=StackGetCallbackByHandle(&g_hSysCallbackStack, NULL))
+    if (lpCallback=StackGetCallbackByHandle(&g_hSysCallbackStack, NULL, NULL))
       nIndex=lpCallback->nStaticIndex - 1;
     else
       nIndex=g_hSysCallbackStack.nElements;
@@ -322,22 +322,83 @@ HRESULT STDMETHODCALLTYPE SystemFunction_RegisterCallback(ISystemFunction *this,
       lpCallbackProc=AsmCallback3Proc;
     else if (nIndex == 3)
       lpCallbackProc=AsmCallback4Proc;
-
-    if (!lpCallback)
-      lpCallback=StackInsertCallback(&g_hSysCallbackStack);
-
-    if (lpCallback)
+    else if (nIndex == 4)
+      lpCallbackProc=AsmCallback5Proc;
+    else if (nIndex == 5)
+      lpCallbackProc=AsmCallback6Proc;
+    else if (nIndex == 6)
+      lpCallbackProc=AsmCallback7Proc;
+    else if (nIndex == 7)
+      lpCallbackProc=AsmCallback8Proc;
+    else if (nIndex == 8)
+      lpCallbackProc=AsmCallback9Proc;
+    else if (nIndex == 9)
+      lpCallbackProc=AsmCallback10Proc;
+    else if (nIndex == 10)
+      lpCallbackProc=AsmCallback11Proc;
+    else if (nIndex == 11)
+      lpCallbackProc=AsmCallback12Proc;
+    else if (nIndex == 12)
+      lpCallbackProc=AsmCallback13Proc;
+    else if (nIndex == 13)
+      lpCallbackProc=AsmCallback14Proc;
+    else if (nIndex == 14)
+      lpCallbackProc=AsmCallback15Proc;
+    else if (nIndex == 15)
+      lpCallbackProc=AsmCallback16Proc;
+    else if (nIndex == 16)
+      lpCallbackProc=AsmCallback17Proc;
+    else if (nIndex == 17)
+      lpCallbackProc=AsmCallback18Proc;
+    else if (nIndex == 18)
+      lpCallbackProc=AsmCallback19Proc;
+    else if (nIndex == 19)
+      lpCallbackProc=AsmCallback20Proc;
+    else if (nIndex == 20)
+      lpCallbackProc=AsmCallback21Proc;
+    else if (nIndex == 21)
+      lpCallbackProc=AsmCallback22Proc;
+    else if (nIndex == 22)
+      lpCallbackProc=AsmCallback23Proc;
+    else if (nIndex == 23)
+      lpCallbackProc=AsmCallback24Proc;
+    else if (nIndex == 24)
+      lpCallbackProc=AsmCallback25Proc;
+    else if (nIndex == 25)
+      lpCallbackProc=AsmCallback26Proc;
+    else if (nIndex == 26)
+      lpCallbackProc=AsmCallback27Proc;
+    else if (nIndex == 27)
+      lpCallbackProc=AsmCallback28Proc;
+    else if (nIndex == 28)
+      lpCallbackProc=AsmCallback29Proc;
+    else if (nIndex == 29)
+      lpCallbackProc=AsmCallback30Proc;
+    else
     {
-      objCallback->lpVtbl->AddRef(objCallback);
-      lpCallback->hHandle=(HANDLE)(INT_PTR)lpCallbackProc;
-      lpCallback->objFunction=objCallback;
-      lpCallback->dwData=nArgCount;
-      lpCallback->nCallbackType=CIT_SYSCALLBACK;
-      lpCallback->lpScriptThread=(void *)lpScriptThread;
+      lpCallbackProc=NULL;
+      objCallback=NULL;
+      hr=DISP_E_BADINDEX;
+    }
 
-      if (!lpScriptThread->hWndScriptsThreadDummy)
+    if (lpCallbackProc)
+    {
+      if (!lpCallback)
+        lpCallback=StackInsertCallback(&g_hSysCallbackStack);
+
+      if (lpCallback)
       {
-        lpScriptThread->hWndScriptsThreadDummy=CreateScriptsThreadDummyWindow();
+        objCallback->lpVtbl->AddRef(objCallback);
+        lpCallback->hHandle=(HANDLE)(INT_PTR)lpCallbackProc;
+        lpCallback->objFunction=objCallback;
+        lpCallback->dwData=nArgCount;
+        lpCallback->nCallbackType=CIT_SYSCALLBACK;
+        lpCallback->lpScriptThread=(void *)lpScriptThread;
+
+        if (!lpScriptThread->hWndScriptsThreadDummy)
+        {
+          lpScriptThread->hWndScriptsThreadDummy=CreateScriptsThreadDummyWindow();
+        }
       }
     }
   }
@@ -346,7 +407,8 @@ HRESULT STDMETHODCALLTYPE SystemFunction_RegisterCallback(ISystemFunction *this,
     hr=DISP_E_BADPARAMCOUNT;
   }
 
-  objCallback->lpVtbl->AddRef(objCallback);
+  if (objCallback)
+    objCallback->lpVtbl->AddRef(objCallback);
   VariantInit(vtFunction);
   vtFunction->vt=VT_DISPATCH;
   vtFunction->pdispVal=objCallback;
@@ -429,7 +491,7 @@ int __declspec(naked) AsmCallSysFunc(SYSPARAMSTACK *hCurStack, SYSPARAMSTACK *hS
 
     __asm
     {
-      push  [dwValue]
+      push dwValue
     }
   }
 
@@ -439,11 +501,8 @@ int __declspec(naked) AsmCallSysFunc(SYSPARAMSTACK *hCurStack, SYSPARAMSTACK *hS
   __asm
   {
     //Call
-    call  [lpProcedure]
-  }
+    call  lpProcedure
 
-  __asm
-  {
     //Epilog
     mov  esp, ebp
     pop  ebp
@@ -453,184 +512,243 @@ int __declspec(naked) AsmCallSysFunc(SYSPARAMSTACK *hCurStack, SYSPARAMSTACK *hS
 
 LRESULT __declspec(naked) AsmCallback1Proc()
 {
-  //More info at: http://en.wikibooks.org/wiki/X86_Disassembly/Functions_and_Stack_Frames
-  int *lpnFirstArg;
-  int nArgSize;
-  LRESULT lResult;
-
-  __asm
-  {
-    //Prolog
-    push  ebp
-    mov   ebp, esp
-    sub   esp, __LOCAL_SIZE
-
-    //Get pointer to first element in stack
-    mov   lpnFirstArg, ebp
-
-    //To get first argument pointer we skip first two elements in stack:
-    //1-saved ebp in prolog and 2-return address
-    add   lpnFirstArg, 8
-  }
-  lResult=AsmCallbackHelper(lpnFirstArg, 1, &nArgSize);
-
-  __asm
-  {
-    //Remember nArgSize in edx
-    mov  edx, nArgSize
-
-    //Return value
-    mov  eax, lResult
-
-    //Epilog
-    mov  esp, ebp
-    pop  ebp
-  }
-
-  //Remove pushed function arguments.
-  __asm
-  {
-    mov  ecx, [esp]  //Save return address in ecx register.
-    add  esp, edx    //Correct stack pointer, esp will point on the last function argument.
-    mov  [esp], ecx  //Restore return address in place of the last function argument.
-    ret
-  }
+  AsmCallbackCommonProc(1);
+  __asm ret
 }
 
 LRESULT __declspec(naked) AsmCallback2Proc()
 {
-  //More info at: http://en.wikibooks.org/wiki/X86_Disassembly/Functions_and_Stack_Frames
-  int *lpnFirstArg;
-  int nArgSize;
-  LRESULT lResult;
-
-  __asm
-  {
-    //Prolog
-    push  ebp
-    mov   ebp, esp
-    sub   esp, __LOCAL_SIZE
-
-    //Get pointer to first element in stack
-    mov   lpnFirstArg, ebp
-
-    //To get first argument pointer we skip first two elements in stack:
-    //1-saved ebp in prolog and 2-return address
-    add   lpnFirstArg, 8
-  }
-  lResult=AsmCallbackHelper(lpnFirstArg, 2, &nArgSize);
-
-  __asm
-  {
-    //Remember nArgSize in edx
-    mov  edx, nArgSize
-
-    //Return value
-    mov  eax, lResult
-
-    //Epilog
-    mov  esp, ebp
-    pop  ebp
-  }
-
-  //Remove pushed function arguments.
-  __asm
-  {
-    mov  ecx, [esp]  //Save return address in ecx register.
-    add  esp, edx    //Correct stack pointer, esp will point on the last function argument.
-    mov  [esp], ecx  //Restore return address in place of the last function argument.
-    ret
-  }
+  AsmCallbackCommonProc(2);
+  __asm ret
 }
 
 LRESULT __declspec(naked) AsmCallback3Proc()
 {
-  //More info at: http://en.wikibooks.org/wiki/X86_Disassembly/Functions_and_Stack_Frames
-  int *lpnFirstArg;
-  int nArgSize;
-  LRESULT lResult;
-
-  __asm
-  {
-    //Prolog
-    push  ebp
-    mov   ebp, esp
-    sub   esp, __LOCAL_SIZE
-
-    //Get pointer to first element in stack
-    mov   lpnFirstArg, ebp
-
-    //To get first argument pointer we skip first two elements in stack:
-    //1-saved ebp in prolog and 2-return address
-    add   lpnFirstArg, 8
-  }
-  lResult=AsmCallbackHelper(lpnFirstArg, 3, &nArgSize);
-
-  __asm
-  {
-    //Remember nArgSize in edx
-    mov  edx, nArgSize
-
-    //Return value
-    mov  eax, lResult
-
-    //Epilog
-    mov  esp, ebp
-    pop  ebp
-  }
-
-  //Remove pushed function arguments.
-  __asm
-  {
-    mov  ecx, [esp]  //Save return address in ecx register.
-    add  esp, edx    //Correct stack pointer, esp will point on the last function argument.
-    mov  [esp], ecx  //Restore return address in place of the last function argument.
-    ret
-  }
+  AsmCallbackCommonProc(3);
+  __asm ret
 }
 
 LRESULT __declspec(naked) AsmCallback4Proc()
 {
+  AsmCallbackCommonProc(4);
+  __asm ret
+}
+
+LRESULT __declspec(naked) AsmCallback5Proc()
+{
+  AsmCallbackCommonProc(5);
+  __asm ret
+}
+
+LRESULT __declspec(naked) AsmCallback6Proc()
+{
+  AsmCallbackCommonProc(6);
+  __asm ret
+}
+
+LRESULT __declspec(naked) AsmCallback7Proc()
+{
+  AsmCallbackCommonProc(7);
+  __asm ret
+}
+
+LRESULT __declspec(naked) AsmCallback8Proc()
+{
+  AsmCallbackCommonProc(8);
+  __asm ret
+}
+
+LRESULT __declspec(naked) AsmCallback9Proc()
+{
+  AsmCallbackCommonProc(9);
+  __asm ret
+}
+
+LRESULT __declspec(naked) AsmCallback10Proc()
+{
+  AsmCallbackCommonProc(10);
+  __asm ret
+}
+
+LRESULT __declspec(naked) AsmCallback11Proc()
+{
+  AsmCallbackCommonProc(11);
+  __asm ret
+}
+
+LRESULT __declspec(naked) AsmCallback12Proc()
+{
+  AsmCallbackCommonProc(12);
+  __asm ret
+}
+
+LRESULT __declspec(naked) AsmCallback13Proc()
+{
+  AsmCallbackCommonProc(13);
+  __asm ret
+}
+
+LRESULT __declspec(naked) AsmCallback14Proc()
+{
+  AsmCallbackCommonProc(14);
+  __asm ret
+}
+
+LRESULT __declspec(naked) AsmCallback15Proc()
+{
+  AsmCallbackCommonProc(15);
+  __asm ret
+}
+
+LRESULT __declspec(naked) AsmCallback16Proc()
+{
+  AsmCallbackCommonProc(16);
+  __asm ret
+}
+
+LRESULT __declspec(naked) AsmCallback17Proc()
+{
+  AsmCallbackCommonProc(17);
+  __asm ret
+}
+
+LRESULT __declspec(naked) AsmCallback18Proc()
+{
+  AsmCallbackCommonProc(18);
+  __asm ret
+}
+
+LRESULT __declspec(naked) AsmCallback19Proc()
+{
+  AsmCallbackCommonProc(19);
+  __asm ret
+}
+
+LRESULT __declspec(naked) AsmCallback20Proc()
+{
+  AsmCallbackCommonProc(20);
+  __asm ret
+}
+
+LRESULT __declspec(naked) AsmCallback21Proc()
+{
+  AsmCallbackCommonProc(21);
+  __asm ret
+}
+
+LRESULT __declspec(naked) AsmCallback22Proc()
+{
+  AsmCallbackCommonProc(22);
+  __asm ret
+}
+
+LRESULT __declspec(naked) AsmCallback23Proc()
+{
+  AsmCallbackCommonProc(23);
+  __asm ret
+}
+
+LRESULT __declspec(naked) AsmCallback24Proc()
+{
+  AsmCallbackCommonProc(24);
+  __asm ret
+}
+
+LRESULT __declspec(naked) AsmCallback25Proc()
+{
+  AsmCallbackCommonProc(25);
+  __asm ret
+}
+
+LRESULT __declspec(naked) AsmCallback26Proc()
+{
+  AsmCallbackCommonProc(26);
+  __asm ret
+}
+
+LRESULT __declspec(naked) AsmCallback27Proc()
+{
+  AsmCallbackCommonProc(27);
+  __asm ret
+}
+
+LRESULT __declspec(naked) AsmCallback28Proc()
+{
+  AsmCallbackCommonProc(28);
+  __asm ret
+}
+
+LRESULT __declspec(naked) AsmCallback29Proc()
+{
+  AsmCallbackCommonProc(29);
+  __asm ret
+}
+
+LRESULT __declspec(naked) AsmCallback30Proc()
+{
+  AsmCallbackCommonProc(30);
+  __asm ret
+}
+
+LRESULT __declspec(naked) AsmCallbackCommonProc(int nCallbackIndex)
+{
   //More info at: http://en.wikibooks.org/wiki/X86_Disassembly/Functions_and_Stack_Frames
   int *lpnFirstArg;
   int nArgSize;
+  int nOldESI;
+  int nOldEDI;
   LRESULT lResult;
 
   __asm
   {
     //Prolog
-    push  ebp
-    mov   ebp, esp
-    sub   esp, __LOCAL_SIZE
+    push ebp
+    mov  ebp, esp
+    sub  esp, __LOCAL_SIZE
+
+    //Remember EDI/ESI registers for debugger cause API calls change it
+    mov  nOldESI, esi
+    mov  nOldEDI, edi
 
     //Get pointer to first element in stack
-    mov   lpnFirstArg, ebp
+    mov  lpnFirstArg, ebp
 
-    //To get first argument pointer we skip first two elements in stack:
-    //1-saved ebp in prolog and 2-return address
-    add   lpnFirstArg, 8
+    //To get first argument pointer we skip first four elements in stack:
+    //ebp+0  saved ebp in prolog
+    //esp+4  AsmCallbackCommonProc return address
+    //esp+8  nCallbackIndex argument
+    //esp+12 AsmCallbackXProc return address
+    add  lpnFirstArg, 16
   }
-  lResult=AsmCallbackHelper(lpnFirstArg, 4, &nArgSize);
+  lResult=AsmCallbackHelper(lpnFirstArg, nCallbackIndex, &nArgSize);
 
   __asm
   {
-    //Remember nArgSize in edx
-    mov  edx, nArgSize
+    //Remember nArgSize in ecx
+    mov  ecx, nArgSize
 
     //Return value
     mov  eax, lResult
 
+    //Restore EDI/ESI registers
+    mov  edi, nOldEDI
+    mov  esi, nOldESI
+
     //Epilog
     mov  esp, ebp
     pop  ebp
-  }
 
-  //Remove pushed function arguments.
-  __asm
-  {
-    mov  ecx, [esp]  //Save return address in ecx register.
-    add  esp, edx    //Correct stack pointer, esp will point on the last function argument.
-    mov  [esp], ecx  //Restore return address in place of the last function argument.
+    //We will use AsmCallbackXProc return address:
+    //esp+0   AsmCallbackCommonProc return address
+    //esp+4   nCallbackIndex argument
+    //esp+8   AsmCallbackXProc return address
+    //esp+12  Pushed function arguments with size nArgSize
+    add  esp, 8      //Now point to AsmCallbackXProc return address.
+
+    //Required for x86: we are stdcall so remove pushed function arguments.
+    pop  edx         //Remove from stack and save return address in ecx register.
+    add  esp, ecx    //Correct stack pointer.
+    push edx         //Restore return address on place of the last argument.
     ret
   }
 }

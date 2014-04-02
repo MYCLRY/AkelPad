@@ -8,7 +8,7 @@
 
 #define AKEL_DLL_VERSION    AKELDLL
 #define EXE_MIN_VERSION_3X  MAKE_IDENTIFIER(-1, -1, -1, -1)
-#define EXE_MIN_VERSION_4X  MAKE_IDENTIFIER(4, 8, 4, 0)
+#define EXE_MIN_VERSION_4X  MAKE_IDENTIFIER(4, 8, 7, 0)
 #define PLUGIN_NAME         "QSearch"
 
 
@@ -82,6 +82,16 @@ void CloseLog(void)
         pPlugin->pEditProcData = NULL;
         pPlugin->pMainProcData = NULL;
         pPlugin->pFrameProcData = NULL;
+        pPlugin->dwProgramVersion__ = 0;
+    }
+
+    DWORD getProgramVersion(PluginState* pPlugin)
+    {
+        if ( pPlugin->dwProgramVersion__ == 0 )
+        {
+            pPlugin->dwProgramVersion__ = (DWORD) SendMessage(pPlugin->hMainWnd, AKD_PROGRAMVERSION, 0, 0);
+        }
+        return pPlugin->dwProgramVersion__;
     }
 /* <<<<<<<<<<<<<<<<<<<<<<<< plugin state <<<<<<<<<<<<<<<<<<<<<<<< */
 
@@ -459,7 +469,7 @@ void __declspec(dllexport) SelFindNext(PLUGINDATA* pd)
     {
         doQSearch(pd, TRUE);
         /*
-        g_Options.dwFlags[OPTF_SRCH_PICKUP_SELECTION] |= 1;
+        g_Options.dwFlags[OPTF_SRCH_PICKUP_SELECTION] |= 0x01;
         g_Options.dwFlags[OPTF_CATCH_MAIN_F3] |= 1;
         */
     }
@@ -809,7 +819,7 @@ LRESULT CALLBACK NewEditProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                                  (GetParent(hFocusedWnd) == g_QSearchDlg.hDlg) )
                             {
                                 SetFocus(hWnd);
-                                if ( g_Options.dwFlags[OPTF_SRCH_PICKUP_SELECTION] )
+                                if ( g_Options.dwFlags[OPTF_SRCH_PICKUP_SELECTION] & 0x01 )
                                 {
                                     CHARRANGE_X cr = {0, 0};
 
@@ -863,11 +873,11 @@ LRESULT CALLBACK NewMainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                     if ( g_Options.dwFlags[OPTF_CATCH_MAIN_F3] )
                     {
                         if ( g_QSearchDlg.bQSearching || 
-                             (g_QSearchDlg.hDlg && g_Options.dwFlags[OPTF_SRCH_PICKUP_SELECTION]) )
+                             (g_QSearchDlg.hDlg && (g_Options.dwFlags[OPTF_SRCH_PICKUP_SELECTION] & 0x01)) )
                         {
                             WPARAM bFindPrev;
 
-                            if ( g_Options.dwFlags[OPTF_SRCH_PICKUP_SELECTION] )
+                            if ( g_Options.dwFlags[OPTF_SRCH_PICKUP_SELECTION] & 0x01 )
                             {
                                 EDITINFO  ei;
 
@@ -1017,7 +1027,7 @@ void CheckEditNotification(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         {
             if ( hdr->code == AEN_SELCHANGED )
             {
-                if ( g_Options.dwFlags[OPTF_SRCH_PICKUP_SELECTION] )
+                if ( g_Options.dwFlags[OPTF_SRCH_PICKUP_SELECTION] & 0x01 )
                 {
                     AECHARRANGE* aeCrSel = &(((AENSELCHANGE *) hdr)->aes.crSel);
                     if ( (aeCrSel->ciMin.nLine != aeCrSel->ciMax.nLine) ||
@@ -1036,7 +1046,7 @@ void CheckEditNotification(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         {
             if ( hdr->code == EN_SELCHANGE )
             {
-                if ( g_Options.dwFlags[OPTF_SRCH_PICKUP_SELECTION] )
+                if ( g_Options.dwFlags[OPTF_SRCH_PICKUP_SELECTION] & 0x01 )
                 {
                     if ( GetFocus() == hdr->hwndFrom )
                     {
@@ -1508,6 +1518,30 @@ void readBinaryW(HANDLE hOptions, const wchar_t* szOptionNameW,
     SendMessage( g_Plugin.hMainWnd, AKD_OPTION, (WPARAM) hOptions, (LPARAM) &poW );
 }
 
+void readStringA(HANDLE hOptions, const char* szOptionNameA, 
+                 char* pStr, DWORD dwStrMaxSize)
+{
+    PLUGINOPTIONA poA;
+
+    poA.pOptionName = (char *) szOptionNameA;
+    poA.dwType = PO_STRING;
+    poA.lpData = (BYTE *) pStr;
+    poA.dwData = dwStrMaxSize * sizeof(char);
+    SendMessage( g_Plugin.hMainWnd, AKD_OPTION, (WPARAM) hOptions, (LPARAM) &poA );
+}
+
+void readStringW(HANDLE hOptions, const wchar_t* szOptionNameW, 
+                 wchar_t* pStr, DWORD dwStrMaxSize)
+{
+    PLUGINOPTIONW poW;
+
+    poW.pOptionName = (wchar_t *) szOptionNameW;
+    poW.dwType = PO_STRING;
+    poW.lpData = (BYTE *) pStr;
+    poW.dwData = dwStrMaxSize * sizeof(wchar_t);
+    SendMessage( g_Plugin.hMainWnd, AKD_OPTION, (WPARAM) hOptions, (LPARAM) &poW );
+}
+
 DWORD readDwordA(HANDLE hOptions, const char* szOptionNameA, DWORD dwDefaultVal)
 {
     PLUGINOPTIONA poA;
@@ -1532,7 +1566,7 @@ DWORD readDwordW(HANDLE hOptions, const wchar_t* szOptionNameW, DWORD dwDefaultV
     return dwDefaultVal;
 }
 
-void  writeBinaryA(HANDLE hOptions, const char* szOptionNameA, 
+void writeBinaryA(HANDLE hOptions, const char* szOptionNameA, 
                    const void* pData, DWORD dwDataSize)
 {
     PLUGINOPTIONA poA;
@@ -1544,7 +1578,7 @@ void  writeBinaryA(HANDLE hOptions, const char* szOptionNameA,
     SendMessage( g_Plugin.hMainWnd, AKD_OPTION, (WPARAM) hOptions, (LPARAM) &poA );
 }
 
-void  writeBinaryW(HANDLE hOptions, const wchar_t* szOptionNameW, 
+void writeBinaryW(HANDLE hOptions, const wchar_t* szOptionNameW, 
                    const void* pData, DWORD dwDataSize)
 {
     PLUGINOPTIONW poW;
@@ -1553,6 +1587,30 @@ void  writeBinaryW(HANDLE hOptions, const wchar_t* szOptionNameW,
     poW.dwType = PO_BINARY;
     poW.lpData = (BYTE *) pData;
     poW.dwData = dwDataSize;
+    SendMessage( g_Plugin.hMainWnd, AKD_OPTION, (WPARAM) hOptions, (LPARAM) &poW );
+}
+
+void writeStringA(HANDLE hOptions, const char* szOptionNameA, 
+                   const char* pStr)
+{
+    PLUGINOPTIONA poA;
+
+    poA.pOptionName = (char *) szOptionNameA;
+    poA.dwType = PO_STRING;
+    poA.lpData = (BYTE *) pStr;
+    poA.dwData = (lstrlenA(pStr) + 1) * sizeof(char);
+    SendMessage( g_Plugin.hMainWnd, AKD_OPTION, (WPARAM) hOptions, (LPARAM) &poA );
+}
+
+void writeStringW(HANDLE hOptions, const wchar_t* szOptionNameW, 
+                   const wchar_t* pStr)
+{
+    PLUGINOPTIONW poW;
+
+    poW.pOptionName = (wchar_t *) szOptionNameW;
+    poW.dwType = PO_STRING;
+    poW.lpData = (BYTE *) pStr;
+    poW.dwData = (lstrlenW(pStr) + 1) * sizeof(wchar_t);
     SendMessage( g_Plugin.hMainWnd, AKD_OPTION, (WPARAM) hOptions, (LPARAM) &poW );
 }
 
@@ -1599,75 +1657,109 @@ void ReadFindHistoryA(void)
 {
     if ( g_QSearchDlg.hDlg )
     {
-        HKEY hKey;
-        char szKeyA[200];
+        HKEY    hKey;
+        HANDLE  hOptions;
+        char    szKeyA[200];
+
+        if ( qsearchIsSavingHistoryToStdLocation() )
+        {
+            hOptions = NULL;
+            if ( qsearchIsSearchFlagsBeingSaved() ||
+                 (qsearchIsFindHistoryEnabled() && qsearchIsFindHistoryBeingSaved()) )
+            {
+                hOptions = (HANDLE) SendMessage(g_Plugin.hMainWnd,
+                                      AKD_BEGINOPTIONS, POB_READ, (LPARAM) CSZ_QSEARCH);
+            }
+            if ( !hOptions )
+                return;
+        }
 
         if ( qsearchIsSearchFlagsBeingSaved() )
         {
-            if ( RegOpenKeyExA(HKEY_CURRENT_USER, QSEARCH_REG_HOMEA, 0, KEY_READ, &hKey) == ERROR_SUCCESS )
-            {
-                DWORD dwSearchFlags;
-                DWORD dwValType;
-                DWORD dwValSize;
+            DWORD dwSearchFlags = 0;
 
-                dwSearchFlags = 0;
-                dwValType = 0;
-                dwValSize = sizeof(DWORD);
+            if ( qsearchIsSavingHistoryToStdLocation() )
+            {
+                dwSearchFlags = readDwordA(hOptions, QSEARCH_REG_SEARCHFLAGSA, 0);
+            }
+            else if ( RegOpenKeyExA(HKEY_CURRENT_USER, QSEARCH_REG_HOMEA, 0, KEY_READ, &hKey) == ERROR_SUCCESS )
+            {
+                DWORD dwValType = 0;
+                DWORD dwValSize = sizeof(DWORD);
+
                 if ( RegQueryValueExA(hKey, QSEARCH_REG_SEARCHFLAGSA, NULL, &dwValType, (BYTE *) &dwSearchFlags, &dwValSize) == ERROR_SUCCESS )
                 {
-                    if ( dwValType == REG_DWORD )
-                    {
-                        HWND hDlgItm;
-
-                        if ( dwSearchFlags & QSF_MATCHCASE )
-                        {
-                            hDlgItm = GetDlgItem(g_QSearchDlg.hDlg, IDC_CH_MATCHCASE);
-                            if ( hDlgItm )
-                            {
-                                SendMessage(hDlgItm, BM_SETCHECK, BST_CHECKED, 0);
-                                g_QSearchDlg.bMatchCase = TRUE;
-                            }
-                        }
-                        if ( dwSearchFlags & QSF_WHOLEWORD )
-                        {
-                            hDlgItm = GetDlgItem(g_QSearchDlg.hDlg, IDC_CH_WHOLEWORD);
-                            if ( hDlgItm )
-                            {
-                                SendMessage(hDlgItm, BM_SETCHECK, BST_CHECKED, 0);
-                            }
-                        }
-                    }
+                    if ( dwValType != REG_DWORD )
+                        dwSearchFlags = 0;
                 }
 
                 RegCloseKey(hKey);
+            }
+
+            if ( dwSearchFlags & QSF_MATCHCASE )
+            {
+                HWND hDlgItm = GetDlgItem(g_QSearchDlg.hDlg, IDC_CH_MATCHCASE);
+                if ( hDlgItm )
+                {
+                    SendMessage(hDlgItm, BM_SETCHECK, BST_CHECKED, 0);
+                    g_QSearchDlg.bMatchCase = TRUE;
+                }
+            }
+            if ( dwSearchFlags & QSF_WHOLEWORD )
+            {
+                HWND hDlgItm = GetDlgItem(g_QSearchDlg.hDlg, IDC_CH_WHOLEWORD);
+                if ( hDlgItm )
+                {
+                    SendMessage(hDlgItm, BM_SETCHECK, BST_CHECKED, 0);
+                }
             }
         }
 
         if ( qsearchIsFindHistoryEnabled() && qsearchIsFindHistoryBeingSaved() )
         {
             wsprintfA(szKeyA, "%s\\%s", QSEARCH_REG_HOMEA, QSEARCH_REG_FINDHISTORYA);
-            if ( RegOpenKeyExA(HKEY_CURRENT_USER, szKeyA, 0, KEY_READ, &hKey) == ERROR_SUCCESS )
+            if ( qsearchIsSavingHistoryToStdLocation() ||
+                 (RegOpenKeyExA(HKEY_CURRENT_USER, szKeyA, 0, KEY_READ, &hKey) == ERROR_SUCCESS) )
             {
-                DWORD dwCount;
-                DWORD dwValType;
-                DWORD dwValSize;
+                DWORD dwCount = 0;
+                DWORD dwValType = 0;
+                DWORD dwValSize = sizeof(DWORD);
 
-                dwCount = 0;
-                dwValType = 0;
-                dwValSize = sizeof(DWORD);
-                if ( RegQueryValueExA(hKey, QSEARCH_REG_COUNTA, NULL, &dwValType, (BYTE *) &dwCount, &dwValSize) == ERROR_SUCCESS )
+                if ( qsearchIsSavingHistoryToStdLocation() )
                 {
-                    if ( (dwValType == REG_DWORD) && (dwCount > 0) )
+                    wsprintfA(szKeyA, "%s.%s", QSEARCH_REG_FINDHISTORYA, QSEARCH_REG_COUNTA);
+                    dwCount = readDwordA(hOptions, szKeyA, 0);
+                }
+                else if ( RegQueryValueExA(hKey, QSEARCH_REG_COUNTA, NULL, &dwValType, (BYTE *) &dwCount, &dwValSize) == ERROR_SUCCESS )
+                {
+                    if ( dwValType != REG_DWORD )
+                        dwCount = 0;
+                }
+
+                if ( dwCount > 0 )
+                {
+                    DWORD   n;
+                    HWND    hFindComboWnd = NULL;
+                    char    szItemA[MAX_TEXT_SIZE + 1];
+
+                    if ( dwCount > g_Options.dwFindHistoryItems )
+                        dwCount = g_Options.dwFindHistoryItems;
+
+                    SendMessageA(g_QSearchDlg.hDlg, QSM_GETHWNDCOMBO, 0, (LPARAM) &hFindComboWnd);
+                    for ( n = 0; n < dwCount; n++ )
                     {
-                        DWORD n;
-                        HWND  hFindComboWnd = NULL;
-                        char  szItemA[MAX_TEXT_SIZE + 1];
-
-                        if ( dwCount > g_Options.dwFindHistoryItems )
-                            dwCount = g_Options.dwFindHistoryItems;
-
-                        SendMessageA(g_QSearchDlg.hDlg, QSM_GETHWNDCOMBO, 0, (LPARAM) &hFindComboWnd);
-                        for ( n = 0; n < dwCount; n++ )
+                        if ( qsearchIsSavingHistoryToStdLocation() )
+                        {
+                            lstrcpyA(szItemA, QSEARCH_REG_FINDHISTORYA);
+                            lstrcatA(szItemA, ".");
+                            lstrcatA(szItemA, QSEARCH_REG_ITEMFMTA);
+                            wsprintfA(szKeyA, szItemA, n);
+                            szItemA[0] = 0;
+                            readStringA(hOptions, szKeyA, szItemA, MAX_TEXT_SIZE);
+                            if ( szItemA[0] != 0 )
+                                SendMessageA(hFindComboWnd, CB_ADDSTRING, 0, (LPARAM) szItemA);
+                        }
+                        else
                         {
                             dwValType = 0;
                             dwValSize = MAX_TEXT_SIZE*sizeof(char);
@@ -1697,8 +1789,16 @@ void ReadFindHistoryA(void)
                     }
                 }
 
-                RegCloseKey(hKey);
+                if ( !qsearchIsSavingHistoryToStdLocation() )
+                {
+                    RegCloseKey(hKey);
+                }
             }
+        }
+
+        if ( qsearchIsSavingHistoryToStdLocation() )
+        {
+            SendMessage(g_Plugin.hMainWnd, AKD_ENDOPTIONS, (WPARAM) hOptions, 0);
         }
     }
 }
@@ -1708,74 +1808,108 @@ void ReadFindHistoryW(void)
     if ( g_QSearchDlg.hDlg )
     {
         HKEY    hKey;
+        HANDLE  hOptions;
         wchar_t szKeyW[200];
+
+        if ( qsearchIsSavingHistoryToStdLocation() )
+        {
+            hOptions = NULL;
+            if ( qsearchIsSearchFlagsBeingSaved() ||
+                 (qsearchIsFindHistoryEnabled() && qsearchIsFindHistoryBeingSaved()) )
+            {
+                hOptions = (HANDLE) SendMessage(g_Plugin.hMainWnd,
+                                      AKD_BEGINOPTIONS, POB_READ, (LPARAM) CWSZ_QSEARCH);
+            }
+            if ( !hOptions )
+                return;
+        }
 
         if ( qsearchIsSearchFlagsBeingSaved() )
         {
-            if ( RegOpenKeyExW(HKEY_CURRENT_USER, QSEARCH_REG_HOMEW, 0, KEY_READ, &hKey) == ERROR_SUCCESS )
-            {
-                DWORD dwSearchFlags;
-                DWORD dwValType;
-                DWORD dwValSize;
+            DWORD dwSearchFlags = 0;
 
-                dwSearchFlags = 0;
-                dwValType = 0;
-                dwValSize = sizeof(DWORD);
+            if ( qsearchIsSavingHistoryToStdLocation() )
+            {
+                dwSearchFlags = readDwordW(hOptions, QSEARCH_REG_SEARCHFLAGSW, 0);
+            }
+            else if ( RegOpenKeyExW(HKEY_CURRENT_USER, QSEARCH_REG_HOMEW, 0, KEY_READ, &hKey) == ERROR_SUCCESS )
+            {
+                DWORD dwValType = 0;
+                DWORD dwValSize = sizeof(DWORD);
+
                 if ( RegQueryValueExW(hKey, QSEARCH_REG_SEARCHFLAGSW, NULL, &dwValType, (BYTE *) &dwSearchFlags, &dwValSize) == ERROR_SUCCESS )
                 {
-                    if ( dwValType == REG_DWORD )
-                    {
-                        HWND hDlgItm;
-
-                        if ( dwSearchFlags & QSF_MATCHCASE )
-                        {
-                            hDlgItm = GetDlgItem(g_QSearchDlg.hDlg, IDC_CH_MATCHCASE);
-                            if ( hDlgItm )
-                            {
-                                SendMessage(hDlgItm, BM_SETCHECK, BST_CHECKED, 0);
-                                g_QSearchDlg.bMatchCase = TRUE;
-                            }
-                        }
-                        if ( dwSearchFlags & QSF_WHOLEWORD )
-                        {
-                            hDlgItm = GetDlgItem(g_QSearchDlg.hDlg, IDC_CH_WHOLEWORD);
-                            if ( hDlgItm )
-                            {
-                                SendMessage(hDlgItm, BM_SETCHECK, BST_CHECKED, 0);
-                            }
-                        }
-                    }
+                    if ( dwValType != REG_DWORD )
+                        dwSearchFlags = 0;
                 }
 
                 RegCloseKey(hKey);
+            }
+
+            if ( dwSearchFlags & QSF_MATCHCASE )
+            {
+                HWND hDlgItm = GetDlgItem(g_QSearchDlg.hDlg, IDC_CH_MATCHCASE);
+                if ( hDlgItm )
+                {
+                    SendMessage(hDlgItm, BM_SETCHECK, BST_CHECKED, 0);
+                    g_QSearchDlg.bMatchCase = TRUE;
+                }
+            }
+            if ( dwSearchFlags & QSF_WHOLEWORD )
+            {
+                HWND hDlgItm = GetDlgItem(g_QSearchDlg.hDlg, IDC_CH_WHOLEWORD);
+                if ( hDlgItm )
+                {
+                    SendMessage(hDlgItm, BM_SETCHECK, BST_CHECKED, 0);
+                }
             }
         }
 
         if ( qsearchIsFindHistoryEnabled() && qsearchIsFindHistoryBeingSaved() )
         {
             wsprintfW(szKeyW, L"%s\\%s", QSEARCH_REG_HOMEW, QSEARCH_REG_FINDHISTORYW);
-            if ( RegOpenKeyExW(HKEY_CURRENT_USER, szKeyW, 0, KEY_READ, &hKey) == ERROR_SUCCESS )
+            if ( qsearchIsSavingHistoryToStdLocation() ||
+                 (RegOpenKeyExW(HKEY_CURRENT_USER, szKeyW, 0, KEY_READ, &hKey) == ERROR_SUCCESS) )
             {
-                DWORD dwCount;
-                DWORD dwValType;
-                DWORD dwValSize;
+                DWORD dwCount = 0;
+                DWORD dwValType = 0;
+                DWORD dwValSize = sizeof(DWORD);
 
-                dwCount = 0;
-                dwValType = 0;
-                dwValSize = sizeof(DWORD);
-                if ( RegQueryValueExW(hKey, QSEARCH_REG_COUNTW, NULL, &dwValType, (BYTE *) &dwCount, &dwValSize) == ERROR_SUCCESS )
+                if ( qsearchIsSavingHistoryToStdLocation() )
                 {
-                    if ( (dwValType == REG_DWORD) && (dwCount > 0) )
+                    wsprintfW(szKeyW, L"%s.%s", QSEARCH_REG_FINDHISTORYW, QSEARCH_REG_COUNTW);
+                    dwCount = readDwordW(hOptions, szKeyW, 0);
+                }
+                else if ( RegQueryValueExW(hKey, QSEARCH_REG_COUNTW, NULL, &dwValType, (BYTE *) &dwCount, &dwValSize) == ERROR_SUCCESS )
+                {
+                    if ( dwValType != REG_DWORD )
+                        dwCount = 0;
+                }
+
+                if ( dwCount > 0 )
+                {
+                    DWORD   n;
+                    HWND    hFindComboWnd = NULL;
+                    wchar_t szItemW[MAX_TEXT_SIZE + 1];
+
+                    if ( dwCount > g_Options.dwFindHistoryItems )
+                        dwCount = g_Options.dwFindHistoryItems;
+
+                    SendMessageW(g_QSearchDlg.hDlg, QSM_GETHWNDCOMBO, 0, (LPARAM) &hFindComboWnd);
+                    for ( n = 0; n < dwCount; n++ )
                     {
-                        DWORD   n;
-                        HWND    hFindComboWnd = NULL;
-                        wchar_t szItemW[MAX_TEXT_SIZE + 1];
-
-                        if ( dwCount > g_Options.dwFindHistoryItems )
-                            dwCount = g_Options.dwFindHistoryItems;
-
-                        SendMessageW(g_QSearchDlg.hDlg, QSM_GETHWNDCOMBO, 0, (LPARAM) &hFindComboWnd);
-                        for ( n = 0; n < dwCount; n++ )
+                        if ( qsearchIsSavingHistoryToStdLocation() )
+                        {
+                            lstrcpyW(szItemW, QSEARCH_REG_FINDHISTORYW);
+                            lstrcatW(szItemW, L".");
+                            lstrcatW(szItemW, QSEARCH_REG_ITEMFMTW);
+                            wsprintfW(szKeyW, szItemW, n);
+                            szItemW[0] = 0;
+                            readStringW(hOptions, szKeyW, szItemW, MAX_TEXT_SIZE);
+                            if ( szItemW[0] != 0 )
+                                SendMessageW(hFindComboWnd, CB_ADDSTRING, 0, (LPARAM) szItemW);
+                        }
+                        else
                         {
                             dwValType = 0;
                             dwValSize = MAX_TEXT_SIZE*sizeof(wchar_t);
@@ -1805,8 +1939,16 @@ void ReadFindHistoryW(void)
                     }
                 }
 
-                RegCloseKey(hKey);
+                if ( !qsearchIsSavingHistoryToStdLocation() )
+                {
+                    RegCloseKey(hKey);
+                }
             }
+        }
+
+        if ( qsearchIsSavingHistoryToStdLocation() )
+        {
+            SendMessage(g_Plugin.hMainWnd, AKD_ENDOPTIONS, (WPARAM) hOptions, 0);
         }
     }
 }
@@ -1815,6 +1957,21 @@ void SaveFindHistoryA(void)
 {
     if ( g_QSearchDlg.hDlg )
     {
+        HANDLE  hOptions;
+
+        if ( qsearchIsSavingHistoryToStdLocation() )
+        {
+            hOptions = NULL;
+            if ( qsearchIsSearchFlagsBeingSaved() ||
+                 (qsearchIsFindHistoryEnabled() && qsearchIsFindHistoryBeingSaved()) )
+            {
+                hOptions = (HANDLE) SendMessage(g_Plugin.hMainWnd,
+                                      AKD_BEGINOPTIONS, POB_SAVE, (LPARAM) CSZ_QSEARCH);
+            }
+            if ( !hOptions )
+                return;
+        }
+
         if ( qsearchIsSearchFlagsBeingSaved() )
         {
             DWORD dwSearchFlags;
@@ -1841,7 +1998,11 @@ void SaveFindHistoryA(void)
                 }
             }
 
-            if ( RegCreateKeyExA(HKEY_CURRENT_USER, QSEARCH_REG_HOMEA, 0, NULL, REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS, NULL, &hKey, NULL) == ERROR_SUCCESS )
+            if ( qsearchIsSavingHistoryToStdLocation() )
+            {
+                writeDwordA(hOptions, QSEARCH_REG_SEARCHFLAGSA, dwSearchFlags);
+            }
+            else if ( RegCreateKeyExA(HKEY_CURRENT_USER, QSEARCH_REG_HOMEA, 0, NULL, REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS, NULL, &hKey, NULL) == ERROR_SUCCESS )
             {
                 RegSetValueExA(hKey, QSEARCH_REG_SEARCHFLAGSA, 0, REG_DWORD, (const BYTE *) &dwSearchFlags, sizeof(DWORD));
 
@@ -1858,36 +2019,67 @@ void SaveFindHistoryA(void)
             nCount = (int) SendMessageA(hFindComboWnd, CB_GETCOUNT, 0, 0);
             if ( nCount > 0 )
             {
-                HKEY hKey;
-                char szKeyA[200];
+                HKEY    hKey;
+                char    szKeyA[200];
 
                 wsprintfA(szKeyA, "%s\\%s", QSEARCH_REG_HOMEA, QSEARCH_REG_FINDHISTORYA);
-                if ( RegCreateKeyExA(HKEY_CURRENT_USER, szKeyA, 0, NULL, REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS, NULL, &hKey, NULL) == ERROR_SUCCESS )
+                if ( qsearchIsSavingHistoryToStdLocation() ||
+                     (RegCreateKeyExA(HKEY_CURRENT_USER, szKeyA, 0, NULL, REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS, NULL, &hKey, NULL) == ERROR_SUCCESS) )
                 {
-                    DWORD dwRealCount;
-                    DWORD dwValSize;
-                    int   n;
-                    char  szItemA[MAX_TEXT_SIZE + 1];
+                    DWORD   dwRealCount;
+                    DWORD   dwValSize;
+                    int     n;
+                    char    szItemA[MAX_TEXT_SIZE + 1];
 
                     dwRealCount = 0;
                     for ( n = 0; n < nCount; n++ )
                     {
-                        szItemA[0] = 0;
-                        SendMessageA(hFindComboWnd, CB_GETLBTEXT, n, (LPARAM) szItemA);
-                        if ( szItemA[0] )
+                        if ( qsearchIsSavingHistoryToStdLocation() )
                         {
-                            dwValSize = (lstrlenA(szItemA) + 1)*sizeof(char);
-                            wsprintfA(szKeyA, QSEARCH_REG_ITEMFMTA, n);
-                            if ( RegSetValueExA(hKey, szKeyA, 0, REG_SZ, (const BYTE *) szItemA, dwValSize) == ERROR_SUCCESS )
+                            lstrcpyA(szItemA, QSEARCH_REG_FINDHISTORYA);
+                            lstrcatA(szItemA, ".");
+                            lstrcatA(szItemA, QSEARCH_REG_ITEMFMTA);
+                            wsprintfA(szKeyA, szItemA, dwRealCount);
+                            szItemA[0] = 0;
+                            SendMessageA(hFindComboWnd, CB_GETLBTEXT, n, (LPARAM) szItemA);
+                            if ( szItemA[0] )
+                            {
+                                writeStringA(hOptions, szKeyA, szItemA);
                                 ++dwRealCount;
+                            }
+                        }
+                        else
+                        {
+                            szItemA[0] = 0;
+                            SendMessageA(hFindComboWnd, CB_GETLBTEXT, n, (LPARAM) szItemA);
+                            if ( szItemA[0] )
+                            {
+                                dwValSize = (lstrlenA(szItemA) + 1)*sizeof(char);
+                                wsprintfA(szKeyA, QSEARCH_REG_ITEMFMTA, dwRealCount);
+                                if ( RegSetValueExA(hKey, szKeyA, 0, REG_SZ, (const BYTE *) szItemA, dwValSize) == ERROR_SUCCESS )
+                                    ++dwRealCount;
+                            }
                         }
                     }
 
-                    RegSetValueExA(hKey, QSEARCH_REG_COUNTA, 0, REG_DWORD, (const BYTE *) &dwRealCount, sizeof(DWORD));
+                    if ( qsearchIsSavingHistoryToStdLocation() )
+                    {
+                        wsprintfA(szKeyA, "%s.%s", QSEARCH_REG_FINDHISTORYA, QSEARCH_REG_COUNTA);
+                        writeDwordA(hOptions, szKeyA, dwRealCount);
+                    }
+                    else
+                    {
+                        RegSetValueExA(hKey, QSEARCH_REG_COUNTA, 0, REG_DWORD, (const BYTE *) &dwRealCount, sizeof(DWORD));
 
-                    RegCloseKey(hKey);
+                        RegCloseKey(hKey);
+                    }
                 }
             }
+        }
+
+        if ( qsearchIsSavingHistoryToStdLocation() )
+        {
+            SendMessage(g_Plugin.hMainWnd, AKD_ENDOPTIONS, (WPARAM) hOptions, 0);
         }
     }
 }
@@ -1896,6 +2088,21 @@ void SaveFindHistoryW(void)
 {
     if ( g_QSearchDlg.hDlg )
     {
+        HANDLE  hOptions;
+
+        if ( qsearchIsSavingHistoryToStdLocation() )
+        {
+            hOptions = NULL;
+            if ( qsearchIsSearchFlagsBeingSaved() ||
+                 (qsearchIsFindHistoryEnabled() && qsearchIsFindHistoryBeingSaved()) )
+            {
+                hOptions = (HANDLE) SendMessage(g_Plugin.hMainWnd,
+                                      AKD_BEGINOPTIONS, POB_SAVE, (LPARAM) CWSZ_QSEARCH);
+            }
+            if ( !hOptions )
+                return;
+        }
+
         if ( qsearchIsSearchFlagsBeingSaved() )
         {
             DWORD dwSearchFlags;
@@ -1922,7 +2129,11 @@ void SaveFindHistoryW(void)
                 }
             }
 
-            if ( RegCreateKeyExW(HKEY_CURRENT_USER, QSEARCH_REG_HOMEW, 0, NULL, REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS, NULL, &hKey, NULL) == ERROR_SUCCESS )
+            if ( qsearchIsSavingHistoryToStdLocation() )
+            {
+                writeDwordW(hOptions, QSEARCH_REG_SEARCHFLAGSW, dwSearchFlags);
+            }
+            else if ( RegCreateKeyExW(HKEY_CURRENT_USER, QSEARCH_REG_HOMEW, 0, NULL, REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS, NULL, &hKey, NULL) == ERROR_SUCCESS )
             {
                 RegSetValueExW(hKey, QSEARCH_REG_SEARCHFLAGSW, 0, REG_DWORD, (const BYTE *) &dwSearchFlags, sizeof(DWORD));
 
@@ -1943,7 +2154,8 @@ void SaveFindHistoryW(void)
                 wchar_t szKeyW[200];
 
                 wsprintfW(szKeyW, L"%s\\%s", QSEARCH_REG_HOMEW, QSEARCH_REG_FINDHISTORYW);
-                if ( RegCreateKeyExW(HKEY_CURRENT_USER, szKeyW, 0, NULL, REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS, NULL, &hKey, NULL) == ERROR_SUCCESS )
+                if ( qsearchIsSavingHistoryToStdLocation() ||
+                     (RegCreateKeyExW(HKEY_CURRENT_USER, szKeyW, 0, NULL, REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS, NULL, &hKey, NULL) == ERROR_SUCCESS) )
                 {
                     DWORD   dwRealCount;
                     DWORD   dwValSize;
@@ -1953,22 +2165,52 @@ void SaveFindHistoryW(void)
                     dwRealCount = 0;
                     for ( n = 0; n < nCount; n++ )
                     {
-                        szItemW[0] = 0;
-                        SendMessageW(hFindComboWnd, CB_GETLBTEXT, n, (LPARAM) szItemW);
-                        if ( szItemW[0] )
+                        if ( qsearchIsSavingHistoryToStdLocation() )
                         {
-                            dwValSize = (lstrlenW(szItemW) + 1)*sizeof(wchar_t);
-                            wsprintfW(szKeyW, QSEARCH_REG_ITEMFMTW, n);
-                            if ( RegSetValueExW(hKey, szKeyW, 0, REG_SZ, (const BYTE *) szItemW, dwValSize) == ERROR_SUCCESS )
+                            lstrcpyW(szItemW, QSEARCH_REG_FINDHISTORYW);
+                            lstrcatW(szItemW, L".");
+                            lstrcatW(szItemW, QSEARCH_REG_ITEMFMTW);
+                            wsprintfW(szKeyW, szItemW, dwRealCount);
+                            szItemW[0] = 0;
+                            SendMessageW(hFindComboWnd, CB_GETLBTEXT, n, (LPARAM) szItemW);
+                            if ( szItemW[0] )
+                            {
+                                writeStringW(hOptions, szKeyW, szItemW);
                                 ++dwRealCount;
+                            }
+                        }
+                        else
+                        {
+                            szItemW[0] = 0;
+                            SendMessageW(hFindComboWnd, CB_GETLBTEXT, n, (LPARAM) szItemW);
+                            if ( szItemW[0] )
+                            {
+                                dwValSize = (lstrlenW(szItemW) + 1)*sizeof(wchar_t);
+                                wsprintfW(szKeyW, QSEARCH_REG_ITEMFMTW, dwRealCount);
+                                if ( RegSetValueExW(hKey, szKeyW, 0, REG_SZ, (const BYTE *) szItemW, dwValSize) == ERROR_SUCCESS )
+                                    ++dwRealCount;
+                            }
                         }
                     }
 
-                    RegSetValueExW(hKey, QSEARCH_REG_COUNTW, 0, REG_DWORD, (const BYTE *) &dwRealCount, sizeof(DWORD));
+                    if ( qsearchIsSavingHistoryToStdLocation() )
+                    {
+                        wsprintfW(szKeyW, L"%s.%s", QSEARCH_REG_FINDHISTORYW, QSEARCH_REG_COUNTW);
+                        writeDwordW(hOptions, szKeyW, dwRealCount);
+                    }
+                    else
+                    {
+                        RegSetValueExW(hKey, QSEARCH_REG_COUNTW, 0, REG_DWORD, (const BYTE *) &dwRealCount, sizeof(DWORD));
 
-                    RegCloseKey(hKey);
+                        RegCloseKey(hKey);
+                    }
                 }
             }
+        }
+
+        if ( qsearchIsSavingHistoryToStdLocation() )
+        {
+            SendMessage(g_Plugin.hMainWnd, AKD_ENDOPTIONS, (WPARAM) hOptions, 0);
         }
     }
 }

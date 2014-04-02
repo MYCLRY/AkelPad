@@ -3,7 +3,7 @@
 
 //Defines
 typedef struct {
-  IScriptSettingsVtbl *lpVtbl;
+  const IScriptSettingsVtbl *lpVtbl;
   DWORD dwCount;
   void *lpScriptThread;
   HANDLE hOptions;

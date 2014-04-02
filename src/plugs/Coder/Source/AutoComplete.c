@@ -6,6 +6,7 @@
 #include "StrFunc.h"
 #include "WideFunc.h"
 #include "AkelEdit.h"
+#include "RegExpFunc.h"
 #include "AkelDLL.h"
 #include "Coder.h"
 #include "HighLight.h"
@@ -1078,34 +1079,30 @@ DWORD CreateAutoCompleteWindow(SYNTAXFILE *lpSyntaxFile, DWORD dwFlags)
 
 BOOL MoveAutoCompleteWindow()
 {
-  RECT rc;
-  POINT pt;
+  RECT rcEdit;
+  POINT ptOpen;
+  POINT ptPrimaryMax;
   int nCharHeight;
 
   if (!hWndAutoComplete) return FALSE;
-  GetPosFromChar(hWndEdit, nWindowBlockBegin, &pt);
+  GetPosFromChar(hWndEdit, nWindowBlockBegin, &ptOpen);
   nCharHeight=(int)SendMessage(hWndEdit, AEM_GETCHARSIZE, AECS_HEIGHT, 0);
-  pt.y+=nCharHeight;
+  ptOpen.y+=nCharHeight;
+  SendMessage(hWndEdit, AEM_GETRECT, 0, (LPARAM)&rcEdit);
+  if (ptOpen.x < rcEdit.left || ptOpen.x > rcEdit.right || ptOpen.y < rcEdit.top || ptOpen.y - nCharHeight > rcEdit.bottom)
+    return FALSE;
+  ptPrimaryMax.x=GetSystemMetrics(SM_CXMAXIMIZED);
+  ptPrimaryMax.y=GetSystemMetrics(SM_CYMAXIMIZED);
 
-  if (ClientToScreen(hWndEdit, &pt))
+  if (ClientToScreen(hWndEdit, &ptOpen))
   {
-    GetWindowRect(hWndEdit, &rc);
-
-    if (pt.x + rcAutoComplete.right > rc.right &&
-        pt.x - rcAutoComplete.right >= rc.left)
-    {
-      pt.x=pt.x - rcAutoComplete.right;
-    }
-    if (pt.y + rcAutoComplete.bottom > rc.bottom &&
-        pt.y - rcAutoComplete.bottom - nCharHeight >= rc.top)
-    {
-      pt.y=pt.y - rcAutoComplete.bottom - nCharHeight;
-    }
-    if (pt.x >= 0 && pt.y >= 0 && pt.x < rc.right && pt.y < rc.bottom)
-    {
-      SetWindowPos(hWndAutoComplete, NULL, pt.x, pt.y, 0, 0, SWP_NOZORDER|SWP_NOSIZE|SWP_NOACTIVATE);
-      return TRUE;
-    }
+    //Correct window position only for primary monitor
+    if (ptOpen.x < ptPrimaryMax.x && ptOpen.x + rcAutoComplete.right > ptPrimaryMax.x)
+      ptOpen.x=max(ptOpen.x - rcAutoComplete.right, 0);
+    if (ptOpen.y < ptPrimaryMax.y && ptOpen.y + rcAutoComplete.bottom > ptPrimaryMax.y)
+      ptOpen.y=max(ptOpen.y - rcAutoComplete.bottom - nCharHeight, 0);
+    SetWindowPos(hWndAutoComplete, NULL, ptOpen.x, ptOpen.y, 0, 0, SWP_NOZORDER|SWP_NOSIZE|SWP_NOACTIVATE);
+    return TRUE;
   }
   return FALSE;
 }

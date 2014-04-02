@@ -97,12 +97,13 @@
 #define STRID_NEXTBOOKMARK            21
 #define STRID_PREVBOOKMARK            22
 #define STRID_SAVEBOOKMARKS           23
-#define STRID_CODERTHEME              24
-#define STRID_LOADFIRST               25
-#define STRID_SETTINGS                26
-#define STRID_PLUGIN                  27
-#define STRID_OK                      28
-#define STRID_CANCEL                  29
+#define STRID_BOOKMARKCHARHEIGHT      24
+#define STRID_CODERTHEME              25
+#define STRID_LOADFIRST               26
+#define STRID_SETTINGS                27
+#define STRID_PLUGIN                  28
+#define STRID_OK                      29
+#define STRID_CANCEL                  30
 
 #define AKDLL_FREEMESSAGELOOP (WM_USER + 50)
 
@@ -222,14 +223,15 @@ WINDOWBOARD* StackGetBoardByUserParent(HSTACK *hStack, HWND hWndParent);
 void StackDeleteBoard(HSTACK *hStack, WINDOWBOARD *wb);
 void StackFreeBoards(HSTACK *hStack);
 BOOKMARK* StackInsertBookmark(WINDOWBOARD *wb, int nLine);
-BOOL StackDeleteBookmark(WINDOWBOARD *wb, int nLine);
+void StackDeleteBookmarkByData(WINDOWBOARD *wb, BOOKMARK *lpBookmark);
+BOOL StackDeleteBookmarkByLine(WINDOWBOARD *wb, int nLine);
 void StackRemoveDuplicateBookmarks(WINDOWBOARD *wb);
 int StackGetBookmark(WINDOWBOARD *wb, int nLine);
 int StackGetNextBookmark(WINDOWBOARD *wb, int nLine);
 int StackGetPrevBookmark(WINDOWBOARD *wb, int nLine);
 void StackGetBookmarkRect(WINDOWBOARD *wb, int nLine, RECT *rc);
 void StackSaveMobileBookmarks(WINDOWBOARD *wb);
-void StackRestoreMobileBookmarks(WINDOWBOARD *wb);
+void StackRestoreMobileBookmarks(WINDOWBOARD *wb, int nBeforeStartLine, int nBeforeEndLine, int nAfterEndLine);
 void StackFreeBookmark(WINDOWBOARD *wb);
 int ResetBookmarksMovedFlag(WINDOWBOARD *wb);
 int GetBookmarksString(WINDOWBOARD *wb, wchar_t *wszString);
@@ -280,6 +282,7 @@ DWORD dwSaveFlags=0;
 DWORD dwDocOpen=DOF_NONE;
 BOOL bShowBoard=TRUE;
 BOOL bRememberBookmarks=TRUE;
+BOOL bBookmarkCharHeight=FALSE;
 BOOL bCoderTheme=TRUE;
 DWORD dwStatusPosType=0;
 HSTACK hWindowStack={0};
@@ -453,8 +456,8 @@ void __declspec(dllexport) Main(PLUGINDATA *pd)
             if (lpBoard=StackGetBoard(&hWindowStack, hWndEdit, hDocEdit, GB_READ))
             {
               GetClientRect(hWndEdit, lpRect);
+              lpRect->left=lpBoard->nBoardWidth;
               lpRect->top=lpBoard->nBoardHeight;
-              lpRect->right=lpBoard->nBoardWidth;
             }
           }
         }
@@ -699,6 +702,7 @@ BOOL CALLBACK SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
   static HWND hWndNextBookmark;
   static HWND hWndPrevBookmark;
   static HWND hWndRememberBookmark;
+  static HWND hWndBookmarkCharHeight;
   static HWND hWndCoderTheme;
   static COLORREF crBoardTextDlg;
   static COLORREF crBoardBkDlg;
@@ -762,6 +766,7 @@ BOOL CALLBACK SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     hWndNextBookmark=GetDlgItem(hDlg, IDC_NEXTBOOKMARK);
     hWndPrevBookmark=GetDlgItem(hDlg, IDC_PREVBOOKMARK);
     hWndRememberBookmark=GetDlgItem(hDlg, IDC_REMEMBERBOOKMARKS);
+    hWndBookmarkCharHeight=GetDlgItem(hDlg, IDC_BOOKMARKCHARHEIGHT);
     hWndCoderTheme=GetDlgItem(hDlg, IDC_CODERTHEME);
 
     SetWindowTextWide(hDlg, wszPluginTitle);
@@ -788,6 +793,7 @@ BOOL CALLBACK SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     SetDlgItemTextWide(hDlg, IDC_NEXTBOOKMARK_LABEL, GetLangStringW(wLangModule, STRID_NEXTBOOKMARK));
     SetDlgItemTextWide(hDlg, IDC_PREVBOOKMARK_LABEL, GetLangStringW(wLangModule, STRID_PREVBOOKMARK));
     SetDlgItemTextWide(hDlg, IDC_REMEMBERBOOKMARKS, GetLangStringW(wLangModule, STRID_SAVEBOOKMARKS));
+    SetDlgItemTextWide(hDlg, IDC_BOOKMARKCHARHEIGHT, GetLangStringW(wLangModule, STRID_BOOKMARKCHARHEIGHT));
     SetDlgItemTextWide(hDlg, IDC_CODERTHEME, GetLangStringW(wLangModule, STRID_CODERTHEME));
     SetDlgItemTextWide(hDlg, IDOK, GetLangStringW(wLangModule, STRID_OK));
     SetDlgItemTextWide(hDlg, IDCANCEL, GetLangStringW(wLangModule, STRID_CANCEL));
@@ -806,6 +812,7 @@ BOOL CALLBACK SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     if (bLineUnsavedEnable) SendMessage(hWndLineUnsavedColorCheck, BM_SETCHECK, BST_CHECKED, 0);
     if (bLineSavedEnable) SendMessage(hWndLineSavedColorCheck, BM_SETCHECK, BST_CHECKED, 0);
     if (bRememberBookmarks) SendMessage(hWndRememberBookmark, BM_SETCHECK, BST_CHECKED, 0);
+    if (bBookmarkCharHeight) SendMessage(hWndBookmarkCharHeight, BM_SETCHECK, BST_CHECKED, 0);
     if (bCoderTheme) SendMessage(hWndCoderTheme, BM_SETCHECK, BST_CHECKED, 0);
 
     InitMain();
@@ -1117,6 +1124,7 @@ BOOL CALLBACK SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
           StackEndBoardAll(&hWindowStack);
       }
       bRememberBookmarks=(BOOL)SendMessage(hWndRememberBookmark, BM_GETCHECK, 0, 0);
+      bBookmarkCharHeight=(BOOL)SendMessage(hWndBookmarkCharHeight, BM_GETCHECK, 0, 0);
       bCoderTheme=(BOOL)SendMessage(hWndCoderTheme, BM_GETCHECK, 0, 0);
 
       SaveOptions(OF_SETTINGS);
@@ -1255,6 +1263,11 @@ LRESULT CALLBACK NewUserParentProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM l
 
 BOOL CALLBACK ParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, LRESULT *lResult)
 {
+  static int nMobileBookmarksStartLine;
+  static int nMobileBookmarksEndLine;
+  static BOOL bMobileBookmarksSave;
+  static BOOL bUndoRedo;
+
   if (uMsg == WM_NOTIFY)
   {
     if (wParam == ID_EDIT || (HWND)*lResult)
@@ -1264,28 +1277,34 @@ BOOL CALLBACK ParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam,
         if (dwDocOpen == DOF_NONE || (dwDocOpen & DOF_REOPEN))
         {
           AENTEXTCHANGE *aentc=(AENTEXTCHANGE *)lParam;
-          AECHARRANGE cr;
           WINDOWBOARD *lpBoard;
-          BOOL bSaveMobileBookmarks=FALSE;
 
-          if ((aentc->dwType & AETCT_SETTEXT) || (aentc->dwType & AETCT_STREAMIN) || (aentc->dwType & AETCT_UNDO) || (aentc->dwType & AETCT_REDO))
+          bMobileBookmarksSave=FALSE;
+          bUndoRedo=FALSE;
+
+          if (((aentc->dwType & AETCT_SETTEXT) || (aentc->dwType & AETCT_STREAMIN)) && (dwDocOpen & DOF_REOPEN))
           {
-            bSaveMobileBookmarks=TRUE;
+            nMobileBookmarksStartLine=0;
+            nMobileBookmarksEndLine=-1;
+            bMobileBookmarksSave=TRUE;
           }
-          else if (!(aentc->aes.dwFlags & AESELT_COLUMNON) && AEC_IndexCompare(&aentc->aes.crSel.ciMin, &aentc->aes.crSel.ciMax))
+          else if ((aentc->dwType & AETCT_UNDO) || (aentc->dwType & AETCT_REDO))
           {
-            SendMessage(aentc->hdr.hwndFrom, AEM_GETINDEX, AEGI_FIRSTCHAR, (LPARAM)&cr.ciMin);
-            SendMessage(aentc->hdr.hwndFrom, AEM_GETINDEX, AEGI_LASTCHAR, (LPARAM)&cr.ciMax);
-
-            if (!AEC_IndexCompare(&cr.ciMin, &aentc->aes.crSel.ciMin) &&
-                !AEC_IndexCompare(&cr.ciMax, &aentc->aes.crSel.ciMax))
-            {
-              bSaveMobileBookmarks=TRUE;
-            }
+            nMobileBookmarksStartLine=-1;
+            nMobileBookmarksEndLine=-1;
+            bMobileBookmarksSave=TRUE;
+            bUndoRedo=TRUE;
+          }
+          else if (!(aentc->aes.dwFlags & AESELT_COLUMNON) && (aentc->dwType & AETCT_REPLACESEL) && aentc->aes.crSel.ciMin.nLine < aentc->aes.crSel.ciMax.nLine)
+          {
+            nMobileBookmarksStartLine=aentc->aes.crSel.ciMin.nLine;
+            nMobileBookmarksEndLine=aentc->aes.crSel.ciMax.nLine;
+            bMobileBookmarksSave=TRUE;
           }
 
-          if (bSaveMobileBookmarks)
+          if (bMobileBookmarksSave)
           {
+            //SaveMobileBookmarks
             HWND hWndMaster;
             HWND hWndEdit;
             int nCloneCount=0;
@@ -1307,19 +1326,38 @@ BOOL CALLBACK ParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam,
           }
         }
       }
+      else if (((NMHDR *)lParam)->code == AEN_TEXTDELETEBEGIN ||
+               ((NMHDR *)lParam)->code == AEN_TEXTDELETEEND)
+      {
+        if (bUndoRedo)
+        {
+          AENTEXTDELETE *aentd=(AENTEXTDELETE *)lParam;
+
+          //Bookmarks not removed after single line modification
+          if (aentd->crAkelRange.ciMin.nLine < aentd->crAkelRange.ciMax.nLine)
+          {
+            if (nMobileBookmarksStartLine == -1)
+            {
+              nMobileBookmarksStartLine=aentd->crAkelRange.ciMin.nLine;
+              nMobileBookmarksEndLine=aentd->crAkelRange.ciMax.nLine;
+            }
+            else
+            {
+              if (aentd->crAkelRange.ciMin.nLine < nMobileBookmarksStartLine)
+                nMobileBookmarksStartLine=aentd->crAkelRange.ciMin.nLine;
+              if (aentd->crAkelRange.ciMax.nLine > nMobileBookmarksEndLine)
+                nMobileBookmarksEndLine=aentd->crAkelRange.ciMax.nLine;
+            }
+          }
+        }
+      }
       else if (((NMHDR *)lParam)->code == AEN_TEXTCHANGED)
       {
-        AENTEXTCHANGE *aentc=(AENTEXTCHANGE *)lParam;
-        WINDOWBOARD *lpBoard;
-        BOOL bRestoreMobileBookmarks=FALSE;
-
-        if (aentc->dwType & AETCT_DELETEALL)
+        if (bMobileBookmarksSave && nMobileBookmarksStartLine != -1)
         {
-          bRestoreMobileBookmarks=TRUE;
-        }
-
-        if (bRestoreMobileBookmarks)
-        {
+          //RestoreMobileBookmarks
+          AENTEXTCHANGE *aentc=(AENTEXTCHANGE *)lParam;
+          WINDOWBOARD *lpBoard;
           HWND hWndMaster;
           HWND hWndEdit;
           int nCloneCount=0;
@@ -1336,7 +1374,7 @@ BOOL CALLBACK ParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam,
               if (lpBoard->bUpdateBookmarks)
               {
                 lpBoard->bUpdateBookmarks=FALSE;
-                StackRestoreMobileBookmarks(lpBoard);
+                StackRestoreMobileBookmarks(lpBoard, nMobileBookmarksStartLine, nMobileBookmarksEndLine, aentc->aes.crSel.ciMax.nLine);
               }
             }
           }
@@ -1480,6 +1518,9 @@ BOOL CALLBACK EditMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, L
         POINT ptFirstChar;
         POINT64 ptScrollPos;
         POINT ptCaretPos;
+        HDC hBufferDC;
+        HBITMAP hBitmap;
+        HBITMAP hBitmapOld;
         HRGN hRgn;
         HRGN hRgnOld;
         HBRUSH hBrushBoard;
@@ -1497,6 +1538,7 @@ BOOL CALLBACK EditMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, L
         POINT ptTextOut;
         SIZE sizeLineNumber;
         int nCharHeight;
+        int nBookmarkHeight;
         int nCharInLine;
         int nUnwrappedLine=0;
         int nLineModified;
@@ -1507,10 +1549,13 @@ BOOL CALLBACK EditMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, L
         {
           GetBoardColors(hWnd);
 
-          hRgn=CreateRectRgn(rcBoard.left, rcBoard.top, rcBoard.right, rcBoard.bottom);
-          hRgnOld=(HRGN)SelectObject(hDC, hRgn);
+          //Create buffer DC to avoid flashing
+          hBufferDC=CreateCompatibleDC(hDC);
+          hBitmap=CreateCompatibleBitmap(hDC, rcClient.right, rcClient.bottom);
+          hBitmapOld=(HBITMAP)SelectObject(hBufferDC, hBitmap);
+
           hFont=(HFONT)SendMessage(hWnd, AEM_GETFONT, AEGF_CURRENT, 0);
-          hFontOld=(HFONT)SelectObject(hDC, hFont);
+          hFontOld=(HFONT)SelectObject(hBufferDC, hFont);
           hBrushBoard=CreateSolidBrush(crDrawBoardBk);
           hBrushBookmark=CreateSolidBrush(crDrawBoardBookmarkBk);
           hPenPanelBorder=CreatePen(PS_SOLID, 0, crDrawBoardBorder);
@@ -1523,20 +1568,24 @@ BOOL CALLBACK EditMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, L
             hPenRulerScale=CreatePen(PS_SOLID, 0, crDrawBoardRulerScale);
           if (nRulerHeight)
             hPenRulerCaret=CreatePen(PS_SOLID, 0, crDrawBoardRulerCaret);
-          SetBkColor(hDC, crDrawBoardBk);
+          SetBkColor(hBufferDC, crDrawBoardBk);
 
           //Some variables could be changed after UpdateWindow
           rcBoard.top=lpBoard->nBoardHeight;
           rcBoard.right=lpBoard->nBoardWidth;
-          GetMaxNumberWidth(hDC, &nNumberAverageWidth);
+          GetMaxNumberWidth(hBufferDC, &nNumberAverageWidth);
 
           //Get char height
           nCharHeight=(int)SendMessage(hWnd, AEM_GETCHARSIZE, AECS_HEIGHT, 0);
+          if (bBookmarkCharHeight)
+            nBookmarkHeight=nCharHeight - (int)SendMessage(hWnd, AEM_GETLINEGAP, 0, 0);
+          else
+            nBookmarkHeight=nCharHeight;
 
           //Draw board edge
-          hPenOld=(HPEN)SelectObject(hDC, hPenPanelBorder);
-          MoveToEx(hDC, rcBoard.right - 1, rcBoard.top, NULL);
-          LineTo(hDC, rcBoard.right - 1, rcBoard.bottom);
+          hPenOld=(HPEN)SelectObject(hBufferDC, hPenPanelBorder);
+          MoveToEx(hBufferDC, rcBoard.right - 1, rcBoard.top, NULL);
+          LineTo(hBufferDC, rcBoard.right - 1, rcBoard.bottom);
 
           //Draw lines
           SendMessage(hWnd, AEM_GETINDEX, AEGI_FIRSTVISIBLELINE, (LPARAM)&ciFirstLine);
@@ -1558,7 +1607,7 @@ BOOL CALLBACK EditMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, L
             rcDraw.top=rcBoard.top;
             rcDraw.right=rcBoard.right - 1;
             rcDraw.bottom=ptFirstChar.y;
-            FillRect(hDC, &rcDraw, hBrushBoard);
+            FillRect(hBufferDC, &rcDraw, hBrushBoard);
           }
           rcDraw.left=0;
           rcDraw.top=ptFirstChar.y;
@@ -1574,7 +1623,7 @@ BOOL CALLBACK EditMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, L
               else
                 nUnwrappedLine=ciFirstLine.nLine;
               nLineNumberLen=wsprintfA(szLineNumber, "%d", nUnwrappedLine + 1);
-              if (!GetTextExtentPoint32A(hDC, szLineNumber, nLineNumberLen, &sizeLineNumber))
+              if (!GetTextExtentPoint32A(hBufferDC, szLineNumber, nLineNumberLen, &sizeLineNumber))
                 break;
 
               ptTextOut.x=rcBoard.right - sizeLineNumber.cx - (nNumberAverageWidth / 2);
@@ -1590,7 +1639,7 @@ BOOL CALLBACK EditMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, L
                   rcBrush.right=rcDraw.right;
                   rcBrush.top=rcDraw.top;
                   rcBrush.bottom=rcDraw.top + nCharHeight;
-                  FillRect(hDC, &rcBrush, hBrushBoard);
+                  FillRect(hBufferDC, &rcBrush, hBrushBoard);
                   bWrapped=TRUE;
                 }
               }
@@ -1604,22 +1653,22 @@ BOOL CALLBACK EditMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, L
                   rcBrush.right=rcDraw.right;
                   rcBrush.top=rcDraw.top;
                   rcBrush.bottom=rcDraw.top + nCharHeight;
-                  FillRect(hDC, &rcBrush, hBrushBoard);
+                  FillRect(hBufferDC, &rcBrush, hBrushBoard);
                 }
 
                 //Draw bookmark
-                SelectObject(hDC, hPenBookmarkBorder);
-                hBrushBookmarkOld=(HBRUSH)SelectObject(hDC, hBrushBookmark);
-                RoundRect(hDC, 0, rcDraw.top - 1, rcDraw.right, rcDraw.top + nCharHeight, nCharHeight / 3, nCharHeight / 3);
-                if (hBrushBookmarkOld) SelectObject(hDC, hBrushBookmarkOld);
+                SelectObject(hBufferDC, hPenBookmarkBorder);
+                hBrushBookmarkOld=(HBRUSH)SelectObject(hBufferDC, hBrushBookmark);
+                RoundRect(hBufferDC, 0, rcDraw.top - 1, rcDraw.right, rcDraw.top + nBookmarkHeight, nBookmarkHeight / 3, nBookmarkHeight / 3);
+                if (hBrushBookmarkOld) SelectObject(hBufferDC, hBrushBookmarkOld);
 
                 if (!bWrapped)
                 {
                   //Draw number
-                  SetBkMode(hDC, TRANSPARENT);
-                  SetTextColor(hDC, crDrawBoardBookmarkText);
-                  TextOutA(hDC, ptTextOut.x, ptTextOut.y, szLineNumber, nLineNumberLen);
-                  SetBkMode(hDC, OPAQUE);
+                  SetBkMode(hBufferDC, TRANSPARENT);
+                  SetTextColor(hBufferDC, crDrawBoardBookmarkText);
+                  TextOutA(hBufferDC, ptTextOut.x, ptTextOut.y, szLineNumber, nLineNumberLen);
+                  SetBkMode(hBufferDC, OPAQUE);
                 }
               }
               else
@@ -1631,18 +1680,18 @@ BOOL CALLBACK EditMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, L
                   rcBrush.right=ptTextOut.x;
                   rcBrush.top=rcDraw.top;
                   rcBrush.bottom=rcDraw.top + nCharHeight;
-                  FillRect(hDC, &rcBrush, hBrushBoard);
+                  FillRect(hBufferDC, &rcBrush, hBrushBoard);
 
                   //Draw number
-                  SetTextColor(hDC, crDrawBoardText);
+                  SetTextColor(hBufferDC, crDrawBoardText);
                   rcBrush.left=ptTextOut.x;
                   rcBrush.right=ptTextOut.x + sizeLineNumber.cx;
-                  ExtTextOutA(hDC, ptTextOut.x, ptTextOut.y, ETO_OPAQUE, &rcBrush, szLineNumber, nLineNumberLen, NULL);
+                  ExtTextOutA(hBufferDC, ptTextOut.x, ptTextOut.y, ETO_OPAQUE, &rcBrush, szLineNumber, nLineNumberLen, NULL);
 
                   //Erase space after number
                   rcBrush.left=ptTextOut.x + sizeLineNumber.cx;
                   rcBrush.right=rcDraw.right;
-                  FillRect(hDC, &rcBrush, hBrushBoard);
+                  FillRect(hBufferDC, &rcBrush, hBrushBoard);
                 }
               }
 
@@ -1654,15 +1703,15 @@ BOOL CALLBACK EditMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, L
                     (nLineModified == AEIRM_MODIFIEDUNSAVED && hPenModifiedUnsaved))
                 {
                   if (nLineModified == AEIRM_MODIFIEDSAVED)
-                    SelectObject(hDC, hPenModifiedSaved);
+                    SelectObject(hBufferDC, hPenModifiedSaved);
                   else if (nLineModified == AEIRM_MODIFIEDUNSAVED)
-                    SelectObject(hDC, hPenModifiedUnsaved);
+                    SelectObject(hBufferDC, hPenModifiedUnsaved);
 
                   //Draw line modification flag
                   for (i=nLineModificationWidth; i > 0; --i)
                   {
-                    MoveToEx(hDC, rcBoard.right - i - 1, rcDraw.top, NULL);
-                    LineTo(hDC, rcBoard.right - i - 1, rcDraw.top + nCharHeight);
+                    MoveToEx(hBufferDC, rcBoard.right - i - 1, rcDraw.top, NULL);
+                    LineTo(hBufferDC, rcBoard.right - i - 1, rcDraw.top + nCharHeight);
                   }
                 }
               }
@@ -1697,21 +1746,23 @@ BOOL CALLBACK EditMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, L
 
           if (ciFirstLine.nLine > ciLastLine.nLine && rcDraw.top < rcDraw.bottom)
           {
-            FillRect(hDC, &rcDraw, hBrushBoard);
+            FillRect(hBufferDC, &rcDraw, hBrushBoard);
           }
 
-          if (hPenOld) SelectObject(hDC, hPenOld);
-          if (hFontOld) SelectObject(hDC, hFontOld);
+          //Copy from buffer DC
+          hRgn=CreateRectRgn(rcBoard.left, rcBoard.top, rcBoard.right, rcBoard.bottom);
+          hRgnOld=(HRGN)SelectObject(hDC, hRgn);
+          BitBlt(hDC, rcBoard.left, rcBoard.top, rcBoard.right - rcBoard.left, rcBoard.bottom - rcBoard.top, hBufferDC, rcBoard.left, rcBoard.top, SRCCOPY);
           if (hRgnOld) SelectObject(hDC, hRgnOld);
           DeleteObject(hRgn);
+
+          if (hPenOld) SelectObject(hBufferDC, hPenOld);
+          if (hFontOld) SelectObject(hBufferDC, hFontOld);
 
           //Draw ruler
           if (nRulerHeight && lpBoard->nBoardHeight)
           {
             LOGFONTA lfFont;
-            HDC hBufferDC;
-            HBITMAP hBitmap;
-            HBITMAP hBitmapOld=NULL;
             int nPosX;
             int nOffset;
             BOOL bOnCaret=FALSE;
@@ -1720,11 +1771,6 @@ BOOL CALLBACK EditMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, L
             rcBoard.right=rcClient.right;
             rcBoard.top=0;
             rcBoard.bottom=lpBoard->nBoardHeight;
-
-            //Create buffer DC to avoid flashing
-            hBufferDC=CreateCompatibleDC(hDC);
-            hBitmap=CreateCompatibleBitmap(hDC, rcBoard.right, rcBoard.bottom);
-            hBitmapOld=(HBITMAP)SelectObject(hBufferDC, hBitmap);
 
             //Create ruler font
             GetObjectA(hFont, sizeof(LOGFONTA), &lfFont);
@@ -1797,16 +1843,13 @@ BOOL CALLBACK EditMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, L
             //Copy from buffer DC
             hRgn=CreateRectRgn(rcBoard.left, rcBoard.top, rcBoard.right, rcBoard.bottom);
             hRgnOld=(HRGN)SelectObject(hDC, hRgn);
-            BitBlt(hDC, rcBoard.left, rcBoard.top, rcBoard.right - rcBoard.left, rcBoard.bottom - rcBoard.top, hBufferDC, 0, 0, SRCCOPY);
+            BitBlt(hDC, rcBoard.left, rcBoard.top, rcBoard.right - rcBoard.left, rcBoard.bottom - rcBoard.top, hBufferDC, rcBoard.left, rcBoard.top, SRCCOPY);
             if (hRgnOld) SelectObject(hBufferDC, hRgnOld);
             DeleteObject(hRgn);
 
             if (hPenOld) SelectObject(hBufferDC, hPenOld);
             if (hFontOld) SelectObject(hBufferDC, hFontOld);
-            if (hBitmapOld) SelectObject(hBufferDC, hBitmapOld);
             DeleteObject(hFontRuler);
-            DeleteObject(hBitmap);
-            DeleteDC(hBufferDC);
           }
 
           DeleteObject(hPenBookmarkBorder);
@@ -1815,8 +1858,11 @@ BOOL CALLBACK EditMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, L
           if (hPenModifiedSaved) DeleteObject(hPenModifiedSaved);
           if (hPenRulerScale) DeleteObject(hPenRulerScale);
           if (hPenRulerCaret) DeleteObject(hPenRulerCaret);
+          if (hBitmapOld) SelectObject(hBufferDC, hBitmapOld);
           DeleteObject(hBrushBookmark);
           DeleteObject(hBrushBoard);
+          DeleteObject(hBitmap);
+          DeleteDC(hBufferDC);
           ReleaseDC(hWnd, hDC);
         }
       }
@@ -1847,7 +1893,7 @@ BOOL CALLBACK EditMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, L
 
           if (StackGetBookmark(lpBoard, nClickLine) >= 0)
           {
-            if (StackDeleteBookmark(lpBoard, nClickLine))
+            if (StackDeleteBookmarkByLine(lpBoard, nClickLine))
             {
               SaveRecentFile(lpBoard);
               StackGetBookmarkRect(lpBoard, nClickLine, &rcBookmark);
@@ -1940,7 +1986,7 @@ BOOL CALLBACK DelBookmarkProc(void *lpParameter, LPARAM lParam, DWORD dwSupport)
     {
       nCurrentLine=GetCurrentLine(lpBoard->hWndEdit);
 
-      if (StackDeleteBookmark(lpBoard, nCurrentLine))
+      if (StackDeleteBookmarkByLine(lpBoard, nCurrentLine))
       {
         SaveRecentFile(lpBoard);
         StackGetBookmarkRect(lpBoard, nCurrentLine, &rcBookmark);
@@ -2239,14 +2285,12 @@ WINDOWBOARD* StackGetBoard(HSTACK *hStack, HWND hWndEdit, AEHDOC hDocEdit, DWORD
 
 WINDOWBOARD* StackGetBoardByUserParent(HSTACK *hStack, HWND hWndParent)
 {
-  WINDOWBOARD *lpBoard=(WINDOWBOARD *)hStack->first;
+  WINDOWBOARD *lpBoard;
 
-  while (lpBoard)
+  for (lpBoard=(WINDOWBOARD *)hStack->first; lpBoard; lpBoard=lpBoard->next)
   {
     if (lpBoard->hWndParent == hWndParent)
       return lpBoard;
-
-    lpBoard=lpBoard->next;
   }
   return NULL;
 }
@@ -2266,9 +2310,9 @@ void StackDeleteBoard(HSTACK *hStack, WINDOWBOARD *wb)
 
 void StackFreeBoards(HSTACK *hStack)
 {
-  WINDOWBOARD *lpBoard=(WINDOWBOARD *)hStack->first;
+  WINDOWBOARD *lpBoard;
 
-  while (lpBoard)
+  for (lpBoard=(WINDOWBOARD *)hStack->first; lpBoard; lpBoard=lpBoard->next)
   {
     if (lpBoard->hWndParent)
     {
@@ -2281,26 +2325,22 @@ void StackFreeBoards(HSTACK *hStack)
       SendMessage(lpBoard->hWndParent, AKDLL_FREEMESSAGELOOP, 0, 0);
     }
     StackFreeBookmark(lpBoard);
-
-    lpBoard=lpBoard->next;
   }
   StackClear((stack **)&hStack->first, (stack **)&hStack->last);
 }
 
 BOOKMARK* StackInsertBookmark(WINDOWBOARD *wb, int nLine)
 {
-  BOOKMARK *lpBookmark=(BOOKMARK *)wb->hBookmarkStack.first;
+  BOOKMARK *lpBookmark;
   BOOKMARK *lpElement=NULL;
   AEPOINT point;
 
-  while (lpBookmark)
+  for (lpBookmark=wb->hBookmarkStack.first; lpBookmark; lpBookmark=lpBookmark->next)
   {
     if (lpBookmark->lpPoint->ciPoint.nLine == nLine)
       return NULL;
     if (lpBookmark->lpPoint->ciPoint.nLine > nLine)
       break;
-
-    lpBookmark=lpBookmark->next;
   }
 
   if (!StackInsertBefore((stack **)&wb->hBookmarkStack.first, (stack **)&wb->hBookmarkStack.last, (stack *)lpBookmark, (stack **)&lpElement, sizeof(BOOKMARK)))
@@ -2328,22 +2368,32 @@ BOOKMARK* StackInsertBookmark(WINDOWBOARD *wb, int nLine)
   return lpElement;
 }
 
-BOOL StackDeleteBookmark(WINDOWBOARD *wb, int nLine)
+void StackDeleteBookmarkByData(WINDOWBOARD *wb, BOOKMARK *lpBookmark)
 {
-  BOOKMARK *lpBookmark=(BOOKMARK *)wb->hBookmarkStack.first;
+  SendMessage(wb->hWndEdit, AEM_DELPOINT, (WPARAM)lpBookmark->lpPoint, 0);
+  StackDelete((stack **)&wb->hBookmarkStack.first, (stack **)&wb->hBookmarkStack.last, (stack *)lpBookmark);
+  --wb->hBookmarkStack.nCount;
+}
+
+BOOL StackDeleteBookmarkByLine(WINDOWBOARD *wb, int nLine)
+{
+  BOOKMARK *lpBookmark;
+  BOOKMARK *lpNextBookmark;
   BOOL bResult=FALSE;
 
-  while (lpBookmark)
+  for (lpBookmark=wb->hBookmarkStack.first; lpBookmark; lpBookmark=lpNextBookmark)
   {
-    if (lpBookmark->lpPoint->ciPoint.nLine == nLine)
+    lpNextBookmark=lpBookmark->next;
+
+    if (lpBookmark->lpPoint->ciPoint.nLine >= nLine)
     {
-      SendMessage(wb->hWndEdit, AEM_DELPOINT, (WPARAM)lpBookmark->lpPoint, 0);
-      StackDelete((stack **)&wb->hBookmarkStack.first, (stack **)&wb->hBookmarkStack.last, (stack *)lpBookmark);
-      --wb->hBookmarkStack.nCount;
-      bResult=TRUE;
-      break;
+      if (lpBookmark->lpPoint->ciPoint.nLine == nLine)
+      {
+        StackDeleteBookmarkByData(wb, lpBookmark);
+        bResult=TRUE;
+      }
+      else break;
     }
-    lpBookmark=lpBookmark->next;
   }
   return bResult;
 }
@@ -2354,7 +2404,7 @@ void StackRemoveDuplicateBookmarks(WINDOWBOARD *wb)
   BOOKMARK *lpNextBookmark;
   BOOKMARK *lpDeleteBookmark;
 
-  for (lpBookmark=(BOOKMARK *)wb->hBookmarkStack.first; lpBookmark; lpBookmark=lpNextBookmark)
+  for (lpBookmark=wb->hBookmarkStack.first; lpBookmark; lpBookmark=lpNextBookmark)
   {
     lpNextBookmark=lpBookmark->next;
 
@@ -2365,10 +2415,7 @@ void StackRemoveDuplicateBookmarks(WINDOWBOARD *wb)
         lpDeleteBookmark=lpNextBookmark;
         lpNextBookmark=lpNextBookmark->next;
 
-        //Delete bookmark
-        SendMessage(wb->hWndEdit, AEM_DELPOINT, (WPARAM)lpDeleteBookmark->lpPoint, 0);
-        StackDelete((stack **)&wb->hBookmarkStack.first, (stack **)&wb->hBookmarkStack.last, (stack *)lpDeleteBookmark);
-        --wb->hBookmarkStack.nCount;
+        StackDeleteBookmarkByData(wb, lpDeleteBookmark);
       }
       else break;
     }
@@ -2379,7 +2426,7 @@ int StackGetBookmark(WINDOWBOARD *wb, int nLine)
 {
   BOOKMARK *lpBookmark;
 
-  for (lpBookmark=(BOOKMARK *)wb->hBookmarkStack.first; lpBookmark; lpBookmark=lpBookmark->next)
+  for (lpBookmark=wb->hBookmarkStack.first; lpBookmark; lpBookmark=lpBookmark->next)
   {
     if (lpBookmark->lpPoint->ciPoint.nLine > nLine)
       break;
@@ -2391,31 +2438,27 @@ int StackGetBookmark(WINDOWBOARD *wb, int nLine)
 
 int StackGetNextBookmark(WINDOWBOARD *wb, int nLine)
 {
-  BOOKMARK *lpBookmark=(BOOKMARK *)wb->hBookmarkStack.first;
+  BOOKMARK *lpBookmark;
 
-  while (lpBookmark)
+  for (lpBookmark=wb->hBookmarkStack.first; lpBookmark; lpBookmark=lpBookmark->next)
   {
     if (lpBookmark->lpPoint->ciPoint.nLine > nLine)
       return lpBookmark->lpPoint->ciPoint.nLine;
-
-    lpBookmark=lpBookmark->next;
   }
   return -1;
 }
 
 int StackGetPrevBookmark(WINDOWBOARD *wb, int nLine)
 {
-  BOOKMARK *lpBookmark=(BOOKMARK *)wb->hBookmarkStack.first;
+  BOOKMARK *lpBookmark;
   BOOKMARK *prev=NULL;
 
-  while (lpBookmark)
+  for (lpBookmark=wb->hBookmarkStack.first; lpBookmark; lpBookmark=lpBookmark->next)
   {
     if (lpBookmark->lpPoint->ciPoint.nLine < nLine)
       prev=lpBookmark;
     else
       break;
-
-    lpBookmark=lpBookmark->next;
   }
 
   if (prev)
@@ -2452,53 +2495,50 @@ void StackGetBookmarkRect(WINDOWBOARD *wb, int nLine, RECT *rc)
 
 void StackSaveMobileBookmarks(WINDOWBOARD *wb)
 {
-  BOOKMARK *lpBookmark=(BOOKMARK *)wb->hBookmarkStack.first;
+  BOOKMARK *lpBookmark;
 
-  while (lpBookmark)
+  for (lpBookmark=wb->hBookmarkStack.first; lpBookmark; lpBookmark=lpBookmark->next)
   {
     lpBookmark->nLine=lpBookmark->lpPoint->ciPoint.nLine;
-
-    lpBookmark=lpBookmark->next;
   }
 }
 
-void StackRestoreMobileBookmarks(WINDOWBOARD *wb)
+void StackRestoreMobileBookmarks(WINDOWBOARD *wb, int nBeforeStartLine, int nBeforeEndLine, int nAfterEndLine)
 {
-  BOOKMARK *lpBookmark=(BOOKMARK *)wb->hBookmarkStack.first;
+  BOOKMARK *lpBookmark;
   BOOKMARK *lpPrevBookmark;
 
-  while (lpBookmark)
+  for (lpBookmark=wb->hBookmarkStack.first; lpBookmark; lpBookmark=lpPrevBookmark)
   {
     lpPrevBookmark=lpBookmark->next;
 
-    lpBookmark->lpPoint->ciPoint.nLine=lpBookmark->nLine;
-    SendMessage(wb->hWndEdit, AEM_INDEXUPDATE, 0, (LPARAM)&lpBookmark->lpPoint->ciPoint);
-
-    if (lpBookmark->lpPoint->ciPoint.nLine == lpBookmark->nLine)
+    if (nBeforeEndLine == -1 || (lpBookmark->nLine >= nBeforeStartLine && lpBookmark->nLine <= nBeforeEndLine))
     {
-      lpBookmark->lpPoint->ciPoint.nCharInLine=min(lpBookmark->lpPoint->ciPoint.nCharInLine, lpBookmark->lpPoint->ciPoint.lpLine->nLineLen);
+      if (nBeforeEndLine == -1 || lpBookmark->nLine <= nAfterEndLine)
+      {
+        lpBookmark->lpPoint->ciPoint.nLine=lpBookmark->nLine;
+        SendMessage(wb->hWndEdit, AEM_INDEXUPDATE, 0, (LPARAM)&lpBookmark->lpPoint->ciPoint);
+        lpBookmark->lpPoint->ciPoint.nCharInLine=min(lpBookmark->lpPoint->ciPoint.nCharInLine, lpBookmark->lpPoint->ciPoint.lpLine->nLineLen);
+      }
+      else
+      {
+        StackDeleteBookmarkByData(wb, lpBookmark);
+        continue;
+      }
     }
-    else
-    {
-      StackDelete((stack **)&wb->hBookmarkStack.first, (stack **)&wb->hBookmarkStack.last, (stack *)lpBookmark);
-      --wb->hBookmarkStack.nCount;
-    }
-    lpBookmark=lpPrevBookmark;
   }
 }
 
 void StackFreeBookmark(WINDOWBOARD *wb)
 {
-  BOOKMARK *lpBookmark=(BOOKMARK *)wb->hBookmarkStack.first;
+  BOOKMARK *lpBookmark;
 
-  while (lpBookmark)
+  for (lpBookmark=wb->hBookmarkStack.first; lpBookmark; lpBookmark=lpBookmark->next)
   {
     if (nMDI == WMD_PMDI)
       SendToDoc(wb->hDocEdit, wb->hWndEdit, AEM_DELPOINT, (WPARAM)lpBookmark->lpPoint, 0);
     else
       SendMessage(wb->hWndEdit, AEM_DELPOINT, (WPARAM)lpBookmark->lpPoint, 0);
-
-    lpBookmark=lpBookmark->next;
   }
 
   StackClear((stack **)&wb->hBookmarkStack.first, (stack **)&wb->hBookmarkStack.last);
@@ -3081,6 +3121,7 @@ void ReadOptions(DWORD dwFlags)
     WideOption(hOptions, L"NextBookmark", PO_DWORD, (LPBYTE)&dwNextBookmark, sizeof(DWORD));
     WideOption(hOptions, L"PrevBookmark", PO_DWORD, (LPBYTE)&dwPrevBookmark, sizeof(DWORD));
     WideOption(hOptions, L"RememberBookmarks", PO_DWORD, (LPBYTE)&bRememberBookmarks, sizeof(DWORD));
+    WideOption(hOptions, L"BookmarkCharHeight", PO_DWORD, (LPBYTE)&bBookmarkCharHeight, sizeof(DWORD));
     WideOption(hOptions, L"CoderTheme", PO_DWORD, (LPBYTE)&bCoderTheme, sizeof(DWORD));
 
     SendMessage(hMainWnd, AKD_ENDOPTIONS, (WPARAM)hOptions, 0);
@@ -3118,6 +3159,7 @@ void SaveOptions(DWORD dwFlags)
       WideOption(hOptions, L"NextBookmark", PO_DWORD, (LPBYTE)&dwNextBookmark, sizeof(DWORD));
       WideOption(hOptions, L"PrevBookmark", PO_DWORD, (LPBYTE)&dwPrevBookmark, sizeof(DWORD));
       WideOption(hOptions, L"RememberBookmarks", PO_DWORD, (LPBYTE)&bRememberBookmarks, sizeof(DWORD));
+      WideOption(hOptions, L"BookmarkCharHeight", PO_DWORD, (LPBYTE)&bBookmarkCharHeight, sizeof(DWORD));
       WideOption(hOptions, L"CoderTheme", PO_DWORD, (LPBYTE)&bCoderTheme, sizeof(DWORD));
     }
 
@@ -3183,6 +3225,8 @@ const wchar_t* GetLangStringW(LANGID wLangID, int nStringID)
       return L"\x041F\x0440\x0435\x0434\x044B\x0434\x0443\x0449\x0430\x044F";
     if (nStringID == STRID_SAVEBOOKMARKS)
       return L"\x0417\x0430\x043F\x043E\x043C\x0438\x043D\x0430\x0442\x044C\x0020\x0437\x0430\x043A\x043B\x0430\x0434\x043A\x0438";
+    if (nStringID == STRID_BOOKMARKCHARHEIGHT)
+      return L"\x0417\x0430\x043A\x043B\x0430\x0434\x043A\x0430\x0020\x043D\x0430\x0020\x0432\x044B\x0441\x043E\x0442\x0443\x0020\x0441\x0438\x043C\x0432\x043E\x043B\x0430";
     if (nStringID == STRID_CODERTHEME)
       return L"\x0418\x0441\x043F\x043E\x043B\x044C\x0437\x043E\x0432\x0430\x0442\x044C\x0020\x0442\x0435\x043C\x044B Coder";
     if (nStringID == STRID_LOADFIRST)
@@ -3244,6 +3288,8 @@ const wchar_t* GetLangStringW(LANGID wLangID, int nStringID)
       return L"Previous";
     if (nStringID == STRID_SAVEBOOKMARKS)
       return L"Remember bookmarks";
+    if (nStringID == STRID_BOOKMARKCHARHEIGHT)
+      return L"Bookmark character height";
     if (nStringID == STRID_CODERTHEME)
       return L"Use Coder themes";
     if (nStringID == STRID_LOADFIRST)

@@ -38,20 +38,23 @@
 #endif
 
 
-#define  QS_UI_WHOLEWORD    0x0001 // show/hide whole word check-box
-#define  QS_UI_FIND         0x0002 // set edit or combo-box find control
-#define  QS_UI_ALL          0xFFFF // update all the controls
+#define  QS_UU_WHOLEWORD    0x0001 // show/hide whole word check-box
+#define  QS_UU_FIND         0x0002 // set edit or combo-box find control
+#define  QS_UU_ALL          0xFFFF // update all the controls
 
-#define  QSM_FINDFIRST      (WM_USER + 1001) /*  0, 0                   */
-#define  QSM_FINDNEXT       (WM_USER + 1002) /*  (BOOL) bFindPrev, 0    */
-#define  QSM_SELFIND        (WM_USER + 1011) /*  (BOOL) bFindPrev, 0    */
-#define  QSM_GETHWNDEDIT    (WM_USER + 1021) /*  0, (HWND *) &hWnd      */
-#define  QSM_GETHWNDCOMBO   (WM_USER + 1022) /*  0, (HWND *) &hWnd      */
-#define  QSM_SHOWHIDE       (WM_USER + 1052) /*  (BOOL) bShow, 0        */
-#define  QSM_SETNOTFOUND    (WM_USER + 1061) /*  (BOOL) bNotFound, 0    */
-#define  QSM_CHECKHIGHLIGHT (WM_USER + 1071) /*  0, 0                   */
-#define  QSM_UPDATEUI       (WM_USER + 1081) /*  QS_UI_* , 0            */
-#define  QSM_QUIT           (WM_USER + 1101) /*  0, 0                   */
+#define  QS_FF_NOPICKUPSEL  0x0001 // do not pick up selection
+
+#define  QSM_FINDFIRST      (WM_USER + 1001) /*  0, 0                        */
+#define  QSM_FINDNEXT       (WM_USER + 1002) /*  (BOOL) bFindPrev, QS_FF_... */
+#define  QSM_SELFIND        (WM_USER + 1011) /*  (BOOL) bFindPrev, 0         */
+#define  QSM_PICKUPSELTEXT  (WM_USER + 1015) /*  0, (BOOL *) &bPickedUp      */
+#define  QSM_GETHWNDEDIT    (WM_USER + 1021) /*  0, (HWND *) &hWnd           */
+#define  QSM_GETHWNDCOMBO   (WM_USER + 1022) /*  0, (HWND *) &hWnd           */
+#define  QSM_SHOWHIDE       (WM_USER + 1052) /*  (BOOL) bShow, 0             */
+#define  QSM_SETNOTFOUND    (WM_USER + 1061) /*  (BOOL) bNotFound, 0         */
+#define  QSM_CHECKHIGHLIGHT (WM_USER + 1071) /*  0, 0                        */
+#define  QSM_UPDATEUI       (WM_USER + 1081) /*  QS_UU_... , 0               */
+#define  QSM_QUIT           (WM_USER + 1101) /*  0, 0                        */
 
 #define  QS_SO_UNKNOWN      0
 #define  QS_SO_QSEARCH      1
@@ -83,6 +86,7 @@ INT_PTR CALLBACK qsearchDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
 BOOL qsearchIsFindHistoryEnabled(void);
 BOOL qsearchIsFindHistoryBeingSaved(void);
 BOOL qsearchIsSearchFlagsBeingSaved(void);
+BOOL qsearchIsSavingHistoryToStdLocation(void);
 
 //---------------------------------------------------------------------------
 #endif

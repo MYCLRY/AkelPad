@@ -23,9 +23,11 @@
         WNDPROCDATA* pEditProcData;
         WNDPROCDATA* pMainProcData;
         WNDPROCDATA* pFrameProcData;
+        DWORD        dwProgramVersion__; // use it through getProgramVersion()!
     } PluginState;
 
     void initializePluginState(PluginState* pPlugin);
+    DWORD getProgramVersion(PluginState* pPlugin);
 /* <<<<<<<<<<<<<<<<<<<<<<<< plugin state <<<<<<<<<<<<<<<<<<<<<<<< */
 
 

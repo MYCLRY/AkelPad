@@ -78,6 +78,7 @@ const IDocumentVtbl MyIDocumentVtbl={
   Document_MemRead,
   Document_MemStrPtr,
   Document_MemFree,
+  Document_DebugJIT,
   Document_Debug,
   Document_VarType,
   Document_GetArgLine,
@@ -1581,6 +1582,15 @@ HRESULT STDMETHODCALLTYPE Document_MemFree(IDocument *this, INT_PTR nPointer)
   return NOERROR;
 }
 
+HRESULT STDMETHODCALLTYPE Document_DebugJIT(IDocument *this)
+{
+  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)this)->lpScriptThread;
+
+  if (lpScriptThread->bInitDebugJIT)
+    lpScriptThread->objDebugApplication->lpVtbl->CauseBreak(lpScriptThread->objDebugApplication);
+  return NOERROR;
+}
+
 HRESULT STDMETHODCALLTYPE Document_Debug(IDocument *this, DWORD dwDebug, DWORD *dwResult)
 {
   SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)this)->lpScriptThread;
@@ -1695,7 +1705,7 @@ HRESULT STDMETHODCALLTYPE Document_WindowRegisterDialog(IDocument *this, HWND hD
 
   *bResult=FALSE;
 
-  if (!StackGetCallbackByHandle(&lpScriptThread->hDialogCallbackStack, hDlg))
+  if (!StackGetCallbackByHandle(&lpScriptThread->hDialogCallbackStack, hDlg, lpScriptThread))
   {
     if (lpCallback=StackInsertCallback(&lpScriptThread->hDialogCallbackStack))
     {
@@ -1716,7 +1726,7 @@ HRESULT STDMETHODCALLTYPE Document_WindowUnregisterDialog(IDocument *this, HWND 
 
   *bResult=FALSE;
 
-  if (lpCallback=StackGetCallbackByHandle(&lpScriptThread->hDialogCallbackStack, hDlg))
+  if (lpCallback=StackGetCallbackByHandle(&lpScriptThread->hDialogCallbackStack, hDlg, lpScriptThread))
   {
     StackDeleteCallback(&lpScriptThread->hDialogCallbackStack, lpCallback);
     *bResult=TRUE;
@@ -1724,13 +1734,13 @@ HRESULT STDMETHODCALLTYPE Document_WindowUnregisterDialog(IDocument *this, HWND 
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE Document_WindowGetMessage(IDocument *this)
+HRESULT STDMETHODCALLTYPE Document_WindowGetMessage(IDocument *this, DWORD dwFlags)
 {
   SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)this)->lpScriptThread;
   CALLBACKITEM *lpCallback;
   MSG msg;
 
-  lpScriptThread->bMessageLoop=TRUE;
+  lpScriptThread->dwMessageLoop=WGM_ENABLE|dwFlags;
 
   while (GetMessageWide(&msg, NULL, 0, 0) > 0)
   {
@@ -1742,7 +1752,7 @@ HRESULT STDMETHODCALLTYPE Document_WindowGetMessage(IDocument *this)
     {
       if (lpCallback->hHandle && IsDialogMessageWide((HWND)lpCallback->hHandle, &msg))
       {
-        if (msg.message >= WM_KEYFIRST && msg.message <= WM_KEYLAST)
+        if (!(lpScriptThread->dwMessageLoop & WGM_NOKEYSEND) && (HWND)lpCallback->hHandle != msg.hwnd && msg.message >= WM_KEYFIRST && msg.message <= WM_KEYLAST)
         {
           SendMessage((HWND)lpCallback->hHandle, msg.message, msg.wParam, msg.lParam);
         }
@@ -1757,7 +1767,7 @@ HRESULT STDMETHODCALLTYPE Document_WindowGetMessage(IDocument *this)
       DispatchMessageWide(&msg);
     }
   }
-  lpScriptThread->bMessageLoop=FALSE;
+  lpScriptThread->dwMessageLoop=0;
 
   return NOERROR;
 }
@@ -1775,8 +1785,9 @@ HRESULT STDMETHODCALLTYPE Document_WindowSubClass(IDocument *this, HWND hWnd, ID
     if ((INT_PTR)hWnd == WSC_MAINPROC)
     {
       if (!g_lpSubclassMainProc)
-      {
         SendMessage(hMainWnd, AKD_SETMAINPROC, (WPARAM)SubclassMainProc, (LPARAM)&g_lpSubclassMainProc);
+      if (g_lpSubclassMainProc)
+      {
         dwData=(UINT_PTR)g_lpSubclassMainProc;
         nCallbackType=CIT_MAINPROC;
       }
@@ -1784,19 +1795,24 @@ HRESULT STDMETHODCALLTYPE Document_WindowSubClass(IDocument *this, HWND hWnd, ID
     else if ((INT_PTR)hWnd == WSC_EDITPROC)
     {
       if (!g_lpSubclassEditProc)
-      {
         SendMessage(hMainWnd, AKD_SETEDITPROC, (WPARAM)SubclassEditProc, (LPARAM)&g_lpSubclassEditProc);
+      if (g_lpSubclassEditProc)
+      {
         dwData=(UINT_PTR)g_lpSubclassEditProc;
         nCallbackType=CIT_EDITPROC;
       }
     }
     else if ((INT_PTR)hWnd == WSC_FRAMEPROC)
     {
-      if (!g_lpSubclassFrameProc && nMDI == WMD_MDI)
+      if (nMDI == WMD_MDI)
       {
-        SendMessage(hMainWnd, AKD_SETFRAMEPROC, (WPARAM)SubclassFrameProc, (LPARAM)&g_lpSubclassFrameProc);
-        dwData=(UINT_PTR)g_lpSubclassFrameProc;
-        nCallbackType=CIT_FRAMEPROC;
+        if (!g_lpSubclassFrameProc)
+          SendMessage(hMainWnd, AKD_SETFRAMEPROC, (WPARAM)SubclassFrameProc, (LPARAM)&g_lpSubclassFrameProc);
+        if (g_lpSubclassFrameProc)
+        {
+          dwData=(UINT_PTR)g_lpSubclassFrameProc;
+          nCallbackType=CIT_FRAMEPROC;
+        }
       }
     }
     else
@@ -1835,27 +1851,36 @@ HRESULT STDMETHODCALLTYPE Document_WindowSubClass(IDocument *this, HWND hWnd, ID
 HRESULT STDMETHODCALLTYPE Document_WindowNextProc(IDocument *this, INT_PTR *lpCallbackItem, HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, LRESULT *lResult)
 {
   CALLBACKITEM *lpCallback=(CALLBACKITEM *)lpCallbackItem;
+  CALLBACKITEM *lpNextCallback;
+  BOOL bCalled=FALSE;
 
-  if (lpCallback->hHandle)
+  *lResult=0;
+
+  if (lpCallback && lpCallback->hHandle)
   {
-    if ((INT_PTR)lpCallback->hHandle == WSC_MAINPROC)
+    lpNextCallback=lpCallback->next;
+
+    if (lpNextCallback && lpNextCallback->hHandle)
     {
-      *lResult=g_lpSubclassMainProc->NextProc(hWnd, uMsg, wParam, lParam);
-    }
-    else if ((INT_PTR)lpCallback->hHandle == WSC_EDITPROC)
-    {
-      *lResult=g_lpSubclassEditProc->NextProc(hWnd, uMsg, wParam, lParam);
-    }
-    else if ((INT_PTR)lpCallback->hHandle == WSC_FRAMEPROC)
-    {
-      *lResult=g_lpSubclassFrameProc->NextProc(hWnd, uMsg, wParam, lParam);
-    }
-    else
-    {
-      if (bOldWindows)
-        *lResult=CallWindowProcA((WNDPROC)lpCallback->dwData, hWnd, uMsg, wParam, lParam);
+      if ((INT_PTR)lpCallback->hHandle == WSC_MAINPROC)
+        bCalled=SubclassMainCall(lpNextCallback, hWnd, uMsg, wParam, lParam, lResult);
+      else if ((INT_PTR)lpCallback->hHandle == WSC_EDITPROC)
+        bCalled=SubclassEditCall(lpNextCallback, hWnd, uMsg, wParam, lParam, lResult);
+      else if ((INT_PTR)lpCallback->hHandle == WSC_FRAMEPROC)
+        bCalled=SubclassFrameCall(lpNextCallback, hWnd, uMsg, wParam, lParam, lResult);
       else
-        *lResult=CallWindowProcW((WNDPROC)lpCallback->dwData, hWnd, uMsg, wParam, lParam);
+        bCalled=SubclassCallbackCall(lpNextCallback, hWnd, uMsg, wParam, lParam, lResult);
+    }
+    if (!bCalled)
+    {
+      if ((INT_PTR)lpCallback->hHandle == WSC_MAINPROC)
+        *lResult=g_lpSubclassMainProc->NextProc(hWnd, uMsg, wParam, lParam);
+      else if ((INT_PTR)lpCallback->hHandle == WSC_EDITPROC)
+        *lResult=g_lpSubclassEditProc->NextProc(hWnd, uMsg, wParam, lParam);
+      else if ((INT_PTR)lpCallback->hHandle == WSC_FRAMEPROC)
+        *lResult=g_lpSubclassFrameProc->NextProc(hWnd, uMsg, wParam, lParam);
+      else
+        *lResult=CallWindowProcWide((WNDPROC)lpCallback->dwData, hWnd, uMsg, wParam, lParam);
     }
   }
   return NOERROR;
@@ -1871,40 +1896,50 @@ HRESULT STDMETHODCALLTYPE Document_WindowNoNextProc(IDocument *this, INT_PTR *lp
 
 HRESULT STDMETHODCALLTYPE Document_WindowUnsubClass(IDocument *this, HWND hWnd)
 {
+  void *lpScriptThread=((IRealDocument *)this)->lpScriptThread;
+
+  return WindowUnsubClass(lpScriptThread, hWnd);
+}
+
+HRESULT WindowUnsubClass(void *lpScriptThread, HWND hWnd)
+{
   CALLBACKITEM *lpCallback;
 
   if (hWnd)
   {
     if ((INT_PTR)hWnd == WSC_MAINPROC)
     {
-      if (g_lpSubclassMainProc)
+      lpCallback=StackGetCallbackByHandle(&g_hSubclassCallbackStack, (HANDLE)(INT_PTR)WSC_MAINPROC, lpScriptThread);
+
+      if (g_lpSubclassMainProc && StackGetCallbackCount(&g_hSubclassCallbackStack, CIT_MAINPROC) <= 1)
       {
-        lpCallback=StackGetCallbackByHandle(&g_hSubclassCallbackStack, (HANDLE)(INT_PTR)WSC_MAINPROC);
         SendMessage(hMainWnd, AKD_SETMAINPROC, (WPARAM)NULL, (LPARAM)&g_lpSubclassMainProc);
         g_lpSubclassMainProc=NULL;
       }
     }
     else if ((INT_PTR)hWnd == WSC_EDITPROC)
     {
-      if (g_lpSubclassEditProc)
+      lpCallback=StackGetCallbackByHandle(&g_hSubclassCallbackStack, (HANDLE)(INT_PTR)WSC_EDITPROC, lpScriptThread);
+
+      if (g_lpSubclassEditProc && StackGetCallbackCount(&g_hSubclassCallbackStack, CIT_EDITPROC) <= 1)
       {
-        lpCallback=StackGetCallbackByHandle(&g_hSubclassCallbackStack, (HANDLE)(INT_PTR)WSC_EDITPROC);
         SendMessage(hMainWnd, AKD_SETEDITPROC, (WPARAM)NULL, (LPARAM)&g_lpSubclassEditProc);
         g_lpSubclassEditProc=NULL;
       }
     }
     else if ((INT_PTR)hWnd == WSC_FRAMEPROC)
     {
-      if (g_lpSubclassFrameProc)
+      lpCallback=StackGetCallbackByHandle(&g_hSubclassCallbackStack, (HANDLE)(INT_PTR)WSC_FRAMEPROC, lpScriptThread);
+
+      if (g_lpSubclassFrameProc && StackGetCallbackCount(&g_hSubclassCallbackStack, CIT_FRAMEPROC) <= 1)
       {
-        lpCallback=StackGetCallbackByHandle(&g_hSubclassCallbackStack, (HANDLE)(INT_PTR)WSC_FRAMEPROC);
         SendMessage(hMainWnd, AKD_SETFRAMEPROC, (WPARAM)NULL, (LPARAM)&g_lpSubclassFrameProc);
         g_lpSubclassFrameProc=NULL;
       }
     }
     else
     {
-      if (lpCallback=StackGetCallbackByHandle(&g_hSubclassCallbackStack, hWnd))
+      if (lpCallback=StackGetCallbackByHandle(&g_hSubclassCallbackStack, hWnd, lpScriptThread))
         SetWindowLongPtrWide(hWnd, GWLP_WNDPROC, lpCallback->dwData);
     }
     if (lpCallback) StackDeleteCallback(&g_hSubclassCallbackStack, lpCallback);
@@ -1916,28 +1951,86 @@ HRESULT STDMETHODCALLTYPE Document_ThreadHook(IDocument *this, int idHook, IDisp
 {
   SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)this)->lpScriptThread;
   CALLBACKITEM *lpCallback;
-  HOOKPROC lpHookProc=NULL;
+  HOOKPROC lpHookProc;
   int nIndex;
+  HRESULT hr=NOERROR;
 
   *hHook=NULL;
 
   if (objFunction)
   {
     //Find unhooked element if any
-    if (lpCallback=StackGetCallbackByHandle(&g_hHookCallbackStack, NULL))
+    if (lpCallback=StackGetCallbackByHandle(&g_hHookCallbackStack, NULL, NULL))
       nIndex=lpCallback->nStaticIndex - 1;
     else
       nIndex=g_hHookCallbackStack.nElements;
 
     //We support limited number of callbacks because with one callback we couldn't know what hook is called callback
     if (nIndex == 0)
-      lpHookProc=Hook1CallbackProc;
+      lpHookProc=HookCallback1Proc;
     else if (nIndex == 1)
-      lpHookProc=Hook2CallbackProc;
+      lpHookProc=HookCallback2Proc;
     else if (nIndex == 2)
-      lpHookProc=Hook3CallbackProc;
+      lpHookProc=HookCallback3Proc;
     else if (nIndex == 3)
-      lpHookProc=Hook4CallbackProc;
+      lpHookProc=HookCallback4Proc;
+    else if (nIndex == 4)
+      lpHookProc=HookCallback5Proc;
+    else if (nIndex == 5)
+      lpHookProc=HookCallback6Proc;
+    else if (nIndex == 6)
+      lpHookProc=HookCallback7Proc;
+    else if (nIndex == 7)
+      lpHookProc=HookCallback8Proc;
+    else if (nIndex == 8)
+      lpHookProc=HookCallback9Proc;
+    else if (nIndex == 9)
+      lpHookProc=HookCallback10Proc;
+    else if (nIndex == 10)
+      lpHookProc=HookCallback11Proc;
+    else if (nIndex == 11)
+      lpHookProc=HookCallback12Proc;
+    else if (nIndex == 12)
+      lpHookProc=HookCallback13Proc;
+    else if (nIndex == 13)
+      lpHookProc=HookCallback14Proc;
+    else if (nIndex == 14)
+      lpHookProc=HookCallback15Proc;
+    else if (nIndex == 15)
+      lpHookProc=HookCallback16Proc;
+    else if (nIndex == 16)
+      lpHookProc=HookCallback17Proc;
+    else if (nIndex == 17)
+      lpHookProc=HookCallback18Proc;
+    else if (nIndex == 18)
+      lpHookProc=HookCallback19Proc;
+    else if (nIndex == 19)
+      lpHookProc=HookCallback20Proc;
+    else if (nIndex == 20)
+      lpHookProc=HookCallback21Proc;
+    else if (nIndex == 21)
+      lpHookProc=HookCallback22Proc;
+    else if (nIndex == 22)
+      lpHookProc=HookCallback23Proc;
+    else if (nIndex == 23)
+      lpHookProc=HookCallback24Proc;
+    else if (nIndex == 24)
+      lpHookProc=HookCallback25Proc;
+    else if (nIndex == 25)
+      lpHookProc=HookCallback26Proc;
+    else if (nIndex == 26)
+      lpHookProc=HookCallback27Proc;
+    else if (nIndex == 27)
+      lpHookProc=HookCallback28Proc;
+    else if (nIndex == 28)
+      lpHookProc=HookCallback29Proc;
+    else if (nIndex == 29)
+      lpHookProc=HookCallback30Proc;
+    else
+    {
+      lpHookProc=NULL;
+      hr=DISP_E_BADINDEX;
+    }
 
     if (lpHookProc)
     {
@@ -1962,14 +2055,15 @@ HRESULT STDMETHODCALLTYPE Document_ThreadHook(IDocument *this, int idHook, IDisp
       }
     }
   }
-  return NOERROR;
+  return hr;
 }
 
 HRESULT STDMETHODCALLTYPE Document_ThreadUnhook(IDocument *this, HHOOK hHook, BOOL *bResult)
 {
+  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealDocument *)this)->lpScriptThread;
   CALLBACKITEM *lpCallback;
 
-  if (lpCallback=StackGetCallbackByHandle(&g_hHookCallbackStack, (HANDLE)hHook))
+  if (lpCallback=StackGetCallbackByHandle(&g_hHookCallbackStack, (HANDLE)hHook, lpScriptThread))
   {
     if (*bResult=UnhookWindowsHookEx(hHook))
     {
@@ -2064,7 +2158,7 @@ HRESULT STDMETHODCALLTYPE Document_ScriptHandle(IDocument *this, VARIANT vtData,
       else if (nOperation == SH_GETTHREADID)
         nResult=lpScriptThread->dwThreadID;
       else if (nOperation == SH_GETMESSAGELOOP)
-        nResult=lpScriptThread->bMessageLoop;
+        nResult=lpScriptThread->dwMessageLoop;
       else if (nOperation == SH_GETLOCKMULTICOPY)
         nResult=lpScriptThread->bSingleCopy;
       else if (nOperation == SH_GETLOCKSCRIPTSQUEUE)
@@ -2118,7 +2212,7 @@ HRESULT STDMETHODCALLTYPE Document_ScriptHandle(IDocument *this, VARIANT vtData,
       }
       else if (nOperation == SH_CLOSESCRIPT)
       {
-        if (lpScriptThread->hWndScriptsThreadDummy && lpScriptThread->bMessageLoop)
+        if (lpScriptThread->hWndScriptsThreadDummy && lpScriptThread->dwMessageLoop)
           SendMessage(lpScriptThread->hWndScriptsThreadDummy, AKDLL_POSTQUIT, 0, 0);
       }
     }
@@ -2347,13 +2441,26 @@ CALLBACKITEM* StackInsertCallback(CALLBACKSTACK *hStack)
   return lpElement;
 }
 
-CALLBACKITEM* StackGetCallbackByHandle(CALLBACKSTACK *hStack, HANDLE hHandle)
+int StackGetCallbackCount(CALLBACKSTACK *hStack, int nCallbackType)
+{
+  CALLBACKITEM *lpElement;
+  int nCount=0;
+
+  for (lpElement=hStack->first; lpElement; lpElement=lpElement->next)
+  {
+    if (lpElement->nCallbackType == nCallbackType)
+      ++nCount;
+  }
+  return nCount;
+}
+
+CALLBACKITEM* StackGetCallbackByHandle(CALLBACKSTACK *hStack, HANDLE hHandle, SCRIPTTHREAD *lpScriptThread)
 {
   CALLBACKITEM *lpElement;
 
   for (lpElement=hStack->first; lpElement; lpElement=lpElement->next)
   {
-    if (lpElement->hHandle == hHandle)
+    if (lpElement->hHandle == hHandle && (!lpScriptThread || lpElement->lpScriptThread == lpScriptThread))
       return lpElement;
   }
   return NULL;
@@ -2404,7 +2511,7 @@ void StackFreeCallbacks(CALLBACKSTACK *hStack)
         lpElement->nCallbackType == CIT_EDITPROC ||
         lpElement->nCallbackType == CIT_FRAMEPROC)
     {
-      Document_WindowUnsubClass(NULL, lpElement->hHandle);
+      WindowUnsubClass(lpElement->lpScriptThread, lpElement->hHandle);
     }
     else StackFreeMessages(&lpElement->hMsgIntStack);
   }
@@ -2418,7 +2525,7 @@ LRESULT CALLBACK DialogCallbackProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
   CALLBACKITEM *lpCallback=NULL;
   LRESULT lResult=0;
 
-  if (uMsg == WM_CREATE)
+  if (uMsg == WM_NCCREATE)
   {
     if (lParam)
     {
@@ -2436,9 +2543,9 @@ LRESULT CALLBACK DialogCallbackProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
   }
   else
   {
-    if (lpCallback=StackGetCallbackByHandle(&lpScriptThread->hDialogCallbackStack, hWnd))
+    if (lpCallback=StackGetCallbackByHandle(&lpScriptThread->hDialogCallbackStack, hWnd, lpScriptThread))
     {
-      if (uMsg == WM_DESTROY)
+      if (uMsg == WM_NCDESTROY)
         lpCallback->hHandle=NULL;
     }
   }
@@ -2452,7 +2559,7 @@ LRESULT CALLBACK DialogCallbackProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
       CallScriptProc(lpCallback->objFunction, hWnd, uMsg, wParam, lParam, &lResult);
       lpScriptThread->bBusy=FALSE;
     }
-    if (uMsg == WM_DESTROY)
+    if (uMsg == WM_NCDESTROY)
       StackDeleteCallback(&lpScriptThread->hDialogCallbackStack, lpCallback);
     if (lResult)
       return lResult;
@@ -2463,81 +2570,172 @@ LRESULT CALLBACK DialogCallbackProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
 
 LRESULT CALLBACK SubclassCallbackProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-  CALLBACKITEM *lpCallback;
-  LRESULT lResult=0;
+  LRESULT lResult;
 
-  if (lpCallback=StackGetCallbackByHandle(&g_hSubclassCallbackStack, hWnd))
+  SubclassCallbackCall(NULL, hWnd, uMsg, wParam, lParam, &lResult);
+  return lResult;
+}
+
+BOOL CALLBACK SubclassCallbackCall(CALLBACKITEM *lpCallback, HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, LRESULT *lResult)
+{
+  CALLBACKITEM *lpLastCallback=NULL;
+
+  if (!lpCallback)
+    lpCallback=g_hSubclassCallbackStack.first;
+
+  for (; lpCallback; lpCallback=lpCallback->next)
   {
-    lResult=SubclassSend(lpCallback, hWnd, uMsg, wParam, lParam);
-
-    if (lpCallback->bNoNextProc)
-      lpCallback->bNoNextProc=FALSE;
-    else
+    if (lpCallback->hHandle == hWnd)
     {
-      if (bOldWindows)
-        lResult=CallWindowProcA((WNDPROC)lpCallback->dwData, hWnd, uMsg, wParam, lParam);
-      else
-        lResult=CallWindowProcW((WNDPROC)lpCallback->dwData, hWnd, uMsg, wParam, lParam);
+      *lResult=SubclassSend(lpCallback, hWnd, uMsg, wParam, lParam);
+
+      if (lpCallback->bNoNextProc)
+      {
+        lpCallback->bNoNextProc=FALSE;
+        return TRUE;
+      }
+      lpLastCallback=lpCallback;
     }
   }
-  return lResult;
+  if (lpLastCallback)
+  {
+    *lResult=CallWindowProcWide((WNDPROC)lpLastCallback->dwData, hWnd, uMsg, wParam, lParam);
+    return TRUE;
+  }
+  else
+  {
+    *lResult=0;
+    return FALSE;
+  }
 }
 
 LRESULT CALLBACK SubclassMainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-  CALLBACKITEM *lpCallback;
   LRESULT lResult;
 
-  if (lpCallback=StackGetCallbackByHandle(&g_hSubclassCallbackStack, (HANDLE)(INT_PTR)WSC_MAINPROC))
-  {
-    if (uMsg == AKDN_OPENDOCUMENT_START)
-    {
-      //Some threads queue problem. Binary file message in main thread could block sending AKDN_OPENDOCUMENT_START to Script.js.
-      //CmdLineBegin=/Call("Scripts::Main", 2, "Script.js")
-      Sleep(0);
-    }
-    lResult=SubclassSend(lpCallback, hWnd, uMsg, wParam, lParam);
-
-    if (lpCallback->bNoNextProc)
-      lpCallback->bNoNextProc=FALSE;
-    else
-      lResult=g_lpSubclassMainProc->NextProc(hWnd, uMsg, wParam, lParam);
-  }
+  SubclassMainCall(NULL, hWnd, uMsg, wParam, lParam, &lResult);
   return lResult;
+}
+
+BOOL CALLBACK SubclassMainCall(CALLBACKITEM *lpCallback, HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, LRESULT *lResult)
+{
+  CALLBACKITEM *lpLastCallback=NULL;
+
+  if (!lpCallback)
+    lpCallback=g_hSubclassCallbackStack.first;
+
+  for (; lpCallback; lpCallback=lpCallback->next)
+  {
+    if (lpCallback->hHandle == (HANDLE)(INT_PTR)WSC_MAINPROC)
+    {
+      if (uMsg == AKDN_OPENDOCUMENT_START)
+      {
+        //Some threads queue problem. Binary file message in main thread could block sending AKDN_OPENDOCUMENT_START to Script.js.
+        //CmdLineBegin=/Call("Scripts::Main", 2, "Script.js")
+        Sleep(0);
+      }
+      *lResult=SubclassSend(lpCallback, hWnd, uMsg, wParam, lParam);
+
+      if (lpCallback->bNoNextProc)
+      {
+        lpCallback->bNoNextProc=FALSE;
+        return TRUE;
+      }
+      lpLastCallback=lpCallback;
+    }
+  }
+  if (lpLastCallback)
+  {
+    *lResult=g_lpSubclassMainProc->NextProc(hWnd, uMsg, wParam, lParam);
+    return TRUE;
+  }
+  else
+  {
+    *lResult=0;
+    return FALSE;
+  }
 }
 
 LRESULT CALLBACK SubclassEditProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-  CALLBACKITEM *lpCallback;
   LRESULT lResult;
 
-  if (lpCallback=StackGetCallbackByHandle(&g_hSubclassCallbackStack, (HANDLE)(INT_PTR)WSC_EDITPROC))
-  {
-    lResult=SubclassSend(lpCallback, hWnd, uMsg, wParam, lParam);
-
-    if (lpCallback->bNoNextProc)
-      lpCallback->bNoNextProc=FALSE;
-    else
-      lResult=g_lpSubclassEditProc->NextProc(hWnd, uMsg, wParam, lParam);
-  }
+  SubclassEditCall(NULL, hWnd, uMsg, wParam, lParam, &lResult);
   return lResult;
+}
+
+BOOL CALLBACK SubclassEditCall(CALLBACKITEM *lpCallback, HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, LRESULT *lResult)
+{
+  CALLBACKITEM *lpLastCallback=NULL;
+
+  if (!lpCallback)
+    lpCallback=g_hSubclassCallbackStack.first;
+
+  for (; lpCallback; lpCallback=lpCallback->next)
+  {
+    if (lpCallback->hHandle == (HANDLE)(INT_PTR)WSC_EDITPROC)
+    {
+      *lResult=SubclassSend(lpCallback, hWnd, uMsg, wParam, lParam);
+
+      if (lpCallback->bNoNextProc)
+      {
+        lpCallback->bNoNextProc=FALSE;
+        return TRUE;
+      }
+      lpLastCallback=lpCallback;
+    }
+  }
+  if (lpLastCallback)
+  {
+    *lResult=g_lpSubclassEditProc->NextProc(hWnd, uMsg, wParam, lParam);
+    return TRUE;
+  }
+  else
+  {
+    *lResult=0;
+    return FALSE;
+  }
 }
 
 LRESULT CALLBACK SubclassFrameProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-  CALLBACKITEM *lpCallback;
   LRESULT lResult;
 
-  if (lpCallback=StackGetCallbackByHandle(&g_hSubclassCallbackStack, (HANDLE)(INT_PTR)WSC_FRAMEPROC))
-  {
-    lResult=SubclassSend(lpCallback, hWnd, uMsg, wParam, lParam);
-
-    if (lpCallback->bNoNextProc)
-      lpCallback->bNoNextProc=FALSE;
-    else
-      lResult=g_lpSubclassFrameProc->NextProc(hWnd, uMsg, wParam, lParam);
-  }
+  SubclassFrameCall(NULL, hWnd, uMsg, wParam, lParam, &lResult);
   return lResult;
+}
+
+BOOL CALLBACK SubclassFrameCall(CALLBACKITEM *lpCallback, HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, LRESULT *lResult)
+{
+  CALLBACKITEM *lpLastCallback=NULL;
+
+  if (!lpCallback)
+    lpCallback=g_hSubclassCallbackStack.first;
+
+  for (; lpCallback; lpCallback=lpCallback->next)
+  {
+    if (lpCallback->hHandle == (HANDLE)(INT_PTR)WSC_FRAMEPROC)
+    {
+      *lResult=SubclassSend(lpCallback, hWnd, uMsg, wParam, lParam);
+
+      if (lpCallback->bNoNextProc)
+      {
+        lpCallback->bNoNextProc=FALSE;
+        return TRUE;
+      }
+      lpLastCallback=lpCallback;
+    }
+  }
+  if (lpLastCallback)
+  {
+    *lResult=g_lpSubclassFrameProc->NextProc(hWnd, uMsg, wParam, lParam);
+    return TRUE;
+  }
+  else
+  {
+    *lResult=0;
+    return FALSE;
+  }
 }
 
 LRESULT CALLBACK SubclassSend(CALLBACKITEM *lpCallback, HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -2546,7 +2744,7 @@ LRESULT CALLBACK SubclassSend(CALLBACKITEM *lpCallback, HWND hWnd, UINT uMsg, WP
   MSGSEND msgs;
 
   //Because objFunction->lpVtbl->Invoke cause error for different thread, we send message from this thread to hWndScriptsThreadDummy.
-  if (lpScriptThread->bMessageLoop)
+  if (lpScriptThread->dwMessageLoop)
   {
     if (!lpCallback->hMsgIntStack.nElements || StackGetMessage(&lpCallback->hMsgIntStack, uMsg))
     {
@@ -2561,50 +2759,169 @@ LRESULT CALLBACK SubclassSend(CALLBACKITEM *lpCallback, HWND hWnd, UINT uMsg, WP
   return 0;
 }
 
-LRESULT CALLBACK Hook1CallbackProc(int nCode, WPARAM wParam, LPARAM lParam)
+LRESULT CALLBACK HookCallback1Proc(int nCode, WPARAM wParam, LPARAM lParam)
 {
-  CALLBACKITEM *lpCallback;
-
-  lpCallback=StackGetCallbackByIndex(&g_hHookCallbackStack, 1);
-  return HookCommonCallbackProc(lpCallback, nCode, wParam, lParam);
+  return HookCallbackCommonProc(1, nCode, wParam, lParam);
 }
 
-LRESULT CALLBACK Hook2CallbackProc(int nCode, WPARAM wParam, LPARAM lParam)
+LRESULT CALLBACK HookCallback2Proc(int nCode, WPARAM wParam, LPARAM lParam)
 {
-  CALLBACKITEM *lpCallback;
-
-  lpCallback=StackGetCallbackByIndex(&g_hHookCallbackStack, 2);
-  return HookCommonCallbackProc(lpCallback, nCode, wParam, lParam);
+  return HookCallbackCommonProc(2, nCode, wParam, lParam);
 }
 
-LRESULT CALLBACK Hook3CallbackProc(int nCode, WPARAM wParam, LPARAM lParam)
+LRESULT CALLBACK HookCallback3Proc(int nCode, WPARAM wParam, LPARAM lParam)
 {
-  CALLBACKITEM *lpCallback;
-
-  lpCallback=StackGetCallbackByIndex(&g_hHookCallbackStack, 3);
-  return HookCommonCallbackProc(lpCallback, nCode, wParam, lParam);
+  return HookCallbackCommonProc(3, nCode, wParam, lParam);
 }
 
-LRESULT CALLBACK Hook4CallbackProc(int nCode, WPARAM wParam, LPARAM lParam)
+LRESULT CALLBACK HookCallback4Proc(int nCode, WPARAM wParam, LPARAM lParam)
 {
-  CALLBACKITEM *lpCallback;
-
-  lpCallback=StackGetCallbackByIndex(&g_hHookCallbackStack, 4);
-  return HookCommonCallbackProc(lpCallback, nCode, wParam, lParam);
+  return HookCallbackCommonProc(4, nCode, wParam, lParam);
 }
 
-LRESULT CALLBACK HookCommonCallbackProc(CALLBACKITEM *lpCallback, int nCode, WPARAM wParam, LPARAM lParam)
+LRESULT CALLBACK HookCallback5Proc(int nCode, WPARAM wParam, LPARAM lParam)
 {
-  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)lpCallback->lpScriptThread;
+  return HookCallbackCommonProc(5, nCode, wParam, lParam);
+}
+
+LRESULT CALLBACK HookCallback6Proc(int nCode, WPARAM wParam, LPARAM lParam)
+{
+  return HookCallbackCommonProc(6, nCode, wParam, lParam);
+}
+
+LRESULT CALLBACK HookCallback7Proc(int nCode, WPARAM wParam, LPARAM lParam)
+{
+  return HookCallbackCommonProc(7, nCode, wParam, lParam);
+}
+
+LRESULT CALLBACK HookCallback8Proc(int nCode, WPARAM wParam, LPARAM lParam)
+{
+  return HookCallbackCommonProc(8, nCode, wParam, lParam);
+}
+
+LRESULT CALLBACK HookCallback9Proc(int nCode, WPARAM wParam, LPARAM lParam)
+{
+  return HookCallbackCommonProc(9, nCode, wParam, lParam);
+}
+
+LRESULT CALLBACK HookCallback10Proc(int nCode, WPARAM wParam, LPARAM lParam)
+{
+  return HookCallbackCommonProc(10, nCode, wParam, lParam);
+}
+
+LRESULT CALLBACK HookCallback11Proc(int nCode, WPARAM wParam, LPARAM lParam)
+{
+  return HookCallbackCommonProc(11, nCode, wParam, lParam);
+}
+
+LRESULT CALLBACK HookCallback12Proc(int nCode, WPARAM wParam, LPARAM lParam)
+{
+  return HookCallbackCommonProc(12, nCode, wParam, lParam);
+}
+
+LRESULT CALLBACK HookCallback13Proc(int nCode, WPARAM wParam, LPARAM lParam)
+{
+  return HookCallbackCommonProc(13, nCode, wParam, lParam);
+}
+
+LRESULT CALLBACK HookCallback14Proc(int nCode, WPARAM wParam, LPARAM lParam)
+{
+  return HookCallbackCommonProc(14, nCode, wParam, lParam);
+}
+
+LRESULT CALLBACK HookCallback15Proc(int nCode, WPARAM wParam, LPARAM lParam)
+{
+  return HookCallbackCommonProc(15, nCode, wParam, lParam);
+}
+
+LRESULT CALLBACK HookCallback16Proc(int nCode, WPARAM wParam, LPARAM lParam)
+{
+  return HookCallbackCommonProc(16, nCode, wParam, lParam);
+}
+
+LRESULT CALLBACK HookCallback17Proc(int nCode, WPARAM wParam, LPARAM lParam)
+{
+  return HookCallbackCommonProc(17, nCode, wParam, lParam);
+}
+
+LRESULT CALLBACK HookCallback18Proc(int nCode, WPARAM wParam, LPARAM lParam)
+{
+  return HookCallbackCommonProc(18, nCode, wParam, lParam);
+}
+
+LRESULT CALLBACK HookCallback19Proc(int nCode, WPARAM wParam, LPARAM lParam)
+{
+  return HookCallbackCommonProc(19, nCode, wParam, lParam);
+}
+
+LRESULT CALLBACK HookCallback20Proc(int nCode, WPARAM wParam, LPARAM lParam)
+{
+  return HookCallbackCommonProc(20, nCode, wParam, lParam);
+}
+
+LRESULT CALLBACK HookCallback21Proc(int nCode, WPARAM wParam, LPARAM lParam)
+{
+  return HookCallbackCommonProc(21, nCode, wParam, lParam);
+}
+
+LRESULT CALLBACK HookCallback22Proc(int nCode, WPARAM wParam, LPARAM lParam)
+{
+  return HookCallbackCommonProc(22, nCode, wParam, lParam);
+}
+
+LRESULT CALLBACK HookCallback23Proc(int nCode, WPARAM wParam, LPARAM lParam)
+{
+  return HookCallbackCommonProc(23, nCode, wParam, lParam);
+}
+
+LRESULT CALLBACK HookCallback24Proc(int nCode, WPARAM wParam, LPARAM lParam)
+{
+  return HookCallbackCommonProc(24, nCode, wParam, lParam);
+}
+
+LRESULT CALLBACK HookCallback25Proc(int nCode, WPARAM wParam, LPARAM lParam)
+{
+  return HookCallbackCommonProc(25, nCode, wParam, lParam);
+}
+
+LRESULT CALLBACK HookCallback26Proc(int nCode, WPARAM wParam, LPARAM lParam)
+{
+  return HookCallbackCommonProc(26, nCode, wParam, lParam);
+}
+
+LRESULT CALLBACK HookCallback27Proc(int nCode, WPARAM wParam, LPARAM lParam)
+{
+  return HookCallbackCommonProc(27, nCode, wParam, lParam);
+}
+
+LRESULT CALLBACK HookCallback28Proc(int nCode, WPARAM wParam, LPARAM lParam)
+{
+  return HookCallbackCommonProc(28, nCode, wParam, lParam);
+}
+
+LRESULT CALLBACK HookCallback29Proc(int nCode, WPARAM wParam, LPARAM lParam)
+{
+  return HookCallbackCommonProc(29, nCode, wParam, lParam);
+}
+
+LRESULT CALLBACK HookCallback30Proc(int nCode, WPARAM wParam, LPARAM lParam)
+{
+  return HookCallbackCommonProc(30, nCode, wParam, lParam);
+}
+
+LRESULT CALLBACK HookCallbackCommonProc(int nCallbackIndex, int nCode, WPARAM wParam, LPARAM lParam)
+{
+  CALLBACKITEM *lpCallback=StackGetCallbackByIndex(&g_hHookCallbackStack, nCallbackIndex);
 
   if (lpCallback)
   {
     if (nCode >= 0)
     {
+      SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)lpCallback->lpScriptThread;
       MSGSEND msgs;
 
       //Because objFunction->lpVtbl->Invoke cause error for different thread, we send message from this thread to hWndScriptsThreadDummy.
-      if (lpScriptThread->bMessageLoop)
+      if (lpScriptThread->dwMessageLoop)
       {
         msgs.lpCallback=lpCallback;
         msgs.hWnd=NULL;
@@ -2647,7 +2964,7 @@ LRESULT CALLBACK ScriptsThreadProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM l
     LRESULT lResult=0;
 
     //Now we in plugin thread - call procedure in script
-    if (lpScriptThread && lpScriptThread->bMessageLoop)
+    if (lpScriptThread && lpScriptThread->dwMessageLoop)
     {
       lpScriptThread->bBusy=TRUE;
       CallScriptProc(msgs->lpCallback->objFunction, (HWND)msgs->hWnd, msgs->uMsg, msgs->wParam, msgs->lParam, &lResult);
@@ -2662,7 +2979,7 @@ LRESULT CALLBACK ScriptsThreadProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM l
     LRESULT lResult=0;
 
     //Now we in plugin thread - call procedure in script
-    if (lpScriptThread && lpScriptThread->bMessageLoop)
+    if (lpScriptThread && lpScriptThread->dwMessageLoop)
     {
       lpScriptThread->bBusy=TRUE;
       CallScriptProc(msgs->lpCallback->objFunction, NULL, msgs->uMsg, msgs->wParam, msgs->lParam, &lResult);

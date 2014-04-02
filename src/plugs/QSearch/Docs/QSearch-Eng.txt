@@ -9,8 +9,8 @@ with a hot-key (for example, F7).
 QSearch panel's keys:
 Enter, F3   - find next (down)
 Shift+Enter - find previous (up)
-Ctrl+Enter  - find from file's beginning
-Alt+Enter   - pick up selected text
+Alt+Enter   - find from file's beginning
+Ctrl+Enter  - pick up selected text
 Esc         - hide the panel
 Ctrl+Del    - edit control: erase the text after the caret (to the right)
 Ctrl+BS     - edit control: erase the text before the caret (to the left)
@@ -96,9 +96,24 @@ Additional options (QSearch panel's popup menu or file
    srch_pickup_selection = 1
      When QSearch is activated or F3 is pressed in AkelPad's editor 
      window, QSearch'es edit control picks up the text selected in 
-     AkelPad's editor window.
+     AkelPad's editor window. The same is for the QSearch'es buttons
+     Find Next and Find Prev.
    srch_pickup_selection = 0
-     When QSearch is activated, the text in its edit control is not changed.
+     When QSearch is activated or F3 is pressed in AkelPad's editor
+     window, the text in QSearch'es edit control is not changed.
+   srch_pickup_selection = 10
+     The same as srch_pickup_selection = 0.
+     When "Search: Pick up selected text" is checked, the value of
+     'srch_pickup_selection' is set to 11.
+   srch_pickup_selection = 11
+     When QSearch is activated or F3 is pressed in AkelPad's editor
+     window, QSearch'es edit control picks up the text selected in 
+     AkelPad's editor window. However, when the QSearch'es buttons
+     Find Next and Find Prev are pressed, QSearch uses the existing
+     text from its edit control for the searching - i.e. the text
+     selected in AkelPad's editor window is not picked up in this case.
+     When "Search: Pick up selected text" is unchecked, the value of
+     'srch_pickup_selection' is set to 10.
 
 6) "Search: SelFind picks up selected text"
    srch_selfind_pickup = 0
@@ -280,12 +295,13 @@ Additional options (QSearch panel's popup menu or file
      You can set it to 0 to disable the find history.
 
 28) history_save = 3
-     When set to 3, the find history together with "Match case" and
-     "Whole word" state are saved to the System Registry.
-     When set to 2, "Match case" and "Whole word" state are saved to
-     the System Registry.
-     When set to 1, the find history is saved to the System Registry.
-     When set to 0, the find history and the state are not saved.
+     Can be set to 0 or be a sum of the following values:
+     0 - the find history and the state are not saved.
+     1 - the find history is saved to the System Registry.
+     2 - "Match case" and "Whole word" state are saved to the System Registry.
+     4 - save not to the System Registry, but to the standard destination
+         being used by AkelPad to save the settings (e.g. to .ini file).
+         Allows QSearch'es settings to be completely portable.
 
 29) new_ui = 0
      QSearch shows its old "classic" UI:
@@ -318,6 +334,19 @@ Additional options (QSearch panel's popup menu or file
 --------
 History:
 --------
+v.5.7 (March 2014)
+ - fixed: "Highlight all" always initiated Find Next for RegExps
+ - fixed: SelFindNext/Prev always worked as srch_selfind_pickup = 1
+ + added: srch_pickup_selection=10
+ * changed: now Alt+Enter searches from the file's beginning, 
+   Ctrl+Enter picks up the selected text
+
+v.5.6 (March 2014)
+ * AkelPad 4.8.7+
+ + now "Highlight all" supports RegExp (requires AkelPad 4.8.8+)
+ + now 'history_save' allows portable mode
+ - fixed: hPopupMenu was not released (thanks to Instructor)
+
 v.5.5 (Jun 2013)
  * AkelPad 4.8.4+
 
@@ -516,5 +545,5 @@ aka Instructor for the AkelPad text editor  ;-)
 The original icon by Yusuke Kamiyamane, http://p.yusukekamiyamane.com/
 The icon has been modified by DV.
 ---------------------------------------------------------------------------
-(C) Sep 2007 - Jun 2013, Vitaliy Dovgan aka DV
+(C) Sep 2007 - Mar 2014, Vitaliy Dovgan aka DV
           dvv81 <at> ukr <dot> net

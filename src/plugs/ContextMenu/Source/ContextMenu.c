@@ -449,7 +449,7 @@ void ShowUrlMenu(HWND hWnd, CHARRANGE64 *crUrl, int x, int y);
 void InitMenuPopup(POPUPMENU *hMenuStack, int nMenuType);
 HMENU InsertMainMenu(POPUPMENU *hMenuStack);
 void SetMainMenu(POPUPMENU *hMenuStack, HMENU hMenu, BOOL bDrawMenuBar);
-void DeleteMainMenu(POPUPMENU *hMenuStack);
+void UnsetMainMenu(POPUPMENU *hMenuStack);
 void ShowMainMenu(BOOL bShow);
 MENUITEM* GetContextMenuItem(POPUPMENU *hMenuStack, int nItem);
 MENUITEM* GetCommandItem(POPUPMENU *hMenuStack, int nCommand);
@@ -634,7 +634,7 @@ void __declspec(dllexport) Main(PLUGINDATA *pd)
       if (bInitMain)
       {
         if (hWndMainDlg) SendMessage(hWndMainDlg, WM_COMMAND, IDCANCEL, 0);
-        DeleteMainMenu(&hMenuMainStack);
+        UnsetMainMenu(&hMenuMainStack);
         if (bMenuMainHide) ShowMainMenu(TRUE);
         UninitMain();
 
@@ -799,8 +799,10 @@ void __declspec(dllexport) Show(PLUGINDATA *pd)
             }
             TrackPopupMenu(hPopupMenu, TPM_LEFTBUTTON, ptPos.x, ptPos.y, 0, hMainWnd, NULL);
 
-            //Detach submenus and destroy popup menu
+            //Detach submenus
             while (RemoveMenu(hPopupMenu, 0, MF_BYPOSITION));
+
+            //Destroy popup menu
             DestroyMenu(hPopupMenu);
           }
         }
@@ -1151,6 +1153,7 @@ LRESULT CALLBACK NewMainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
   {
     NewMainProcData->NextProc(hWnd, uMsg, wParam, lParam);
     if (hWndMainDlg) SendMessage(hWndMainDlg, WM_COMMAND, IDCANCEL, 0);
+    UninitMain();
     return FALSE;
   }
 
@@ -1539,7 +1542,7 @@ LRESULT CALLBACK MainDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
           wszRecentFilesText=GetDefaultMenu(STRID_DEFAULTRECENTFILES);
         }
 
-        DeleteMainMenu(&hMenuMainStack);
+        UnsetMainMenu(&hMenuMainStack);
         FreeContextMenu(&hMenuMainStack);
         FreeContextMenu(&hMenuEditStack);
         FreeContextMenu(&hMenuTabStack);
@@ -3071,18 +3074,17 @@ void UpdateContextMenu(POPUPMENU *hMenuStack, int nType, HMENU hSubMenu)
           {
             wchar_t wszPath[MAX_PATH];
             wchar_t *wpFileName;
-            int nExtracted;
 
             if (TranslateFileString(lpElement->wszIconFile, wszPath, MAX_PATH))
             {
               if (SearchPathWide(NULL, wszPath, NULL, MAX_PATH, lpElement->wszIconFile, &wpFileName))
               {
                 if (bBigIcons)
-                  nExtracted=ExtractIconExWide(wszPath, lpElement->nFileIconIndex, &hIcon, NULL, 1);
+                  ExtractIconExWide(wszPath, lpElement->nFileIconIndex, &hIcon, NULL, 1);
                 else
-                  nExtracted=ExtractIconExWide(wszPath, lpElement->nFileIconIndex, NULL, &hIcon, 1);
+                  ExtractIconExWide(wszPath, lpElement->nFileIconIndex, NULL, &hIcon, 1);
 
-                if (nExtracted)
+                if (hIcon)
                 {
                   ImageList_ReplaceIcon(hMenuStack->hImageList, lpElement->nImageListIconIndex, hIcon);
                   DestroyIcon(hIcon);
@@ -3719,23 +3721,10 @@ void SetMainMenu(POPUPMENU *hMenuStack, HMENU hMenu, BOOL bDrawMenuBar)
     }
     hMenuStack->hMainMenu=hMenu;
   }
-  else
-  {
-    if (hMenuStack->hMainMenu)
-    {
-      if (nMDI == WMD_SDI || nMDI == WMD_PMDI)
-        SetMenu(hMainWnd, hMainMenu);
-      else if (nMDI == WMD_MDI)
-        SendMessage(hMdiClient, WM_MDISETMENU, (WPARAM)hMainMenu, (LPARAM)hMenuWindow);
-
-      DestroyMenu(hMenuStack->hMainMenu);
-      hMenuStack->hMainMenu=NULL;
-    }
-  }
   DrawMenuBar(hMainWnd);
 }
 
-void DeleteMainMenu(POPUPMENU *hMenuStack)
+void UnsetMainMenu(POPUPMENU *hMenuStack)
 {
   if (hMenuStack->bClearMainMenu)
   {
@@ -3751,18 +3740,14 @@ void DeleteMainMenu(POPUPMENU *hMenuStack)
   }
   else
   {
+    //Detach submenus from main menu
     MAININDEXITEM *lpMainIndexItem;
-    MAININDEXITEM *lpMainIndexNextItem;
     int nIndex;
 
-    for (lpMainIndexItem=hMenuStack->hMainMenuIndexStack.first; lpMainIndexItem; lpMainIndexItem=lpMainIndexNextItem)
+    for (lpMainIndexItem=hMenuStack->hMainMenuIndexStack.last; lpMainIndexItem; lpMainIndexItem=lpMainIndexItem->prev)
     {
-      lpMainIndexNextItem=lpMainIndexItem->next;
       if ((nIndex=GetSubMenuIndex(hMainMenu, lpMainIndexItem->hSubMenu)) != -1)
-      {
-        DeleteMenu(hMainMenu, nIndex, MF_BYPOSITION);
-        StackDelete((stack **)&hMenuStack->hMainMenuIndexStack.first, (stack **)&hMenuStack->hMainMenuIndexStack.last, (stack *)lpMainIndexItem);
-      }
+        RemoveMenu(hMainMenu, nIndex, MF_BYPOSITION);
     }
     DrawMenuBar(hMainWnd);
   }
@@ -4209,12 +4194,14 @@ void FreeContextMenu(POPUPMENU *hMenuStack)
 
   if (hMenuStack->hPopupMenu)
   {
-    for (lpShowSubmenuItem=hMenuStack->hShowSubmenuStack.first; lpShowSubmenuItem; lpShowSubmenuItem=lpShowSubmenuItem->next)
+    //Detach submenus
+    for (lpShowSubmenuItem=hMenuStack->hShowSubmenuStack.last; lpShowSubmenuItem; lpShowSubmenuItem=lpShowSubmenuItem->prev)
     {
       RemoveMenu(lpShowSubmenuItem->lpMenuItem->hSubMenu, lpShowSubmenuItem->lpMenuItem->nSubMenuIndex, MF_BYPOSITION);
     }
     StackClear((stack **)&hMenuStack->hShowSubmenuStack.first, (stack **)&hMenuStack->hShowSubmenuStack.last);
 
+    //Destroy popup menu
     DestroyMenu(hMenuStack->hPopupMenu);
     hMenuStack->hPopupMenu=NULL;
   }
@@ -6624,6 +6611,7 @@ void UninitMain()
     HeapFree(hHeap, 0, wszRecentFilesText);
     wszRecentFilesText=NULL;
   }
+  UnsetMainMenu(&hMenuMainStack);
   FreeContextMenu(&hMenuMainStack);
   FreeContextMenu(&hMenuEditStack);
   FreeContextMenu(&hMenuTabStack);
@@ -6648,7 +6636,6 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
   }
   else if (fdwReason == DLL_PROCESS_DETACH)
   {
-    if (bInitMain) UninitMain();
   }
   return TRUE;
 }

@@ -960,7 +960,7 @@ static void CALLCONV OpenTemplate(HWND hWnd, BOOL bInsert)
 			LRESULT lSize = 0;
 			PLG_CHARRANGE cursel = {0,0};
 			fc.hFile = hFile;
-			fc.dwBytesMax = (UINT_PTR)-1;
+			fc.dwMax = (UINT_PTR)-1;
 			fc.nCodePage = dc.nCodePage;
 			fc.bBOM = dc.bBOM;
 			fc.wpContent = NULL;

@@ -37,6 +37,9 @@
 
 #define  OPT_TOTALCOUNT             30
 
+#define  PICKUP_SEL_ALWAYS           1
+#define  PICKUP_SEL_IF_NOT_QSBTN    11
+
 #define  STOP_EOF_WITH_MSG           1
 #define  STOP_EOF_WITHOUT_MSG       11
 

@@ -15,16 +15,17 @@
 #define IDC_HOTKEY                      1207
 #define IDC_ASSIGN                      1208
 #define IDC_DEBUG_GROUP                 1209
-#define IDC_DEBUG_CODE_CHECK            1210
-#define IDC_DEBUG_CODE_EDIT             1211
-#define IDC_CLOSE                       1212
+#define IDC_DEBUG_JIT_CHECK             1210
+#define IDC_DEBUG_JITFROMSTART_CHECK    1211
+#define IDC_DEBUG_CODE_CHECK            1212
+#define IDC_DEBUG_CODE_EDIT             1213
+#define IDC_CLOSE                       1214
 #define IDC_INPUTBOX_LABEL              1301
 #define IDC_INPUTBOX_EDIT               1302
-
 #define IDC_STATIC                      -1
 
 // Next default values for new objects
-//
+// 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        11001

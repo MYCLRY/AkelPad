@@ -34,6 +34,7 @@ var oSys=AkelPad.SystemFunction();
 var hInstanceDLL=AkelPad.GetInstanceDll();
 var nSelStart;
 var nSelEnd;
+var nFirstLine;
 var pSelText;
 
 if (hMainWnd)
@@ -134,7 +135,9 @@ if (hMainWnd)
       pSelText=Transliterate(pSelText, pArraySource, pArrayTarget);
     }
   }
+  nFirstLine=SaveLineScroll(hWndEdit);
   AkelPad.ReplaceSel(pSelText, true);
+  RestoreLineScroll(hWndEdit, nFirstLine);
 }
 
 
@@ -168,6 +171,32 @@ function Transliterate(pText, pArraySource, pArrayTarget)
     pText=pText.replace(oPattern, pArrayTarget[i].substr(0, 1).toUpperCase() + pArrayTarget[i].substr(1));
   }
   return pText;
+}
+
+function SaveLineScroll(hWnd)
+{
+  AkelPad.SendMessage(hWnd, 11 /*WM_SETREDRAW*/, false, 0);
+  return AkelPad.SendMessage(hWnd, 3129 /*AEM_GETLINENUMBER*/, 4 /*AEGL_FIRSTVISIBLELINE*/, 0);
+}
+
+function RestoreLineScroll(hWnd, nBeforeLine)
+{
+  if (AkelPad.SendMessage(hWnd, 3129 /*AEM_GETLINENUMBER*/, 4 /*AEGL_FIRSTVISIBLELINE*/, 0) != nBeforeLine)
+  {
+    var lpScrollPos;
+    var nPosY=AkelPad.SendMessage(hWnd, 3198 /*AEM_VPOSFROMLINE*/, 0 /*AECT_GLOBAL*/, nBeforeLine);
+
+    if (lpScrollPos=AkelPad.MemAlloc(_X64?16:8 /*sizeof(POINT64)*/))
+    {
+      AkelPad.MemCopy(lpScrollPos, -1, 2 /*DT_QWORD*/);
+      AkelPad.MemCopy(lpScrollPos + (_X64?8:4), nPosY, 2 /*DT_QWORD*/);
+      AkelPad.SendMessage(hWnd, 3180 /*AEM_SETSCROLLPOS*/, 0, lpScrollPos);
+      AkelPad.MemFree(lpScrollPos);
+    }
+  }
+  AkelPad.SendMessage(hWnd, 3377 /*AEM_UPDATECARET*/, 0, 0);
+  AkelPad.SendMessage(hWnd, 11 /*WM_SETREDRAW*/, true, 0);
+  oSys.Call("user32::InvalidateRect", hWnd, 0, true);
 }
 
 function PatternToString(pPattern)

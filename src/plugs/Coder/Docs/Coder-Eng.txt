@@ -1,5 +1,5 @@
 *****************************************************************
-***                 Coder AkelPad plugin v12.3                ***
+***                 Coder AkelPad plugin v13.0                ***
 *****************************************************************
 
 2014 Shengalts Aleksander aka Instructor (Shengalts@mail.ru)
@@ -52,7 +52,7 @@ for any document, use Shift+Enter to select from list.
 
 *** External call Coder::HighLight ***
 
-Call("Coder::HighLight", 2, "#RRGGBB", "#RRGGBB", CASE, FONTSTYLE, ID, "TEXT", TEXTLENGTH)
+Call("Coder::HighLight", 2, "#RRGGBB", "#RRGGBB", FLAGS, FONTSTYLE, ID, "TEXT", TEXTLENGTH)
   Parameters:
     2
       Mark selected text or specified text.
@@ -60,9 +60,10 @@ Call("Coder::HighLight", 2, "#RRGGBB", "#RRGGBB", CASE, FONTSTYLE, ID, "TEXT", T
       Text color, ignored if "0".
     "#RRGGBB"
       Background color, ignored if "0".
-    CASE (one of the following):
-      0  case insensitive.
+    FLAGS (sum of the following):
       1  case sensitive (default).
+      2  regular expressions in "TEXT" parameter.
+         Default: 1.
     FONTSTYLE (one of the following):
       0  ignored (default).
       1  normal.
@@ -108,6 +109,8 @@ Call("Coder::HighLight", 4, ID, "#RRGGBB", "#RRGGBB", DIRECTION)
     DIRECTION (one of the following):
       0 find down (default).
       1 find up.
+  Note:
+    Search is available only for non-regular expression marks.
   Example:
     Call("Coder::HighLight", 4, 0, 0, 0, 1)
 
@@ -160,7 +163,7 @@ Call("Coder::Settings", 3, PAGE)
     PAGE
       Zero based page index.
 
-Call("Coder::Settings", 4, FLAGS, FILE)
+Call("Coder::Settings", 4, FLAGS, "FILE")
   Parameters:
     4
       Export text to RTF.
@@ -177,7 +180,7 @@ Call("Coder::Settings", 4, FLAGS, FILE)
      65536  Export only selection. By default exported selection or all document if selection is empty.
     131072  Force export all document. By default exported selection or all document if selection is empty.
             Default: 16+32=48.
-    FILE
+    "FILE"
       File for export. Used, if flag 1 set. By default, open select file dialog.
 
 Call("Coder::Settings", 5, "COLORTHEME")

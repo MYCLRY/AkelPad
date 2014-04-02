@@ -2,6 +2,7 @@
 #include <windows.h>
 #include <richedit.h>
 #include "StrFunc.h"
+#include "StackFunc.h"
 #include "x64Func.h"
 #include "WideFunc.h"
 #include "RegExpFunc.h"
@@ -73,8 +74,8 @@
 #define STRID_UPDATEINTERVAL            6
 #define STRID_MS                        7
 #define STRID_SCROLL                    8
-#define STRID_SCROLLENDAUTO             9 
-#define STRID_SCROLLENDCARET            10 
+#define STRID_SCROLLENDAUTO             9
+#define STRID_SCROLLENDCARET            10
 #define STRID_SCROLLENDVERT             11
 #define STRID_SCROLLENDNO               12
 #define STRID_COMPLETEREOPEN            13
@@ -430,7 +431,7 @@ void __declspec(dllexport) DllAkelPadID(PLUGINVERSION *pv)
 {
   pv->dwAkelDllVersion=AKELDLL;
   pv->dwExeMinVersion3x=MAKE_IDENTIFIER(-1, -1, -1, -1);
-  pv->dwExeMinVersion4x=MAKE_IDENTIFIER(4, 8, 4, 0);
+  pv->dwExeMinVersion4x=MAKE_IDENTIFIER(4, 8, 7, 0);
   pv->pPluginName="Log";
 }
 
@@ -2050,7 +2051,7 @@ VOID CALLBACK TimerProc(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime)
             SetFilePointer64(fc.hFile, dwCurPointer, FILE_BEGIN);
             dwBlockSize=dwNewPointer - dwCurPointer;
 
-            fc.dwBytesMax=dwBlockSize;
+            fc.dwMax=dwBlockSize;
             fc.nCodePage=ei.nCodePage;
             fc.bBOM=ei.bBOM;
             if (dwBlockLen=SendMessage(hMainWnd, AKD_READFILECONTENT, 0, (LPARAM)&fc))
@@ -2828,6 +2829,8 @@ BOOL PatOpenLine(HWND hWnd, const OUTPUTEXEC *oe, const AECHARINDEX *ciChar, AET
     pe.lpREGroupStack=0;
     pe.wpStr=tr->pBuffer;
     pe.wpMaxStr=tr->pBuffer + tr->dwBufferMax;
+    pe.wpText=pe.wpStr;
+    pe.wpMaxText=pe.wpMaxStr;
     pe.wpPat=oe->wszPattern;
     pe.wpMaxPat=oe->wszPattern + xstrlenW(oe->wszPattern);
     pe.dwOptions=REPE_MATCHCASE;
@@ -3755,10 +3758,26 @@ void UninitOutput()
     }
 
     //Remove hotkeys
-    if (pfwNextMatch) SendMessage(hMainWnd, AKD_DLLDELETE, 0, (LPARAM)pfwNextMatch);
-    if (pfwPrevMatch) SendMessage(hMainWnd, AKD_DLLDELETE, 0, (LPARAM)pfwPrevMatch);
-    if (pfwRunCmd) SendMessage(hMainWnd, AKD_DLLDELETE, 0, (LPARAM)pfwRunCmd);
-    if (pfwRunCmdDlg) SendMessage(hMainWnd, AKD_DLLDELETE, 0, (LPARAM)pfwRunCmdDlg);
+    if (pfwNextMatch)
+    {
+      SendMessage(hMainWnd, AKD_DLLDELETE, 0, (LPARAM)pfwNextMatch);
+      pfwNextMatch=NULL;
+    }
+    if (pfwPrevMatch)
+    {
+      SendMessage(hMainWnd, AKD_DLLDELETE, 0, (LPARAM)pfwPrevMatch);
+      pfwPrevMatch=NULL;
+    }
+    if (pfwRunCmd)
+    {
+      SendMessage(hMainWnd, AKD_DLLDELETE, 0, (LPARAM)pfwRunCmd);
+      pfwRunCmd=NULL;
+    }
+    if (pfwRunCmdDlg)
+    {
+      SendMessage(hMainWnd, AKD_DLLDELETE, 0, (LPARAM)pfwRunCmdDlg);
+      pfwRunCmdDlg=NULL;
+    }
   }
 }
 

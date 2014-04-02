@@ -12,7 +12,6 @@
 #include "SpellCore.h"
 #include "ASpellModule.h"
 #include "WhiteList.h"
-#define AEC_FUNCTIONS
 #include "AkelEdit.h"
 
 struct runtime rt;

@@ -269,6 +269,7 @@ void InitMain();
 void UninitMain();
 
 //Global variables
+char szBuffer[BUFFER_SIZE];
 wchar_t wszBuffer[BUFFER_SIZE];
 wchar_t wszPluginName[MAX_PATH];
 wchar_t wszPluginTitle[MAX_PATH];
@@ -857,7 +858,9 @@ LRESULT CALLBACK ToolbarBGProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 
       if (lpButton=StackGetButtonByID(&hToolbarData, (int)((NMHDR *)lParam)->idFrom))
       {
-        WideCharToMultiByte(CP_ACP, 0, lpButton->wszButtonItem, -1, ((NMTTDISPINFOA *)lParam)->szText, 80, NULL, NULL);
+        //WideCharToMultiByte(CP_ACP, 0, lpButton->wszButtonItem, -1, ((NMTTDISPINFOA *)lParam)->szText, 80, NULL, NULL);
+        WideCharToMultiByte(CP_ACP, 0, lpButton->wszButtonItem, -1, szBuffer, BUFFER_SIZE, NULL, NULL);
+        ((NMTTDISPINFOA *)lParam)->lpszText=szBuffer;
       }
     }
     else if (((NMHDR *)lParam)->code == TTN_GETDISPINFOW)
@@ -866,7 +869,8 @@ LRESULT CALLBACK ToolbarBGProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 
       if (lpButton=StackGetButtonByID(&hToolbarData, (int)((NMHDR *)lParam)->idFrom))
       {
-        xstrcpynW(((NMTTDISPINFOW *)lParam)->szText, lpButton->wszButtonItem, 80);
+        //xstrcpynW(((NMTTDISPINFOW *)lParam)->szText, lpButton->wszButtonItem, 80);
+        ((NMTTDISPINFOW *)lParam)->lpszText=lpButton->wszButtonItem;
       }
     }
     else if (((NMHDR *)lParam)->code == TBN_DROPDOWN)
@@ -1209,18 +1213,17 @@ BOOL CreateToolbarData(TOOLBARDATA *hToolbarData, const wchar_t *wpText)
                   {
                     wchar_t wszPath[MAX_PATH];
                     wchar_t *wpFileName;
-                    int nExtracted;
 
                     if (TranslateFileString(wszIconFile, wszPath, MAX_PATH))
                     {
                       if (SearchPathWide(NULL, wszPath, NULL, MAX_PATH, wszIconFile, &wpFileName))
                       {
                         if (bBigIcons)
-                          nExtracted=ExtractIconExWide(wszPath, nFileIconIndex, &hIcon, NULL, 1);
+                          ExtractIconExWide(wszPath, nFileIconIndex, &hIcon, NULL, 1);
                         else
-                          nExtracted=ExtractIconExWide(wszPath, nFileIconIndex, NULL, &hIcon, 1);
+                          ExtractIconExWide(wszPath, nFileIconIndex, NULL, &hIcon, 1);
 
-                        if (nExtracted)
+                        if (hIcon)
                         {
                           ImageList_AddIcon(hToolbarData->hImageList, hIcon);
                           DestroyIcon(hIcon);

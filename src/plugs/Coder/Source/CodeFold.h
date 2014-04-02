@@ -109,7 +109,7 @@
 #define FIF_FOLDSTART_ATLINEEND     0x00000010  //Fold start located at line end.
 #define FIF_FOLDEND_ATLINESTART     0x00000020  //Fold end located at line start.
 #define FIF_FOLDEND_ATLINEEND       0x00000040  //Fold end located at line end.
-#define FIF_FOLDEND_NOCATCH         0x00000080  //Don't catch fold end.
+#define FIF_FOLDEND_NOCATCH         0x00000080  //Don't catch fold end or skip end.
 #define FIF_FOLDEND_NOCATCH_SIBLING 0x00000100  //Additional to 128 flag - more priority is given to sibling level instead of parent level.
 #define FIF_COMMENTFOLD             0x00000200  //Comment fold - fold ignore any other folds and skips inside.
 #define FIF_FOLDEND_REQUIRED        0x00000400  //Reserved.
@@ -121,6 +121,8 @@
 #define FIF_FOLDEND_NORIGHTDELIM    0x00010000  //Don't check delimiters from right of fold end.
 #define FIF_DENYDELIM               0x00020000  //Deny specified delimiters.
 #define FIF_NOLISTFOLD              0x00040000  //Don't show fold in list.
+#define FIF_REGEXPSTART             0x00100000  //Regular expressions of fixed length in fold start or skip start.
+#define FIF_REGEXPEND               0x00200000  //Regular expressions of fixed length in fold end or skip end.
 #define FIF_XMLNAMED_ONETAG         0x10000000  //
 #define FIF_XMLNONAME_ONETAG        0x20000000  //
 #define FIF_XMLNONAME_TWOTAG        0x40000000  //
@@ -131,9 +133,10 @@
 typedef struct _SKIPSTART {
   struct _SKIPSTART *next;
   struct _SKIPSTART *prev;
-  BOOL bMatchCase;
+  DWORD dwFlags;
   wchar_t *wpSkipStart;
   int nSkipStartLen;
+  STACKREGROUP sregStart;
 
   //Stack with the same wpSkipStart.
   HSTACK hSkipInfoHandleStack;
@@ -148,6 +151,7 @@ typedef struct _SKIPINFO {
   wchar_t *wpSkipEnd;
   int nSkipEndLen;
   wchar_t wchEscape;
+  STACKREGROUP sregEnd;
 } SKIPINFO;
 
 typedef struct _SKIPINFOHANDLE {
@@ -159,9 +163,11 @@ typedef struct _SKIPINFOHANDLE {
 typedef struct _FOLDSTART {
   struct _FOLDSTART *next;
   struct _FOLDSTART *prev;
-  BOOL bMatchCase;
+  DWORD dwFlags;
   wchar_t *wpFoldStart;
   int nFoldStartLen;
+  int nFoldStartPointLen;
+  STACKREGROUP sregStart;
 
   //Stack with the same wpFoldStart.
   HSTACK hFoldInfoHandleStack;
@@ -175,10 +181,12 @@ typedef struct _FOLDINFO {
   FOLDSTART *lpFoldStart;
   wchar_t *wpFoldEnd;
   int nFoldEndLen;
+  int nFoldEndPointLen;
   wchar_t *wpDelimiters;
   DWORD dwFontStyle;
   DWORD dwColor1;
   DWORD dwColor2;
+  STACKREGROUP sregEnd;
 } FOLDINFO;
 
 typedef struct _FOLDINFOHANDLE {
@@ -289,9 +297,11 @@ BOOL CALLBACK FindRootLevelProc(void *lpParameter, LPARAM lParam, DWORD dwSuppor
 
 SKIPINFO* StackInsertSkipInfo(STACKSKIP *hStack);
 SKIPSTART* StackInsertSkipStart(HSTACK *hStack, SKIPINFO *lpSkipInfo, wchar_t *wpSkipStart, int nSkipStartLen);
+void StackDeleteSkipInfo(STACKSKIP *hSkipStack, HSTACK *hSkipStartStack, SKIPINFO *lpSkipInfo);
 void StackFreeSkipInfo(STACKSKIP *hSkipStack, HSTACK *hSkipStartStack);
 FOLDINFO* StackInsertFoldInfo(STACKFOLD *hStack);
-FOLDSTART* StackInsertFoldStart(HSTACK *hStack, FOLDINFO *lpFoldInfo, wchar_t *wpFoldStart, int nFoldStartLen);
+FOLDSTART* StackInsertFoldStart(HSTACK *hFoldStartStack, FOLDINFO *lpFoldInfo, wchar_t *wpFoldStart, int nFoldStartLen);
+void StackDeleteFoldInfo(STACKFOLD *hFoldStack, HSTACK *hFoldStartStack, FOLDINFO *lpFoldInfo);
 void StackFreeFoldInfo(STACKFOLD *hFoldStack, HSTACK *hFoldStartStack);
 void StackEndBoard(STACKFOLDWINDOW *hStack, FOLDWINDOW *lpFoldWindow);
 FOLDWINDOW* StackInsertFoldWindow(STACKFOLDWINDOW *hStack);
@@ -326,6 +336,7 @@ FOLDWINDOW* SetActiveEdit(HWND hWndEdit, HWND hWndTreeView, DWORD dwFlags);
 void UpdateTagMark(FOLDWINDOW *lpFoldWindow);
 BOOL RemoveTagMark(FOLDWINDOW *lpFoldWindow);
 DWORD CALLBACK IsMatch(AEFINDTEXTW *ft, const AECHARINDEX *ciChar);
+DWORD CALLBACK IsMatchRE(STACKREGROUP *sreg, AECHARRANGE *crFound, const AECHARINDEX *ciChar);
 BOOL IsEscaped(const AECHARINDEX *ciChar, wchar_t wchEscape);
 FOLDINFO* IsFold(FOLDWINDOW *lpFoldWindow, LEVEL *lpLevel, AEFINDTEXTW *ft, AECHARINDEX *ciChar, DWORD *dwFoldStop);
 FOLDINFO* IsFoldStart(FOLDSTART *lpFoldStart, AEFINDTEXTW *ft, AECHARINDEX *ciChar);

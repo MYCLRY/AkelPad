@@ -56,8 +56,7 @@ int is_wordbreakw(int whole_word, const wchar_t wch)
         if ( !ok )
         {
             // delimiters are not initialized yet
-            DWORD dwVersion = (DWORD) SendMessage(g_Plugin.hMainWnd, AKD_PROGRAMVERSION, 0, 0);
-            if ( dwVersion >= MAKE_IDENTIFIER(4, 5, 1, 0) )
+            if ( getProgramVersion(&g_Plugin) >= MAKE_IDENTIFIER(4, 5, 1, 0) )
             {
                 EDITINFO ei;
 

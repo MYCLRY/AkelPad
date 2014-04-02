@@ -162,6 +162,7 @@ var nFindItLength;
 var nReplaceWithLength;
 var nSearchResult;
 var nButton=0;
+var wCommand;
 var bLogPluginExists;
 var bMessageBox=false;
 var bCloseDialog=false;
@@ -866,15 +867,12 @@ function DialogCallback(hWnd, uMsg, wParam, lParam)
           oSys.Call("user32::PostMessage" + _TCHAR, hWndDialog, 273 /*WM_COMMAND*/, IDC_FIND_BUTTON, 0);
       }
     }
-    else if (wParam == 27)  //VK_ESCAPE
-    {
-      //Escape key pushes Cancel button
-      oSys.Call("user32::PostMessage" + _TCHAR, hWndDialog, 273 /*WM_COMMAND*/, IDC_CANCEL, 0);
-    }
   }
   else if (uMsg == 273)  //WM_COMMAND
   {
-    if (LOWORD(wParam) == IDC_TEMPLATE)
+    wCommand=LOWORD(wParam);
+
+    if (wCommand == IDC_TEMPLATE)
     {
       if (lpTemplates.length)
       {
@@ -994,7 +992,7 @@ function DialogCallback(hWnd, uMsg, wParam, lParam)
         }
       }
     }
-    else if (LOWORD(wParam) == IDC_FIND)
+    else if (wCommand == IDC_FIND)
     {
       if (HIWORD(wParam) == 1 /*CBN_SELCHANGE*/)
       {
@@ -1008,65 +1006,65 @@ function DialogCallback(hWnd, uMsg, wParam, lParam)
       oSys.Call("user32::EnableWindow", hWndReplaceAllButton, nFindItLength);
       oSys.Call("user32::EnableWindow", hWndFindAllButton, bLogPluginExists && nFindItLength);
     }
-    else if (LOWORD(wParam) == IDC_REGEXP ||
-             LOWORD(wParam) == IDC_MATCHCASE ||
-             LOWORD(wParam) == IDC_MULTILINE ||
-             LOWORD(wParam) == IDC_ESCAPESEQ ||
-             LOWORD(wParam) == IDC_FUNCTION)
+    else if (wCommand == IDC_REGEXP ||
+             wCommand == IDC_MATCHCASE ||
+             wCommand == IDC_MULTILINE ||
+             wCommand == IDC_ESCAPESEQ ||
+             wCommand == IDC_FUNCTION)
     {
-      if (LOWORD(wParam) == IDC_REGEXP)
+      if (wCommand == IDC_REGEXP)
         bRegExp=AkelPad.SendMessage(hWndRegExp, 240 /*BM_GETCHECK*/, 0, 0);
-      else if (LOWORD(wParam) == IDC_MATCHCASE)
+      else if (wCommand == IDC_MATCHCASE)
         bSensitive=AkelPad.SendMessage(hWndCase, 240 /*BM_GETCHECK*/, 0, 0);
-      else if (LOWORD(wParam) == IDC_MULTILINE)
+      else if (wCommand == IDC_MULTILINE)
         bMultiline=AkelPad.SendMessage(hWndMultiline, 240 /*BM_GETCHECK*/, 0, 0);
-      else if (LOWORD(wParam) == IDC_ESCAPESEQ)
+      else if (wCommand == IDC_ESCAPESEQ)
         bEscSequences=AkelPad.SendMessage(hWndEscSequences, 240 /*BM_GETCHECK*/, 0, 0);
-      else if (LOWORD(wParam) == IDC_FUNCTION)
+      else if (wCommand == IDC_FUNCTION)
         bReplaceFunction=AkelPad.SendMessage(hWndReplaceFunction, 240 /*BM_GETCHECK*/, 0, 0);
 
-      if (LOWORD(wParam) == IDC_REGEXP ||
-          LOWORD(wParam) == IDC_FUNCTION)
+      if (wCommand == IDC_REGEXP ||
+          wCommand == IDC_FUNCTION)
       {
         oSys.Call("user32::EnableWindow", hWndMultiline, bRegExp);
         oSys.Call("user32::EnableWindow", hWndReplaceFunction, bRegExp);
         oSys.Call("user32::EnableWindow", hWndEscSequences, !bRegExp || !bReplaceFunction);
       }
     }
-    else if (LOWORD(wParam) == IDC_FORWARD ||
-             LOWORD(wParam) == IDC_BACKWARD ||
-             LOWORD(wParam) == IDC_BEGINNING ||
-             LOWORD(wParam) == IDC_INSEL ||
-             LOWORD(wParam) == IDC_ALLFILES)
+    else if (wCommand == IDC_FORWARD ||
+             wCommand == IDC_BACKWARD ||
+             wCommand == IDC_BEGINNING ||
+             wCommand == IDC_INSEL ||
+             wCommand == IDC_ALLFILES)
     {
       if (nDirection & DN_ALLFILES)
         AkelPad.SendMessage(hWndAllFiles, 243 /*BM_SETSTATE*/, false, 0);
       else if (nDirection & DN_BEGINNING)
         AkelPad.SendMessage(hWndBeginning, 243 /*BM_SETSTATE*/, false, 0);
 
-      if (LOWORD(wParam) == IDC_FORWARD)
+      if (wCommand == IDC_FORWARD)
         nDirection=DN_DOWN;
-      else if (LOWORD(wParam) == IDC_BACKWARD)
+      else if (wCommand == IDC_BACKWARD)
         nDirection=DN_UP;
-      else if (LOWORD(wParam) == IDC_BEGINNING)
+      else if (wCommand == IDC_BEGINNING)
         nDirection=DN_BEGINNING;
-      else if (LOWORD(wParam) == IDC_INSEL)
+      else if (wCommand == IDC_INSEL)
         nDirection=DN_SELECTION;
-      else if (LOWORD(wParam) == IDC_ALLFILES)
+      else if (wCommand == IDC_ALLFILES)
         nDirection=DN_ALLFILES;
     }
-    else if (LOWORD(wParam) == IDC_FIND_BUTTON ||
-             LOWORD(wParam) == IDC_REPLACE_BUTTON ||
-             LOWORD(wParam) == IDC_REPLACEALL_BUTTON ||
-             LOWORD(wParam) == IDC_FINDALL_BUTTON)
+    else if (wCommand == IDC_FIND_BUTTON ||
+             wCommand == IDC_REPLACE_BUTTON ||
+             wCommand == IDC_REPLACEALL_BUTTON ||
+             wCommand == IDC_FINDALL_BUTTON)
     {
-      if (LOWORD(wParam) == IDC_FIND_BUTTON)
+      if (wCommand == IDC_FIND_BUTTON)
         nButton=BT_FIND;
-      else if (LOWORD(wParam) == IDC_REPLACE_BUTTON)
+      else if (wCommand == IDC_REPLACE_BUTTON)
         nButton=BT_REPLACE;
-      else if (LOWORD(wParam) == IDC_REPLACEALL_BUTTON)
+      else if (wCommand == IDC_REPLACEALL_BUTTON)
         nButton=BT_REPLACEALL;
-      else if (LOWORD(wParam) == IDC_FINDALL_BUTTON)
+      else if (wCommand == IDC_FINDALL_BUTTON)
         nButton=BT_FINDALL;
 
       //Find
@@ -1216,7 +1214,7 @@ function DialogCallback(hWnd, uMsg, wParam, lParam)
         oSys.Call("user32::PostMessage" + _TCHAR, hWndDialog, 273 /*WM_COMMAND*/, IDC_CANCEL, 0);
       }
     }
-    else if (LOWORD(wParam) == IDC_CANCEL)
+    else if (wCommand == IDC_CANCEL || wCommand == 2 /*IDCANCEL*/)
     {
       oSys.Call("user32::PostMessage" + _TCHAR, hWndDialog, 16 /*WM_CLOSE*/, 0, 0);
     }

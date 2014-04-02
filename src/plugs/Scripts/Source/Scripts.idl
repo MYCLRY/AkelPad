@@ -236,7 +236,10 @@ library Scripts
     //Free memory.
     HRESULT MemFree([in] MYHANDLE nPointer);
 
-    //Debugging.
+    //IDE debugging.
+    HRESULT DebugJIT();
+
+    //AkelPad debugging.
     HRESULT Debug([in, defaultvalue(0x1f)] DWORD dwDebug, [out, retval] DWORD *dwResult);
 
     //Get variable type.
@@ -261,7 +264,7 @@ library Scripts
     HRESULT WindowUnregisterDialog([in] MYHANDLE hDlg, [out, retval] BOOL *bResult);
 
     //Process thread messages (message loop).
-    HRESULT WindowGetMessage();
+    HRESULT WindowGetMessage([in, defaultvalue(0x0)] DWORD dwFlags);
 
     //Subclass window.
     [vararg] HRESULT WindowSubClass([in] MYHANDLE hWnd, [in] IDispatch *objFunction, [in] SAFEARRAY(VARIANT) *psa, [out, retval] MYRETHANDLE *lpCallbackItem);

@@ -435,7 +435,7 @@ function DialogCallback(hWnd, uMsg, wParam, lParam)
           InsertInArray(lpFindStrings, pFindIt, 0);
           if (lpFindStrings.length > nSearchStrings)
             DeleteFromArray(lpFindStrings, -1, 1);
-  
+
           //AkelPad.MemCopy(lpSearchBuffer, pFindIt, _TSTR);
           AkelPad.SendMessage(hWndFind, 0x14A /*CB_INSERTSTRING*/, 0, lpSearchBuffer);
           AkelPad.SendMessage(hWndFind, 0x14E /*CB_SETCURSEL*/, 0, 0);
@@ -489,12 +489,14 @@ function LinesFilter(bAllDocuments)
 {
   var lpFrameInit=AkelPad.SendMessage(hMainWnd, 1288 /*AKD_FRAMEFIND*/, 1 /*FWF_CURRENT*/, 0);
   var lpFrameCur;
+  var hWndEditCur;
   var oPattern;
   var pSelText;
   var pArray;
   var pResult;
   var nSelStart;
   var nSelEnd;
+  var nFirstLine;
   var bAtLineStart=false;
   var bAtLineEnd=false;
   var i;
@@ -510,12 +512,13 @@ function LinesFilter(bAllDocuments)
 
   for (;;)
   {
+    hWndEditCur=AkelPad.GetEditWnd();
     nSelStart=AkelPad.GetSelStart();
     nSelEnd=AkelPad.GetSelEnd();
     if (nSelStart == nSelEnd)
       AkelPad.SetSel(0, -1);
     else
-      SelCompliteLine(AkelPad.GetEditWnd(), nSelStart, nSelEnd);
+      SelCompliteLine(hWndEditCur, nSelStart, nSelEnd);
     pSelText=AkelPad.GetSelText(2 /*\n*/);
     if (!bAkelEdit)
       pSelText=pSelText.replace(/\r/g, "\n");
@@ -530,7 +533,10 @@ function LinesFilter(bAllDocuments)
     {
       pResult=pSelText.replace(oPattern, "");
     }
+
+    nFirstLine=SaveLineScroll(hWndEditCur);
     AkelPad.ReplaceSel(pResult, true);
+    RestoreLineScroll(hWndEditCur, nFirstLine);
 
     if (bAllDocuments)
     {
@@ -585,6 +591,32 @@ function SetWindowFontAndText(hWnd, hFont, pText)
 {
   AkelPad.SendMessage(hWnd, 48 /*WM_SETFONT*/, hFont, 1);
   oSys.Call("user32::SetWindowText" + _TCHAR, hWnd, pText);
+}
+
+function SaveLineScroll(hWnd)
+{
+  AkelPad.SendMessage(hWnd, 11 /*WM_SETREDRAW*/, false, 0);
+  return AkelPad.SendMessage(hWnd, 3129 /*AEM_GETLINENUMBER*/, 4 /*AEGL_FIRSTVISIBLELINE*/, 0);
+}
+
+function RestoreLineScroll(hWnd, nBeforeLine)
+{
+  if (AkelPad.SendMessage(hWnd, 3129 /*AEM_GETLINENUMBER*/, 4 /*AEGL_FIRSTVISIBLELINE*/, 0) != nBeforeLine)
+  {
+    var lpScrollPos;
+    var nPosY=AkelPad.SendMessage(hWnd, 3198 /*AEM_VPOSFROMLINE*/, 0 /*AECT_GLOBAL*/, nBeforeLine);
+
+    if (lpScrollPos=AkelPad.MemAlloc(_X64?16:8 /*sizeof(POINT64)*/))
+    {
+      AkelPad.MemCopy(lpScrollPos + 0 /*offsetof(POINT64, x)*/, -1, 2 /*DT_QWORD*/);
+      AkelPad.MemCopy(lpScrollPos + (_X64?8:4) /*offsetof(POINT64, y)*/, nPosY, 2 /*DT_QWORD*/);
+      AkelPad.SendMessage(hWnd, 3180 /*AEM_SETSCROLLPOS*/, 0, lpScrollPos);
+      AkelPad.MemFree(lpScrollPos);
+    }
+  }
+  AkelPad.SendMessage(hWnd, 3377 /*AEM_UPDATECARET*/, 0, 0);
+  AkelPad.SendMessage(hWnd, 11 /*WM_SETREDRAW*/, true, 0);
+  oSys.Call("user32::InvalidateRect", hWnd, 0, true);
 }
 
 function RectToArray(lpRect, rcRect)

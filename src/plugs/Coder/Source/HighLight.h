@@ -37,6 +37,8 @@
 
 #define MARKMAX_WORD   1024
 
+#define MARKFLAG_MATCHCASE 0x1
+#define MARKFLAG_REGEXP    0x2
 
 //// Structures
 
@@ -134,7 +136,7 @@ DWORD StackAssignMarkID(HIGHLIGHTWINDOW *lpHighlightWindow);
 BOOL StackIsAnyMark(HIGHLIGHTWINDOW *lpHighlightWindow);
 void StackDeleteMark(HIGHLIGHTWINDOW *lpHighlightWindow, MARKTEXT *lpMarkText);
 BOOL StackFreeMark(HIGHLIGHTWINDOW *lpHighlightWindow);
-BOOL MarkSelection(HIGHLIGHTWINDOW *lpHighlightWindow, const wchar_t *wpText, int nTextLen, DWORD dwColorText, DWORD dwColorBk, BOOL bMatchCase, DWORD dwFontStyle, DWORD dwMarkID);
+BOOL MarkSelection(HIGHLIGHTWINDOW *lpHighlightWindow, const wchar_t *wpText, int nTextLen, DWORD dwColorText, DWORD dwColorBk, DWORD dwFlags, DWORD dwFontStyle, DWORD dwMarkID);
 BOOL UnmarkSelection(HIGHLIGHTWINDOW *lpHighlightWindow, DWORD dwMarkID, DWORD dwColorText, DWORD dwColorBk);
 BOOL FindMark(HIGHLIGHTWINDOW *lpHighlightWindow, DWORD dwMarkID, DWORD dwColorText, DWORD dwColorBk, BOOL bFindUp);
 void CreateEditTheme(SYNTAXFILE *lpSyntaxFile, HWND hWnd);

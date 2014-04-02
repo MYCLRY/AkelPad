@@ -6,6 +6,7 @@
 #include "StrFunc.h"
 #include "WideFunc.h"
 #include "AkelEdit.h"
+#include "RegExpFunc.h"
 #include "AkelDLL.h"
 #include "Coder.h"
 #include "HighLight.h"
@@ -55,7 +56,7 @@ void __declspec(dllexport) HighLight(PLUGINDATA *pd)
         unsigned char *pColorBk=NULL;
         DWORD dwColorText=(DWORD)-1;
         DWORD dwColorBk=(DWORD)-1;
-        BOOL bMatchCase=TRUE;
+        DWORD dwFlags=MARKFLAG_MATCHCASE;
         DWORD dwFontStyle=0;
         DWORD dwMarkID=MARKID_AUTOASSIGN;
         wchar_t *wpMarkText=NULL;
@@ -66,7 +67,7 @@ void __declspec(dllexport) HighLight(PLUGINDATA *pd)
         if (IsExtCallParamValid(pd->lParam, 3))
           pColorBk=(unsigned char *)GetExtCallParam(pd->lParam, 3);
         if (IsExtCallParamValid(pd->lParam, 4))
-          bMatchCase=(BOOL)GetExtCallParam(pd->lParam, 4);
+          dwFlags=(DWORD)GetExtCallParam(pd->lParam, 4);
         if (IsExtCallParamValid(pd->lParam, 5))
           dwFontStyle=(DWORD)GetExtCallParam(pd->lParam, 5);
         if (IsExtCallParamValid(pd->lParam, 6))
@@ -99,6 +100,12 @@ void __declspec(dllexport) HighLight(PLUGINDATA *pd)
             {
               CHARRANGE64 cr;
               BOOL bUpdate=FALSE;
+              DWORD dwHLFlags=0;
+
+              if (dwFlags & MARKFLAG_MATCHCASE)
+                dwHLFlags|=AEHLF_MATCHCASE;
+              if (dwFlags & MARKFLAG_REGEXP)
+                dwHLFlags|=AEHLF_REGEXP;
 
               if (dwMarkID != MARKID_AUTOASSIGN || !SendMessage(ei.hWndEdit, AEM_GETSEL, (WPARAM)NULL, (LPARAM)NULL))
               {
@@ -108,7 +115,7 @@ void __declspec(dllexport) HighLight(PLUGINDATA *pd)
 
               if (wpMarkText)
               {
-                if (MarkSelection(lpHighlightWindow, wpMarkText, (int)nMarkTextLen, dwColorText, dwColorBk, bMatchCase, dwFontStyle, dwMarkID))
+                if (MarkSelection(lpHighlightWindow, wpMarkText, (int)nMarkTextLen, dwColorText, dwColorBk, dwHLFlags, dwFontStyle, dwMarkID))
                   bUpdate=TRUE;
               }
               else
@@ -119,7 +126,7 @@ void __declspec(dllexport) HighLight(PLUGINDATA *pd)
                 {
                   if (wpMarkText=(wchar_t *)SendMessage(hMainWnd, AKD_GETSELTEXTW, (WPARAM)ei.hWndEdit, (LPARAM)&nMarkTextLen))
                   {
-                    if (MarkSelection(lpHighlightWindow, wpMarkText, (int)nMarkTextLen, dwColorText, dwColorBk, bMatchCase, dwFontStyle, dwMarkID))
+                    if (MarkSelection(lpHighlightWindow, wpMarkText, (int)nMarkTextLen, dwColorText, dwColorBk, dwHLFlags, dwFontStyle, dwMarkID))
                       bUpdate=TRUE;
                     SendMessage(hMainWnd, AKD_FREETEXT, 0, (LPARAM)wpMarkText);
                   }
@@ -732,10 +739,10 @@ BOOL CALLBACK HighLightParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
               if (!bFindingMark && cr.cpMax > cr.cpMin && cr.cpMax - cr.cpMin < MARKMAX_WORD &&
                    (nAutoMarkType == MARKAUTO_SYMBOLS ||
                      (nAutoMarkType == MARKAUTO_WORDS &&
-                      SendMessage(ei.hWndEdit, AEM_ISDELIMITER, AEDLM_WORD|AEDLM_PREVCHAR, (LPARAM)&aensc->aes.crSel.ciMin) &&
-                      !SendMessage(ei.hWndEdit, AEM_ISDELIMITER, AEDLM_WORD, (LPARAM)&aensc->aes.crSel.ciMin) &&
-                      SendMessage(ei.hWndEdit, AEM_ISDELIMITER, AEDLM_WORD, (LPARAM)&aensc->aes.crSel.ciMax) &&
-                      !SendMessage(ei.hWndEdit, AEM_ISDELIMITER, AEDLM_WORD|AEDLM_PREVCHAR, (LPARAM)&aensc->aes.crSel.ciMax))))
+                     SendMessage(ei.hWndEdit, AEM_ISDELIMITER, AEDLM_WORD | AEDLM_PREVCHAR, (LPARAM)&aensc->aes.crSel.ciMin) &&
+                     !SendMessage(ei.hWndEdit, AEM_ISDELIMITER, AEDLM_WORD, (LPARAM)&aensc->aes.crSel.ciMin) &&
+                     SendMessage(ei.hWndEdit, AEM_ISDELIMITER, AEDLM_WORD, (LPARAM)&aensc->aes.crSel.ciMax) &&
+                     !SendMessage(ei.hWndEdit, AEM_ISDELIMITER, AEDLM_WORD | AEDLM_PREVCHAR, (LPARAM)&aensc->aes.crSel.ciMax))))
               {
                 wchar_t *wpMarkText;
                 INT_PTR nMarkTextLen=0;
@@ -1757,7 +1764,7 @@ BOOL StackFreeMark(HIGHLIGHTWINDOW *lpHighlightWindow)
   return bResult;
 }
 
-BOOL MarkSelection(HIGHLIGHTWINDOW *lpHighlightWindow, const wchar_t *wpText, int nTextLen, DWORD dwColorText, DWORD dwColorBk, BOOL bMatchCase, DWORD dwFontStyle, DWORD dwMarkID)
+BOOL MarkSelection(HIGHLIGHTWINDOW *lpHighlightWindow, const wchar_t *wpText, int nTextLen, DWORD dwColorText, DWORD dwColorBk, DWORD dwFlags, DWORD dwFontStyle, DWORD dwMarkID)
 {
   BOOL bResult=FALSE;
 
@@ -1770,7 +1777,7 @@ BOOL MarkSelection(HIGHLIGHTWINDOW *lpHighlightWindow, const wchar_t *wpText, in
     mti.nIndex=1;
     mti.pMarkText=wpText;
     mti.nMarkTextLen=(nTextLen == -1?(int)xstrlenW(wpText):nTextLen);
-    mti.dwFlags=bMatchCase?AEHLF_MATCHCASE:0;
+    mti.dwFlags=dwFlags;
     mti.crText=dwColorText;
     mti.crBk=dwColorBk;
     mti.dwFontStyle=dwFontStyle;

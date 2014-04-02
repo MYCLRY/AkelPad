@@ -123,9 +123,11 @@ BEGIN
     CONTROL         "HotKey1",IDC_PREVBOOKMARK,"msctls_hotkey32",WS_BORDER | 
                     WS_TABSTOP,218,115,69,14
     CONTROL         "",IDC_REMEMBERBOOKMARKS,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,164,147,125,10
+                    WS_TABSTOP,164,147,135,10
+    CONTROL         "",IDC_BOOKMARKCHARHEIGHT,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,164,162,135,10
     CONTROL         "",IDC_CODERTHEME,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,
-                    164,162,125,10
+                    164,177,135,10
     PUSHBUTTON      "",IDOK,102,286,50,14,BS_CENTER
     PUSHBUTTON      "",IDCANCEL,154,286,50,14,BS_CENTER
 END

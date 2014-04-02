@@ -44,6 +44,7 @@
 #include "StrFunc.h"
 
 //Include wide functions
+#define CallWindowProcWide
 #define CreateFileWide
 #define CreateProcessWide
 #define CreateWindowExWide
@@ -99,11 +100,13 @@ BOOL bMainOnFinish=FALSE;
 DWORD dwSaveFlags=0;
 HWND hWndMainDlg=NULL;
 HWND hWndScriptsList=NULL;
-RECT rcMainMinMaxDialog={253, 243, 0, 0};
+WNDPROC lpOldFilterProc=NULL;
+RECT rcMainMinMaxDialog={253, 365, 0, 0};
 RECT rcMainCurrentDialog={0};
 int nColumnWidth1=163;
 int nColumnWidth2=109;
 int nColumnWidth3=70;
+DWORD dwGlobalDebugJIT=JIT_FROMSTART;
 BOOL bGlobalDebugEnable=FALSE;
 DWORD dwGlobalDebugCode=0;
 const char *pMutexInitName="AkelPad::Scripts::MutexInit";
@@ -227,25 +230,29 @@ BOOL CALLBACK MainDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
   static HWND hWndHotkey;
   static HWND hWndAssignButton;
   static HWND hWndDebugGroup;
+  static HWND hWndDebugJITCheck;
+  static HWND hWndDebugJITFromStartCheck;
   static HWND hWndDebugCodeCheck;
   static HWND hWndDebugCodeEdit;
   static HWND hWndCloseButton;
   static int nSelItem=-1;
   static BOOL bListChanged=FALSE;
-  static DIALOGRESIZE drs[]={{&hWndScriptsList,     DRS_SIZE|DRS_X, 0},
-                             {&hWndScriptsList,     DRS_SIZE|DRS_Y, 0},
-                             {&hWndScriptsFilter,   DRS_SIZE|DRS_X, 0},
-                             {&hWndScriptsFilter,   DRS_MOVE|DRS_Y, 0},
-                             {&hWndChangeListGroup, DRS_MOVE|DRS_X, 0},
-                             {&hWndExecButton,      DRS_MOVE|DRS_X, 0},
-                             {&hWndEditButton,      DRS_MOVE|DRS_X, 0},
-                             {&hWndHotkey,          DRS_MOVE|DRS_X, 0},
-                             {&hWndAssignButton,    DRS_MOVE|DRS_X, 0},
-                             {&hWndDebugGroup,      DRS_MOVE|DRS_X, 0},
-                             {&hWndDebugCodeCheck,  DRS_MOVE|DRS_X, 0},
-                             {&hWndDebugCodeEdit,   DRS_MOVE|DRS_X, 0},
-                             {&hWndCloseButton,     DRS_MOVE|DRS_X, 0},
-                             {&hWndCloseButton,     DRS_MOVE|DRS_Y, 0},
+  static DIALOGRESIZE drs[]={{&hWndScriptsList,            DRS_SIZE|DRS_X, 0},
+                             {&hWndScriptsList,            DRS_SIZE|DRS_Y, 0},
+                             {&hWndScriptsFilter,          DRS_SIZE|DRS_X, 0},
+                             {&hWndScriptsFilter,          DRS_MOVE|DRS_Y, 0},
+                             {&hWndChangeListGroup,        DRS_MOVE|DRS_X, 0},
+                             {&hWndExecButton,             DRS_MOVE|DRS_X, 0},
+                             {&hWndEditButton,             DRS_MOVE|DRS_X, 0},
+                             {&hWndHotkey,                 DRS_MOVE|DRS_X, 0},
+                             {&hWndAssignButton,           DRS_MOVE|DRS_X, 0},
+                             {&hWndDebugGroup,             DRS_MOVE|DRS_X, 0},
+                             {&hWndDebugJITCheck,          DRS_MOVE|DRS_X, 0},
+                             {&hWndDebugJITFromStartCheck, DRS_MOVE|DRS_X, 0},
+                             {&hWndDebugCodeCheck,         DRS_MOVE|DRS_X, 0},
+                             {&hWndDebugCodeEdit,          DRS_MOVE|DRS_X, 0},
+                             {&hWndCloseButton,            DRS_MOVE|DRS_X, 0},
+                             {&hWndCloseButton,            DRS_MOVE|DRS_Y, 0},
                              {0, 0, 0}};
 
   if (uMsg == WM_INITDIALOG)
@@ -263,6 +270,8 @@ BOOL CALLBACK MainDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     hWndHotkey=GetDlgItem(hDlg, IDC_HOTKEY);
     hWndAssignButton=GetDlgItem(hDlg, IDC_ASSIGN);
     hWndDebugGroup=GetDlgItem(hDlg, IDC_DEBUG_GROUP);
+    hWndDebugJITCheck=GetDlgItem(hDlg, IDC_DEBUG_JIT_CHECK);
+    hWndDebugJITFromStartCheck=GetDlgItem(hDlg, IDC_DEBUG_JITFROMSTART_CHECK);
     hWndDebugCodeCheck=GetDlgItem(hDlg, IDC_DEBUG_CODE_CHECK);
     hWndDebugCodeEdit=GetDlgItem(hDlg, IDC_DEBUG_CODE_EDIT);
     hWndCloseButton=GetDlgItem(hDlg, IDC_CLOSE);
@@ -272,6 +281,8 @@ BOOL CALLBACK MainDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     SetDlgItemTextWide(hDlg, IDC_EDIT, GetLangStringW(wLangModule, STRID_EDIT));
     SetDlgItemTextWide(hDlg, IDC_ASSIGN, GetLangStringW(wLangModule, STRID_ASSIGN));
     SetDlgItemTextWide(hDlg, IDC_DEBUG_GROUP, GetLangStringW(wLangModule, STRID_DEBUG));
+    SetDlgItemTextWide(hDlg, IDC_DEBUG_JIT_CHECK, GetLangStringW(wLangModule, STRID_JIT));
+    SetDlgItemTextWide(hDlg, IDC_DEBUG_JITFROMSTART_CHECK, GetLangStringW(wLangModule, STRID_FROMSTART));
     SetDlgItemTextWide(hDlg, IDC_DEBUG_CODE_CHECK, GetLangStringW(wLangModule, STRID_CODE));
     SetDlgItemTextWide(hDlg, IDC_CLOSE, GetLangStringW(wLangModule, STRID_CLOSE));
 
@@ -282,6 +293,12 @@ BOOL CALLBACK MainDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     SendMessage(hWndScriptsList, LVM_SETEXTENDEDLISTVIEWSTYLE, LVS_EX_FULLROWSELECT|LVS_EX_GRIDLINES, LVS_EX_FULLROWSELECT|LVS_EX_GRIDLINES);
     SendMessage(hMainWnd, AKD_SETHOTKEYINPUT, (WPARAM)hWndHotkey, 0);
 
+    if (dwGlobalDebugJIT & JIT_DEBUG)
+      SendMessage(hWndDebugJITCheck, BM_SETCHECK, BST_CHECKED, 0);
+    else
+      EnableWindow(hWndDebugJITFromStartCheck, FALSE);
+    if (dwGlobalDebugJIT & JIT_FROMSTART)
+      SendMessage(hWndDebugJITFromStartCheck, BM_SETCHECK, BST_CHECKED, 0);
     if (bGlobalDebugEnable)
       SendMessage(hWndDebugCodeCheck, BM_SETCHECK, BST_CHECKED, 0);
     else
@@ -311,35 +328,29 @@ BOOL CALLBACK MainDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
     SetWindowTextWide(hWndScriptsFilter, wszFilter);
     FillScriptList(hWndScriptsList, wszFilter);
+
+    lpOldFilterProc=(WNDPROC)GetWindowLongPtrWide(hWndScriptsFilter, GWLP_WNDPROC);
+    SetWindowLongPtrWide(hWndScriptsFilter, GWLP_WNDPROC, (UINT_PTR)NewFilterProc);
   }
   else if (uMsg == WM_NOTIFY)
   {
     if (wParam == IDC_SCRIPTS_LIST)
     {
-      if (((NMLISTVIEW *)lParam)->hdr.code == LVN_ITEMCHANGED)
+      NMLISTVIEW *nmlw=(NMLISTVIEW *)lParam;
+
+      if (nmlw->hdr.code == LVN_ITEMCHANGED)
       {
-        if (((NMLISTVIEW *)lParam)->uNewState & LVIS_STATEIMAGEMASK)
+        if (nmlw->uNewState & LVIS_SELECTED)
         {
-          BOOL bNewState;
-          BOOL bOldState;
-
-          bNewState=((((NMLISTVIEW *)lParam)->uNewState & LVIS_STATEIMAGEMASK) >> 12) - 1;
-          bOldState=((((NMLISTVIEW *)lParam)->uOldState & LVIS_STATEIMAGEMASK) >> 12) - 1;
-
-          if (bNewState >=0 && bOldState >=0 && bNewState != bOldState)
-            bListChanged=TRUE;
-        }
-        if (((NMLISTVIEW *)lParam)->uNewState & LVIS_SELECTED)
-        {
-          nSelItem=((NMLISTVIEW *)lParam)->iItem;
-          SendMessage(hWndHotkey, HKM_SETHOTKEY, ((NMLISTVIEW *)lParam)->lParam, 0);
+          nSelItem=nmlw->iItem;
+          SendMessage(hWndHotkey, HKM_SETHOTKEY, nmlw->lParam, 0);
 
           EnableWindow(hWndExecButton, TRUE);
           EnableWindow(hWndEditButton, TRUE);
           EnableWindow(hWndHotkey, TRUE);
           EnableWindow(hWndAssignButton, TRUE);
         }
-        if (((NMLISTVIEW *)lParam)->uOldState & LVIS_SELECTED)
+        if (nmlw->uOldState & LVIS_SELECTED)
         {
           nSelItem=-1;
           SendMessage(hWndHotkey, HKM_SETHOTKEY, 0, 0);
@@ -406,6 +417,13 @@ BOOL CALLBACK MainDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
       return TRUE;
     }
+    else if (LOWORD(wParam) == IDC_DEBUG_JIT_CHECK)
+    {
+      BOOL bState;
+
+      bState=(BOOL)SendMessage(hWndDebugJITCheck, BM_GETCHECK, 0, 0);
+      EnableWindow(hWndDebugJITFromStartCheck, bState);
+    }
     else if (LOWORD(wParam) == IDC_DEBUG_CODE_CHECK)
     {
       BOOL bState;
@@ -421,6 +439,7 @@ BOOL CALLBACK MainDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
       LVITEMW lvi;
       int nWidth;
       BOOL bDebugEnable;
+      DWORD dwDebugFlags;
       INT_PTR nDebugCode;
 
       nWidth=(int)SendMessage(hWndScriptsList, LVM_GETCOLUMNWIDTH, LVI_SCRIPT_FILE, 0);
@@ -440,6 +459,17 @@ BOOL CALLBACK MainDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
       {
         nColumnWidth3=nWidth;
         dwSaveFlags|=OF_RECT;
+      }
+
+      dwDebugFlags=0;
+      if (SendMessage(hWndDebugJITCheck, BM_GETCHECK, 0, 0) == BST_CHECKED)
+        dwDebugFlags|=JIT_DEBUG;
+      if (SendMessage(hWndDebugJITFromStartCheck, BM_GETCHECK, 0, 0) == BST_CHECKED)
+        dwDebugFlags|=JIT_FROMSTART;
+      if (dwGlobalDebugJIT != dwDebugFlags)
+      {
+        dwGlobalDebugJIT=dwDebugFlags;
+        dwSaveFlags|=OF_DEBUG;
       }
 
       bDebugEnable=(BOOL)SendMessage(hWndDebugCodeCheck, BM_GETCHECK, 0, 0);
@@ -514,6 +544,20 @@ BOOL CALLBACK MainDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
   }
 
   return FALSE;
+}
+
+LRESULT CALLBACK NewFilterProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+  if (uMsg == WM_KEYDOWN)
+  {
+    if (wParam == VK_DOWN || wParam == VK_UP)
+    {
+      if (GetFocus() != hWndScriptsList)
+        SetFocus(hWndScriptsList);
+      return SendMessage(hWndScriptsList, uMsg, wParam, lParam);
+    }
+  }
+  return CallWindowProcWide(lpOldFilterProc, hWnd, uMsg, wParam, lParam);
 }
 
 BOOL RegisterHotkey(wchar_t *wszScriptName, WORD wHotkey)
@@ -821,6 +865,8 @@ DWORD WINAPI ExecThreadProc(LPVOID lpParameter)
     lpScriptThread->dwThreadID=dwThreadID;
     if (bGlobalDebugEnable)
       lpScriptThread->dwDebug=dwGlobalDebugCode;
+    if (dwGlobalDebugJIT & JIT_DEBUG)
+      lpScriptThread->dwDebugJIT=dwGlobalDebugJIT;
 
     if (es->wpScript)
     {
@@ -924,18 +970,19 @@ DWORD WINAPI ExecThreadProc(LPVOID lpParameter)
         const wchar_t *wpExt;
         char szExt[MAX_PATH];
         GUID guidEngine;
-
-        // Initialize MyRealIActiveScriptSite object
-        InitIActiveScriptSiteObject();
+        INT_PTR nContentLen;
 
         if (wpExt=GetFileExt(lpScriptThread->wszScriptName, -1))
         {
           WideCharToMultiByte(CP_ACP, 0, --wpExt, -1, szExt, MAX_PATH, NULL, NULL);
           if (GetScriptEngineA(szExt, &guidEngine) == S_OK)
           {
-            if (ReadFileContent(lpScriptThread->wszScriptFile, ADT_BINARY_ERROR|ADT_DETECT_CODEPAGE|ADT_DETECT_BOM|ADT_NOMESSAGES, 0, 0, &wpContent, (UINT_PTR)-1))
+            if (nContentLen=ReadFileContent(lpScriptThread->wszScriptFile, ADT_BINARY_ERROR|ADT_DETECT_CODEPAGE|ADT_DETECT_BOM|ADT_NOMESSAGES, 0, 0, &wpContent, (UINT_PTR)-1))
             {
-              if (ExecScriptText(lpScriptThread, &guidEngine, wpContent) != S_OK)
+              lpScriptThread->wpScriptText=wpContent;
+              lpScriptThread->nScriptTextLen=nContentLen;
+
+              if (ExecScriptText(lpScriptThread, &guidEngine) != S_OK)
               {
                 //MessageBoxW(hMainWnd, GetLangStringW(wLangModule, STRID_EXECUTE_ERROR), wszPluginTitle, MB_OK|MB_ICONERROR);
               }
@@ -954,7 +1001,6 @@ DWORD WINAPI ExecThreadProc(LPVOID lpParameter)
             MessageBoxW(hMainWnd, wszBuffer, wszPluginTitle, MB_OK|MB_ICONERROR);
           }
         }
-        MyActiveScriptSite.site.lpVtbl->Release((IActiveScriptSite *)&MyActiveScriptSite);
       }
     }
 
@@ -1106,7 +1152,7 @@ BOOL CloseScriptThread(SCRIPTTHREAD *lpScriptThread)
   //Script has message loop - send quit mesage.
   if (bPostQuit)
   {
-    if (lpScriptThread->hWndScriptsThreadDummy && lpScriptThread->bMessageLoop)
+    if (lpScriptThread->hWndScriptsThreadDummy && lpScriptThread->dwMessageLoop)
       SendMessage(lpScriptThread->hWndScriptsThreadDummy, AKDLL_POSTQUIT, 0, 0);
   }
 
@@ -1143,7 +1189,7 @@ void PostQuitScriptAll()
   for (lpElement=hThreadStack.first; lpElement; lpElement=lpNextElement)
   {
     lpNextElement=lpElement->next;
-    if (lpElement->hWndScriptsThreadDummy && lpElement->bMessageLoop)
+    if (lpElement->hWndScriptsThreadDummy && lpElement->dwMessageLoop)
       SendMessage(lpElement->hWndScriptsThreadDummy, AKDLL_POSTQUIT, 0, 0);
   }
 }
@@ -1154,7 +1200,7 @@ BOOL IsAnyMessageLoop()
 
   for (lpElement=hThreadStack.first; lpElement; lpElement=lpElement->next)
   {
-    if (lpElement->bMessageLoop)
+    if (lpElement->dwMessageLoop)
       return TRUE;
   }
   return FALSE;
@@ -1400,7 +1446,7 @@ INT_PTR ReadFileContent(wchar_t *wpFile, DWORD dwFlags, int nCodePage, BOOL bBOM
     //Read contents
     if ((fc.hFile=CreateFileWide(df.pFile, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, NULL)) != INVALID_HANDLE_VALUE)
     {
-      fc.dwBytesMax=dwBytesMax;
+      fc.dwMax=dwBytesMax;
       fc.nCodePage=df.nCodePage;
       fc.bBOM=df.bBOM;
       if (nResult=SendMessage(hMainWnd, AKD_READFILECONTENT, 0, (LPARAM)&fc))
@@ -1522,6 +1568,7 @@ void ReadOptions(DWORD dwFlags)
     WideOption(hOptions, L"/ColumnWidth1", PO_DWORD, (LPBYTE)&nColumnWidth1, sizeof(DWORD));
     WideOption(hOptions, L"/ColumnWidth2", PO_DWORD, (LPBYTE)&nColumnWidth2, sizeof(DWORD));
     WideOption(hOptions, L"/ColumnWidth3", PO_DWORD, (LPBYTE)&nColumnWidth3, sizeof(DWORD));
+    WideOption(hOptions, L"/GlobalDebugJIT", PO_DWORD, (LPBYTE)&dwGlobalDebugJIT, sizeof(DWORD));
     WideOption(hOptions, L"/GlobalDebugEnable", PO_DWORD, (LPBYTE)&bGlobalDebugEnable, sizeof(DWORD));
     WideOption(hOptions, L"/GlobalDebugCode", PO_DWORD, (LPBYTE)&dwGlobalDebugCode, sizeof(DWORD));
     WideOption(hOptions, L"/LastScript", PO_STRING, (LPBYTE)wszLastScript, MAX_PATH * sizeof(wchar_t));
@@ -1580,6 +1627,7 @@ void SaveOptions(DWORD dwFlags)
     }
     if (dwFlags & OF_DEBUG)
     {
+      WideOption(hOptions, L"/GlobalDebugJIT", PO_DWORD, (LPBYTE)&dwGlobalDebugJIT, sizeof(DWORD));
       WideOption(hOptions, L"/GlobalDebugEnable", PO_DWORD, (LPBYTE)&bGlobalDebugEnable, sizeof(DWORD));
       WideOption(hOptions, L"/GlobalDebugCode", PO_DWORD, (LPBYTE)&dwGlobalDebugCode, sizeof(DWORD));
     }
@@ -1655,6 +1703,8 @@ const wchar_t* GetLangStringW(LANGID wLangID, int nStringID)
       return L"\x0421\x0435\x0440\x0432\x0435\x0440\x0020\x0441\x0446\x0435\x043D\x0430\x0440\x0438\x0435\x0432\x0020\x0434\x043B\x044F\x0020\x0442\x0438\x043F\x0430\x0020\x0444\x0430\x0439\x043B\x043E\x0432 \"%s\" \x043D\x0435\x0020\x043D\x0430\x0439\x0434\x0435\x043D\x002E";
     if (nStringID == STRID_READFILE_ERROR)
       return L"\x041D\x0435\x0020\x0443\x0434\x0430\x0435\x0442\x0441\x044F\x0020\x043F\x0440\x043E\x0447\x0438\x0442\x0430\x0442\x044C\x0020\x0444\x0430\x0439\x043B \"%s\".";
+    if (nStringID == STRID_DEBUG_ERROR)
+      return L"\x041D\x0435\x0020\x0443\x0434\x0430\x0435\x0442\x0441\x044F\x0020\x0438\x043D\x0438\x0446\x0438\x0430\x043B\x0438\x0437\x0438\x0440\x043E\x0432\x0430\x0442\x044C\x0020\x043F\x0440\x0438\x043B\x043E\x0436\x0435\x043D\x0438\x0435\x0020\x0434\x043B\x044F\x0020\x043E\x0442\x043B\x0430\x0434\x043A\x0438\x002E";
     if (nStringID == STRID_SCRIPTERROR)
       return L"\x0421\x043A\x0440\x0438\x043F\x0442:\t%s\n\x0421\x0442\x0440\x043E\x043A\x0430:\t%u\n\x0421\x0438\x043C\x0432\x043E\x043B\x003A\t%d\n\x041E\x0448\x0438\x0431\x043A\x0430:\t%s\n\x041A\x043E\x0434:\t%X\n\x0418\x0441\x0442\x043E\x0447\x043D\x0438\x043A:\t%s\n";
     if (nStringID == STRID_STOP)
@@ -1663,6 +1713,10 @@ const wchar_t* GetLangStringW(LANGID wLangID, int nStringID)
       return L"\x041F\x0440\x043E\x0434\x043E\x043B\x0436\x0438\x0442\x044C";
     if (nStringID == STRID_DEBUG)
       return L"\x041E\x0442\x043B\x0430\x0434\x043A\x0430";
+    if (nStringID == STRID_JIT)
+      return L"JIT";
+    if (nStringID == STRID_FROMSTART)
+      return L"\x0421\x0020\x043D\x0430\x0447\x0430\x043B\x0430";
     if (nStringID == STRID_CODE)
       return L"\x041A\x043E\x0434:";
     if (nStringID == STRID_DEBUG_MEMLOCATE)
@@ -1716,6 +1770,8 @@ const wchar_t* GetLangStringW(LANGID wLangID, int nStringID)
       return L"Script engine for file type \"%s\" not found.";
     if (nStringID == STRID_READFILE_ERROR)
       return L"Can't read file \"%s\".";
+    if (nStringID == STRID_DEBUG_ERROR)
+      return L"Can't initialize debug IDE.";
     if (nStringID == STRID_SCRIPTERROR)
       return L"Script:\t%s\nLine:\t%u\nSymbol:\t%d\nError:\t%s\nCode:\t%X\nSource:\t%s\n";
     if (nStringID == STRID_STOP)
@@ -1724,6 +1780,10 @@ const wchar_t* GetLangStringW(LANGID wLangID, int nStringID)
       return L"Continue";
     if (nStringID == STRID_DEBUG)
       return L"Debug";
+    if (nStringID == STRID_JIT)
+      return L"JIT";
+    if (nStringID == STRID_FROMSTART)
+      return L"From start";
     if (nStringID == STRID_CODE)
       return L"Code:";
     if (nStringID == STRID_DEBUG_MEMLOCATE)

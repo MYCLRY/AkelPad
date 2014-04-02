@@ -6,7 +6,7 @@
 
 
 //Global variables
-const IActiveScriptSiteVtbl SiteTable={
+const IActiveScriptSiteVtbl MyIActiveScriptSiteVtbl={
   QueryInterface,
   AddRef,
   Release,
@@ -20,27 +20,76 @@ const IActiveScriptSiteVtbl SiteTable={
   OnLeaveScript
 };
 
-const IActiveScriptSiteWindowVtbl SiteWindowTable={
-  siteWnd_QueryInterface,
-  siteWnd_AddRef,
-  siteWnd_Release,
+const IActiveScriptSiteWindowVtbl MyIActiveScriptSiteWindowVtbl={
+  SiteWindow_QueryInterface,
+  SiteWindow_AddRef,
+  SiteWindow_Release,
   GetSiteWindow,
   EnableModeless
 };
 
-MyRealIActiveScriptSite MyActiveScriptSite;
+#ifdef _WIN64
+  IActiveScriptSiteDebug64Vtbl
+#else
+  IActiveScriptSiteDebug32Vtbl
+#endif
+MyIActiveScriptSiteDebugVtbl={
+   SiteDebug_QueryInterface,
+   SiteDebug_AddRef,
+   SiteDebug_Release,
+   SiteDebug_GetDocumentContextFromPosition,
+   SiteDebug_GetApplication,
+   SiteDebug_GetRootApplicationNode,
+   SiteDebug_OnScriptErrorDebug
+ };
+
 HHOOK hHookMessageBox;
 
 
 //// Script text execution
 
-HRESULT ExecScriptText(void *lpScriptThread, GUID *guidEngine, const wchar_t *wpScriptText)
+HRESULT ExecScriptText(void *lpScriptThread, GUID *guidEngine)
 {
   SCRIPTTHREAD *st=(SCRIPTTHREAD *)lpScriptThread;
   HRESULT nCoInit;
   HRESULT nResult=E_FAIL;
+  DWORD dwDebugApplicationCookie=0;
+  MYDWORD_PTR dwDebugSourceContext=0;
+  BOOL bInitDebugJIT=FALSE;
 
   nCoInit=CoInitialize(0);
+
+  if (st->dwDebugJIT & JIT_DEBUG)
+  {
+    if (CoCreateInstance(&CLSID_ProcessDebugManager, 0, CLSCTX_INPROC_SERVER, &IID_IProcessDebugManager, (void **)&st->objProcessDebugManager) == S_OK)
+    {
+      if (st->objProcessDebugManager->lpVtbl->CreateApplication(st->objProcessDebugManager, &st->objDebugApplication) == S_OK)
+      {
+        if (st->objDebugApplication->lpVtbl->SetName(st->objDebugApplication, L"AkelPad Scripts") == S_OK)
+        {
+          if (st->objProcessDebugManager->lpVtbl->AddApplication(st->objProcessDebugManager, st->objDebugApplication, &dwDebugApplicationCookie) == S_OK)
+          {
+            //Helper
+            if (st->objProcessDebugManager->lpVtbl->CreateDebugDocumentHelper(st->objProcessDebugManager, NULL, &st->objDebugDocumentHelper) == S_OK)
+            {
+              if (st->objDebugDocumentHelper->lpVtbl->Init(st->objDebugDocumentHelper, st->objDebugApplication, st->wszScriptName, st->wszScriptName, TEXT_DOC_ATTR_READONLY) == S_OK)
+              {
+                if (st->objDebugDocumentHelper->lpVtbl->Attach(st->objDebugDocumentHelper, NULL) == S_OK)
+                {
+                  if (st->objDebugDocumentHelper->lpVtbl->SetDocumentAttr(st->objDebugDocumentHelper, TEXT_DOC_ATTR_READONLY) == S_OK)
+                  {
+                    bInitDebugJIT=TRUE;
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    if (!bInitDebugJIT)
+      MessageBoxW(hMainWnd, GetLangStringW(wLangModule, STRID_DEBUG_ERROR), wszPluginTitle, MB_OK|MB_ICONEXCLAMATION);
+  }
 
   if (CoCreateInstance(guidEngine, 0, CLSCTX_INPROC_SERVER, &IID_IActiveScript, (void **)&st->objActiveScript) == S_OK)
   {
@@ -48,25 +97,60 @@ HRESULT ExecScriptText(void *lpScriptThread, GUID *guidEngine, const wchar_t *wp
     {
       if (st->objActiveScriptParse->lpVtbl->InitNew(st->objActiveScriptParse) == S_OK)
       {
-        if (st->objActiveScript->lpVtbl->SetScriptSite(st->objActiveScript, (IActiveScriptSite *)&MyActiveScriptSite) == S_OK)
+        st->MyActiveScriptSite.lpVtbl=&MyIActiveScriptSiteVtbl;
+        st->MyActiveScriptSite.dwCount=1;
+        st->MyActiveScriptSite.lpScriptThread=st;
+        st->MyActiveScriptSiteWindow.lpVtbl=&MyIActiveScriptSiteWindowVtbl;
+        st->MyActiveScriptSiteWindow.dwCount=1;
+        st->MyActiveScriptSiteWindow.lpScriptThread=st;
+        st->MyActiveScriptSiteDebug.lpVtbl=&MyIActiveScriptSiteDebugVtbl;
+        st->MyActiveScriptSiteDebug.dwCount=1;
+        st->MyActiveScriptSiteDebug.lpScriptThread=st;
+
+        if (st->objActiveScript->lpVtbl->SetScriptSite(st->objActiveScript, (IActiveScriptSite *)&st->MyActiveScriptSite) == S_OK)
         {
           if (st->objActiveScript->lpVtbl->AddNamedItem(st->objActiveScript, L"WScript", SCRIPTITEM_ISVISIBLE|SCRIPTITEM_NOCODE) == S_OK &&
               st->objActiveScript->lpVtbl->AddNamedItem(st->objActiveScript, L"AkelPad", SCRIPTITEM_ISVISIBLE|SCRIPTITEM_NOCODE) == S_OK &&
               st->objActiveScript->lpVtbl->AddNamedItem(st->objActiveScript, L"Constants", SCRIPTITEM_GLOBALMEMBERS|SCRIPTITEM_ISVISIBLE|SCRIPTITEM_NOCODE) == S_OK)
           {
-            if (st->objActiveScriptParse->lpVtbl->ParseScriptText(st->objActiveScriptParse, wpScriptText, NULL, NULL, NULL, 0, 0, 0, NULL, NULL) == S_OK)
+            if (bInitDebugJIT)
+            {
+              if (st->objDebugDocumentHelper->lpVtbl->AddUnicodeText(st->objDebugDocumentHelper, st->wpScriptText) == S_OK)
+              {
+                if (st->objDebugDocumentHelper->lpVtbl->DefineScriptBlock(st->objDebugDocumentHelper, 0, (ULONG)st->nScriptTextLen, st->objActiveScript, FALSE, &dwDebugSourceContext) == S_OK)
+                {
+                  st->bInitDebugJIT=TRUE;
+                  if (st->dwDebugJIT & JIT_FROMSTART)
+                    st->objDebugApplication->lpVtbl->CauseBreak(st->objDebugApplication);
+                }
+              }
+            }
+            if (st->objActiveScriptParse->lpVtbl->ParseScriptText(st->objActiveScriptParse, st->wpScriptText, NULL, NULL, NULL, dwDebugSourceContext, 0, st->bInitDebugJIT?SCRIPTTEXT_HOSTMANAGESSOURCE:0, NULL, NULL) == S_OK)
             {
               st->objActiveScript->lpVtbl->SetScriptState(st->objActiveScript, SCRIPTSTATE_CONNECTED);
               nResult=S_OK;
             }
           }
         }
+        st->MyActiveScriptSite.lpVtbl->Release((IActiveScriptSite *)&st->MyActiveScriptSite);
+        st->MyActiveScriptSiteWindow.lpVtbl->Release((IActiveScriptSiteWindow *)&st->MyActiveScriptSiteWindow);
+        st->MyActiveScriptSiteDebug.lpVtbl->Release((IActiveScriptSiteDebug *)&st->MyActiveScriptSiteDebug);
       }
       st->objActiveScriptParse->lpVtbl->Release(st->objActiveScriptParse);
     }
     st->objActiveScript->lpVtbl->Close(st->objActiveScript);
     st->objActiveScript->lpVtbl->Release(st->objActiveScript);
   }
+  if (st->objDebugDocumentHelper)
+  {
+    st->objDebugDocumentHelper->lpVtbl->Detach(st->objDebugDocumentHelper);
+    st->objDebugDocumentHelper->lpVtbl->Release(st->objDebugDocumentHelper);
+  }
+  if (st->objDebugApplication)
+    st->objDebugApplication->lpVtbl->Close(st->objDebugApplication);
+  if (st->objProcessDebugManager)
+    st->objProcessDebugManager->lpVtbl->Release(st->objProcessDebugManager);
+
   if (nCoInit == S_OK)
     CoUninitialize();
 
@@ -153,43 +237,52 @@ LRESULT CALLBACK CBTMessageBoxProc(INT nCode, WPARAM wParam, LPARAM lParam)
   else return CallNextHookEx(hHookMessageBox, nCode, wParam, lParam);
 }
 
-// Initialize ActiveScriptSite object
-void InitIActiveScriptSiteObject(void)
-{
-  MyActiveScriptSite.site.lpVtbl=(IActiveScriptSiteVtbl *)&SiteTable;
-  MyActiveScriptSite.siteWnd.lpVtbl=(IActiveScriptSiteWindowVtbl *)&SiteWindowTable;
-}
-
 
 //// IActiveScriptSite implementation
 
-STDMETHODIMP QueryInterface(IActiveScriptSite *this, REFIID riid, void **ppv)
+HRESULT STDMETHODCALLTYPE QueryInterface(IActiveScriptSite *this, REFIID riid, void **ppv)
 {
+  SCRIPTTHREAD *lpScriptThread;
+
+  if (!ppv) return E_POINTER;
+  *ppv=NULL;
+
   if (AKD_IsEqualIID(riid, &IID_IUnknown) || AKD_IsEqualIID(riid, &IID_IActiveScriptSite))
-    *ppv=this;
-  else if (AKD_IsEqualIID(riid, &IID_IActiveScriptSiteWindow))
-    *ppv=((unsigned char *)this + offsetof(MyRealIActiveScriptSite, siteWnd));
-  else
   {
-    *ppv=0;
-    return(E_NOINTERFACE);
+    *ppv=this;
+    AddRef(*ppv);
   }
-
-  AddRef(this);
-  return(S_OK);
+  else if (AKD_IsEqualIID(riid, &IID_IActiveScriptSiteWindow))
+  {
+    lpScriptThread=(SCRIPTTHREAD *)((IRealActiveScriptSite *)this)->lpScriptThread;
+    *ppv=&lpScriptThread->MyActiveScriptSiteWindow;
+    SiteWindow_AddRef(*ppv);
+  }
+  else if (AKD_IsEqualIID(riid, &IID_IActiveScriptSiteDebug))
+  {
+    lpScriptThread=(SCRIPTTHREAD *)((IRealActiveScriptSite *)this)->lpScriptThread;
+    if (lpScriptThread->dwDebugJIT & JIT_DEBUG)
+    {
+      *ppv=&lpScriptThread->MyActiveScriptSiteDebug;
+      SiteDebug_AddRef(*ppv);
+    }
+  }
+  if (!*ppv)
+    return E_NOINTERFACE;
+  return S_OK;
 }
 
-STDMETHODIMP_(ULONG) AddRef(IActiveScriptSite *this)
+ULONG STDMETHODCALLTYPE AddRef(IActiveScriptSite *this)
 {
-  return(1);
+  return ++((IRealActiveScriptSite *)this)->dwCount;
 }
 
-STDMETHODIMP_(ULONG) Release(IActiveScriptSite *this)
+ULONG STDMETHODCALLTYPE Release(IActiveScriptSite *this)
 {
-  return(1);
+  return --((IRealActiveScriptSite *)this)->dwCount;
 }
 
-STDMETHODIMP GetItemInfo(IActiveScriptSite *this, LPCOLESTR objectName, DWORD dwReturnMask, IUnknown **objPtr, ITypeInfo **typeInfo)
+HRESULT STDMETHODCALLTYPE GetItemInfo(IActiveScriptSite *this, LPCOLESTR objectName, DWORD dwReturnMask, IUnknown **objPtr, ITypeInfo **typeInfo)
 {
   HRESULT hr=E_FAIL;
 
@@ -217,12 +310,12 @@ STDMETHODIMP GetItemInfo(IActiveScriptSite *this, LPCOLESTR objectName, DWORD dw
     if (dwReturnMask & SCRIPTINFO_ITYPEINFO)
       hr=Constants_GetTypeInfo(NULL, 0, 0, typeInfo);
   }
-  return(hr);
+  return hr;
 }
 
-STDMETHODIMP OnScriptError(IActiveScriptSite *this, IActiveScriptError *scriptError)
+HRESULT STDMETHODCALLTYPE OnScriptError(IActiveScriptSite *this, IActiveScriptError *scriptError)
 {
-  SCRIPTTHREAD *lpScriptThread;
+  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealActiveScriptSite *)this)->lpScriptThread;
   wchar_t wszScriptFile[MAX_PATH];
   INCLUDEITEM *lpIncludeItem=NULL;
   DWORD dwIncludeIndex=0;
@@ -230,157 +323,218 @@ STDMETHODIMP OnScriptError(IActiveScriptSite *this, IActiveScriptError *scriptEr
   LONG nChar;
   EXCEPINFO ei;
 
-  if (lpScriptThread=StackGetScriptThreadCurrent())
+  //Get message text
+  xmemset(&ei, 0, sizeof(EXCEPINFO));
+  scriptError->lpVtbl->GetSourcePosition(scriptError, &dwIncludeIndex, &nLine, &nChar);
+  scriptError->lpVtbl->GetExceptionInfo(scriptError, &ei);
+  if (!*wszErrorMsg)
   {
-    //Get message text
-    xmemset(&ei, 0, sizeof(EXCEPINFO));
-    scriptError->lpVtbl->GetSourcePosition(scriptError, &dwIncludeIndex, &nLine, &nChar);
-    scriptError->lpVtbl->GetExceptionInfo(scriptError, &ei);
-    if (!*wszErrorMsg)
+    if (ei.bstrDescription)
+      xstrcpynW(wszErrorMsg, ei.bstrDescription, MAX_PATH);
+  }
+  if (dwIncludeIndex)
+    lpIncludeItem=StackGetInclude(&lpScriptThread->hIncludesStack, dwIncludeIndex);
+  if (lpIncludeItem)
+    xstrcpynW(wszScriptFile, lpIncludeItem->wszInclude, MAX_PATH);
+  else
+    xstrcpynW(wszScriptFile, lpScriptThread->wszScriptFile, MAX_PATH);
+
+  xprintfW(wszBuffer, GetLangStringW(wLangModule, STRID_SCRIPTERROR),
+                      wszScriptFile,
+                      nLine + 1,
+                      nChar + 1,
+                      wszErrorMsg,
+                      ei.scode,
+                      ei.bstrSource?ei.bstrSource:L"");
+
+  wszErrorMsg[0]='\0';
+  SysFreeString(ei.bstrSource);
+  SysFreeString(ei.bstrDescription);
+  SysFreeString(ei.bstrHelpFile);
+
+  //Show message
+  {
+    EDITINFO ei;
+    int nChoice;
+    int nOpenResult;
+
+    nChoice=CBTMessageBox(IsWindowEnabled(hMainWnd)?hMainWnd:NULL, wszBuffer, wszPluginTitle, (lpScriptThread->hDialogCallbackStack.first?MB_YESNOCANCEL:MB_YESNO)|MB_ICONERROR);
+
+    if (nChoice == IDYES || //"Stop"
+        nChoice == IDNO)    //"Edit"
     {
-      if (ei.bstrDescription)
-        xstrcpynW(wszErrorMsg, ei.bstrDescription, MAX_PATH);
-    }
-    if (dwIncludeIndex)
-      lpIncludeItem=StackGetInclude(&lpScriptThread->hIncludesStack, dwIncludeIndex);
-    if (lpIncludeItem)
-      xstrcpynW(wszScriptFile, lpIncludeItem->wszInclude, MAX_PATH);
-    else
-      xstrcpynW(wszScriptFile, lpScriptThread->wszScriptFile, MAX_PATH);
+      lpScriptThread->bStopped=TRUE;
 
-    xprintfW(wszBuffer, GetLangStringW(wLangModule, STRID_SCRIPTERROR),
-                        wszScriptFile,
-                        nLine + 1,
-                        nChar + 1,
-                        wszErrorMsg,
-                        ei.scode,
-                        ei.bstrSource?ei.bstrSource:L"");
+      if (!IsWindowEnabled(hMainWnd))
+        EnableWindow(hMainWnd, TRUE);
 
-    wszErrorMsg[0]='\0';
-    SysFreeString(ei.bstrSource);
-    SysFreeString(ei.bstrDescription);
-    SysFreeString(ei.bstrHelpFile);
+      //Stop script
+      //CloseScriptWindows(lpScriptThread);
+      if (lpScriptThread->dwMessageLoop)
+        PostQuitMessage(0);
+      lpScriptThread->objActiveScript->lpVtbl->Close(lpScriptThread->objActiveScript);
 
-    //Show message
-    {
-      EDITINFO ei;
-      int nChoice;
-      int nOpenResult;
-
-      nChoice=CBTMessageBox(IsWindowEnabled(hMainWnd)?hMainWnd:NULL, wszBuffer, wszPluginTitle, (lpScriptThread->hDialogCallbackStack.first?MB_YESNOCANCEL:MB_YESNO)|MB_ICONERROR);
-
-      if (nChoice == IDYES || //"Stop"
-          nChoice == IDNO)    //"Edit"
+      if (nChoice == IDNO) //"Edit"
       {
-        lpScriptThread->bStopped=TRUE;
+        Document_OpenFile(NULL, wszScriptFile, OD_ADT_BINARY_ERROR|OD_ADT_DETECT_CODEPAGE|OD_ADT_DETECT_BOM, 0, 0, &nOpenResult);
 
-        if (!IsWindowEnabled(hMainWnd))
-          EnableWindow(hMainWnd, TRUE);
-
-        //Stop script
-        //CloseScriptWindows(lpScriptThread);
-        if (lpScriptThread->bMessageLoop)
-          PostQuitMessage(0);
-        lpScriptThread->objActiveScript->lpVtbl->Close(lpScriptThread->objActiveScript);
-
-        if (nChoice == IDNO) //"Edit"
+        if (nOpenResult == EOD_SUCCESS || (nMDI != WMD_SDI && nOpenResult == EOD_WINDOW_EXIST))
         {
-          Document_OpenFile(NULL, wszScriptFile, OD_ADT_BINARY_ERROR|OD_ADT_DETECT_CODEPAGE|OD_ADT_DETECT_BOM, 0, 0, &nOpenResult);
-
-          if (nOpenResult == EOD_SUCCESS || (nMDI != WMD_SDI && nOpenResult == EOD_WINDOW_EXIST))
+          if (SendMessage(hMainWnd, AKD_GETEDITINFO, (WPARAM)NULL, (LPARAM)&ei))
           {
-            if (SendMessage(hMainWnd, AKD_GETEDITINFO, (WPARAM)NULL, (LPARAM)&ei))
-            {
-              CHARRANGE64 cr;
-              int nLockScroll;
+            CHARRANGE64 cr;
+            int nLockScroll;
 
-              if (bAkelEdit)
-              {
-                if ((nLockScroll=(int)SendMessage(ei.hWndEdit, AEM_LOCKSCROLL, (WPARAM)-1, 0)) == -1)
-                  SendMessage(ei.hWndEdit, AEM_LOCKSCROLL, SB_BOTH, TRUE);
-              }
-              nLine=(int)SendMessage(ei.hWndEdit, AEM_GETWRAPLINE, (WPARAM)nLine, (LPARAM)NULL);
-              cr.cpMin=SendMessage(ei.hWndEdit, EM_LINEINDEX, (WPARAM)nLine, 0) + nChar;
-              cr.cpMax=cr.cpMin;
-              SendMessage(ei.hWndEdit, EM_EXSETSEL64, 0, (LPARAM)&cr);
-              if (bAkelEdit && nLockScroll == -1)
-              {
-                SendMessage(ei.hWndEdit, AEM_LOCKSCROLL, SB_BOTH, FALSE);
-                ScrollCaret(ei.hWndEdit);
-              }
+            if (bAkelEdit)
+            {
+              if ((nLockScroll=(int)SendMessage(ei.hWndEdit, AEM_LOCKSCROLL, (WPARAM)-1, 0)) == -1)
+                SendMessage(ei.hWndEdit, AEM_LOCKSCROLL, SB_BOTH, TRUE);
+            }
+            nLine=(int)SendMessage(ei.hWndEdit, AEM_GETWRAPLINE, (WPARAM)nLine, (LPARAM)NULL);
+            cr.cpMin=SendMessage(ei.hWndEdit, EM_LINEINDEX, (WPARAM)nLine, 0) + nChar;
+            cr.cpMax=cr.cpMin;
+            SendMessage(ei.hWndEdit, EM_EXSETSEL64, 0, (LPARAM)&cr);
+            if (bAkelEdit && nLockScroll == -1)
+            {
+              SendMessage(ei.hWndEdit, AEM_LOCKSCROLL, SB_BOTH, FALSE);
+              ScrollCaret(ei.hWndEdit);
             }
           }
         }
-        InvalidateRect(hMainWnd, NULL, FALSE);
       }
-      else if (nChoice == IDCANCEL) //"Continue"
-      {
-      }
+      InvalidateRect(hMainWnd, NULL, FALSE);
+    }
+    else if (nChoice == IDCANCEL) //"Continue"
+    {
     }
   }
-  return(S_OK);
+  return S_OK;
 }
 
-STDMETHODIMP GetLCID(IActiveScriptSite *this, LCID *lcid)
+HRESULT STDMETHODCALLTYPE GetLCID(IActiveScriptSite *this, LCID *lcid)
 {
   *lcid=LOCALE_USER_DEFAULT;
-  return(S_OK);
+  return S_OK;
 }
 
-STDMETHODIMP GetDocVersionString(IActiveScriptSite *this, BSTR *version)
+HRESULT STDMETHODCALLTYPE GetDocVersionString(IActiveScriptSite *this, BSTR *version)
 {
   *version=0;
-  return(S_OK);
+  return S_OK;
 }
 
-STDMETHODIMP OnScriptTerminate(IActiveScriptSite *this, const VARIANT *pvr, const EXCEPINFO *pei)
+HRESULT STDMETHODCALLTYPE OnScriptTerminate(IActiveScriptSite *this, const VARIANT *pvr, const EXCEPINFO *pei)
 {
-  return(S_OK);
+  return S_OK;
 }
 
-STDMETHODIMP OnStateChange(IActiveScriptSite *this, SCRIPTSTATE state)
+HRESULT STDMETHODCALLTYPE OnStateChange(IActiveScriptSite *this, SCRIPTSTATE state)
 {
-  return(S_OK);
+  return S_OK;
 }
 
-STDMETHODIMP OnEnterScript(IActiveScriptSite *this)
+HRESULT STDMETHODCALLTYPE OnEnterScript(IActiveScriptSite *this)
 {
-  return(S_OK);
+  return S_OK;
 }
 
-STDMETHODIMP OnLeaveScript(IActiveScriptSite *this)
+HRESULT STDMETHODCALLTYPE OnLeaveScript(IActiveScriptSite *this)
 {
-  return(S_OK);
+  return S_OK;
 }
 
 
 //// IActiveScriptSiteWindow implementation
 
-STDMETHODIMP siteWnd_QueryInterface(IActiveScriptSiteWindow *this, REFIID riid, void **ppv)
+HRESULT STDMETHODCALLTYPE SiteWindow_QueryInterface(IActiveScriptSiteWindow *this, REFIID riid, void **ppv)
 {
-  this=(IActiveScriptSiteWindow *)(((unsigned char *)this - offsetof(MyRealIActiveScriptSite, siteWnd)));
-  return(QueryInterface((IActiveScriptSite *)this, riid, ppv));
+  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealActiveScriptSiteWindow *)this)->lpScriptThread;
+
+  return QueryInterface((IActiveScriptSite *)&lpScriptThread->MyActiveScriptSite, riid, ppv);
 }
 
-STDMETHODIMP_(ULONG) siteWnd_AddRef(IActiveScriptSiteWindow *this)
+ULONG STDMETHODCALLTYPE SiteWindow_AddRef(IActiveScriptSiteWindow *this)
 {
-  this=(IActiveScriptSiteWindow *)(((unsigned char *)this - offsetof(MyRealIActiveScriptSite, siteWnd)));
-  return(AddRef((IActiveScriptSite *)this));
+  return ++((IRealActiveScriptSiteWindow *)this)->dwCount;
 }
 
-STDMETHODIMP_(ULONG) siteWnd_Release(IActiveScriptSiteWindow *this)
+ULONG STDMETHODCALLTYPE SiteWindow_Release(IActiveScriptSiteWindow *this)
 {
-  this=(IActiveScriptSiteWindow *)(((unsigned char *)this - offsetof(MyRealIActiveScriptSite, siteWnd)));
-  return(Release((IActiveScriptSite *)this));
+  return --((IRealActiveScriptSiteWindow *)this)->dwCount;
 }
 
-STDMETHODIMP GetSiteWindow(IActiveScriptSiteWindow *this, HWND *phwnd)
+HRESULT STDMETHODCALLTYPE GetSiteWindow(IActiveScriptSiteWindow *this, HWND *phwnd)
 {
   *phwnd=hMainWnd;
-  return(S_OK);
+  return S_OK;
 }
 
-STDMETHODIMP EnableModeless(IActiveScriptSiteWindow *this, BOOL enable)
+HRESULT STDMETHODCALLTYPE EnableModeless(IActiveScriptSiteWindow *this, BOOL enable)
 {
-  return(S_OK);
+  return S_OK;
+}
+
+
+//// IActiveScriptSiteDebug implementation
+
+HRESULT STDMETHODCALLTYPE SiteDebug_QueryInterface(IActiveScriptSiteDebug *this, REFIID riid, void **ppv)
+{
+  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealActiveScriptSiteDebug *)this)->lpScriptThread;
+
+  return QueryInterface((IActiveScriptSite *)&lpScriptThread->MyActiveScriptSite, riid, ppv);
+}
+
+ULONG STDMETHODCALLTYPE SiteDebug_AddRef(IActiveScriptSiteDebug *this)
+{
+  return ++((IRealActiveScriptSiteDebug *)this)->dwCount;
+}
+
+ULONG STDMETHODCALLTYPE SiteDebug_Release(IActiveScriptSiteDebug *this)
+{
+  return --((IRealActiveScriptSiteDebug *)this)->dwCount;
+}
+
+HRESULT STDMETHODCALLTYPE SiteDebug_GetDocumentContextFromPosition(IActiveScriptSiteDebug *this, MYDWORD_PTR dwSourceContext, ULONG uCharacterOffset, ULONG uNumChars, IDebugDocumentContext **ppsc)
+{
+  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealActiveScriptSiteDebug *)this)->lpScriptThread;
+  ULONG ulStartPos=0;
+  HRESULT hr;
+
+  if (!ppsc) return E_POINTER;
+  *ppsc=NULL;
+
+  if (lpScriptThread->objDebugDocumentHelper)
+  {
+    if ((hr=lpScriptThread->objDebugDocumentHelper->lpVtbl->GetScriptBlockInfo(lpScriptThread->objDebugDocumentHelper, dwSourceContext, NULL, &ulStartPos, NULL)) == S_OK)
+      hr=lpScriptThread->objDebugDocumentHelper->lpVtbl->CreateDebugDocumentContext(lpScriptThread->objDebugDocumentHelper, ulStartPos + uCharacterOffset, uNumChars, ppsc);
+  }
+  else hr=E_NOTIMPL;
+
+  return hr;
+}
+
+HRESULT STDMETHODCALLTYPE SiteDebug_GetApplication(IActiveScriptSiteDebug *this, IDebugApplication **ppda)
+{
+  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealActiveScriptSiteDebug *)this)->lpScriptThread;
+
+  if (!ppda) return E_POINTER;
+  *ppda=lpScriptThread->objDebugApplication;
+  return S_OK;
+}
+
+HRESULT STDMETHODCALLTYPE SiteDebug_GetRootApplicationNode(IActiveScriptSiteDebug *this, IDebugApplicationNode **ppdanRoot)
+{
+  SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealActiveScriptSiteDebug *)this)->lpScriptThread;
+
+  if (!ppdanRoot) return E_POINTER;
+  return lpScriptThread->objDebugDocumentHelper->lpVtbl->GetDebugApplicationNode(lpScriptThread->objDebugDocumentHelper, ppdanRoot);
+}
+
+HRESULT STDMETHODCALLTYPE SiteDebug_OnScriptErrorDebug(IActiveScriptSiteDebug *this, IActiveScriptErrorDebug *pErrorDebug, BOOL *pfEnterDebugger, BOOL *pfCallOnScriptErrorWhenContinuing)
+{
+  if (pfEnterDebugger)
+    *pfEnterDebugger=TRUE;
+  if (pfCallOnScriptErrorWhenContinuing)
+    *pfCallOnScriptErrorWhenContinuing=TRUE;
+  return S_OK;
 }

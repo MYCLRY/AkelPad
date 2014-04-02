@@ -1,5 +1,5 @@
 *****************************************************************
-***                 Scripts AkelPad plugin v13.1              ***
+***                 Scripts AkelPad plugin v14.3              ***
 *****************************************************************
 
 2014 Shengalts Aleksander aka Instructor (Shengalts@mail.ru)
@@ -128,6 +128,7 @@ AkelPad.MemCopy                              +ActiveX
 AkelPad.MemRead                              +ActiveX
 AkelPad.MemStrPtr                            +ActiveX
 AkelPad.MemFree                              +ActiveX
+AkelPad.DebugJIT                             +ActiveX
 AkelPad.Debug                                +ActiveX
 AkelPad.VarType                              +ActiveX
 AkelPad.GetArgLine
@@ -681,7 +682,7 @@ Arguments
   nSelStart
     Selection first char index.
   nSelEnd
-    Selection last char index.
+    Selection last char index. If -1, uses document last char index.
   nFlags
     0x001  //AESELT_COLUMNON              Make column selection ON.
     0x002  //AESELT_COLUMNASIS            Leave column selection as is.
@@ -731,7 +732,7 @@ Arguments
   nRangeStart
     Range first char index.
   nRangeEnd
-    Range last char index.
+    Range last char index. If -1, uses document last char index.
   nNewLine (only for AkelPad 4.x.x)
     0    //New line without changing.
     1    //"\r" new line (default).
@@ -1153,7 +1154,8 @@ Return Value
  -16  //EOD_STREAMIN         Error in EM_STREAMIN.
  -17  //EOD_DOCUMENTS_LIMIT  Documents limit reached in MDI mode.
  -20  //EOD_MSGNO            File is skipped.
- -21  //EOD_MSGCANCEL        User press cancel.
+ -21  //EOD_MSGCANCELCREATE  User press cancel in message "Create new file?".
+ -22  //EOD_MSGCANCELBINARY  User press cancel in message "Binary file. Continue?".
 
 Example:
   var bResult=AkelPad.OpenFile("C:\\MyFile.txt");
@@ -1325,7 +1327,7 @@ Arguments
 Remarks
   If lpCallback and nArgCount arguments specified, pFunction is ignored.
   Using lpCallback and nArgCount arguments is the only way to make RegisterCallback work in VBScript and ActiveX.
-  The maximum number of working callback functions at the same time is 4.
+  The maximum number of working callback functions at the same time is 30.
 
 Return Value
   Object. Pointer on function.
@@ -1565,6 +1567,17 @@ Return Value
 
 Example:
   See MemAlloc example.
+
+
+AkelPad.DebugJIT
+________________
+
+Breakpoint. Causes break into the debugger.
+
+  DebugJIT();
+
+Return Value
+  Zero.
 
 
 AkelPad.Debug
@@ -2152,7 +2165,13 @@ ________________________
 
 Process thread messages (message loop).
 
-  WindowGetMessage();
+  WindowGetMessage([nFlags]);
+
+Arguments
+  nFlags
+    0x1  //WGM_ENABLE    Set in any case.
+    0x2  //WGM_NOKEYSEND Don't send key messages to dialog from children windows
+                         (WM_KEYUP, WM_CHAR, WM_DEADCHAR, WM_SYSKEYDOWN, WM_SYSKEYUP, WM_SYSCHAR, WM_SYSDEADCHAR, WM_UNICHAR).
 
 Return Value
   Zero.
@@ -2307,7 +2326,7 @@ Return Value
   Number. Hook handle.
 
 Remarks
-  The maximum number of installed hooks at the same time is 4.
+  The maximum number of installed hooks at the same time is 30.
 
 Example:
   var hMainWnd=AkelPad.GetMainWnd();

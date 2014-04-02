@@ -1,5 +1,5 @@
 *****************************************************************
-***               LineBoard AkelPad plugin v11.1              ***
+***               LineBoard AkelPad plugin v11.6              ***
 *****************************************************************
 
 2014 Shengalts Aleksander aka Instructor (Shengalts@mail.ru)
@@ -87,13 +87,17 @@ Call("LineBoard::Main", 4, *BOOL)
 Call("LineBoard::Main", 11, WINDOW, DOCUMENT, *RECT)
   Parameters:
     11
-      Get board rectangle.
+      Get rectangle outside panels.
     WINDOW
       Edit window handle.
     DOCUMENT
       Edit document handle.
     *RECT
-      Pointer to a memory, that receives board rectangle.
+      Pointer to a memory, that receives rectangle outside panels.
+        RECT.left - width line panel.
+        RECT.top - ruler height.
+        RECT.right - right boundary of the edit window client area.
+        RECT.bottom - bottom boundary of the edit window client area.
   Example:
     WScript.Echo(GetBoardWidth(AkelPad.GetEditWnd(), 0));
 
@@ -105,7 +109,7 @@ Call("LineBoard::Main", 11, WINDOW, DOCUMENT, *RECT)
       if (lpRect=AkelPad.MemAlloc(16 /*sizeof(RECT)*/))
       {
         AkelPad.CallW("LineBoard::Main", 11, hWndEdit, hDocEdit, lpRect);
-        nWidth=AkelPad.MemRead(lpRect + 8 /*offsetof(RECT, right)*/, 3 /*DT_DWORD*/);
+        nWidth=AkelPad.MemRead(lpRect + 0 /*offsetof(RECT, left)*/, 3 /*DT_DWORD*/);
         AkelPad.MemFree(lpRect);
       }
       return nWidth;

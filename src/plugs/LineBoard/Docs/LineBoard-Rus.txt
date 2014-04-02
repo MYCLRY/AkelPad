@@ -1,5 +1,5 @@
 *****************************************************************
-***               LineBoard AkelPad plugin v11.1              ***
+***               LineBoard AkelPad plugin v11.6              ***
 *****************************************************************
 
 2014 Шенгальц Александр aka Instructor (Shengalts@mail.ru)
@@ -87,13 +87,17 @@ Call("LineBoard::Main", 4, *BOOL)
 Call("LineBoard::Main", 11, WINDOW, DOCUMENT, *RECT)
   Параметры:
     11
-      Получить прямоугольник панели.
+      Получить прямоугольник вне панелей.
     WINDOW
       Дескриптор окна редактирования.
     DOCUMENT
       Дескриптор документа.
     *RECT
-      Указатель на память, который получает прямоугольник панели.
+      Указатель на память, который получает прямоугольник вне панелей.
+        RECT.left - ширина панели строк.
+        RECT.top - высота линейки.
+        RECT.right - правая граница клиентской области окна редактирования.
+        RECT.bottom - нижняя граница клиентской области окна редактирования.
   Пример:
     WScript.Echo(GetBoardWidth(AkelPad.GetEditWnd(), 0));
 
@@ -105,7 +109,7 @@ Call("LineBoard::Main", 11, WINDOW, DOCUMENT, *RECT)
       if (lpRect=AkelPad.MemAlloc(16 /*sizeof(RECT)*/))
       {
         AkelPad.CallW("LineBoard::Main", 11, hWndEdit, hDocEdit, lpRect);
-        nWidth=AkelPad.MemRead(lpRect + 8 /*offsetof(RECT, right)*/, 3 /*DT_DWORD*/);
+        nWidth=AkelPad.MemRead(lpRect + 0 /*offsetof(RECT, left)*/, 3 /*DT_DWORD*/);
         AkelPad.MemFree(lpRect);
       }
       return nWidth;

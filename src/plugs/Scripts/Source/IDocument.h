@@ -39,6 +39,10 @@
 #define WSC_EDITPROC     2
 #define WSC_FRAMEPROC    3
 
+//Document_WindowGetMessage flags
+#define WGM_ENABLE    0x1
+#define WGM_NOKEYSEND 0x2
+
 //Document_ScriptNoMutex type
 #define ULT_UNLOCKSCRIPTSQUEUE   0x1
 #define ULT_UNLOCKPROGRAMTHREAD  0x2
@@ -240,6 +244,7 @@ HRESULT STDMETHODCALLTYPE Document_MemCopy(IDocument *this, INT_PTR nPointer, VA
 HRESULT STDMETHODCALLTYPE Document_MemRead(IDocument *this, INT_PTR nPointer, DWORD dwType, int nDataLen, VARIANT *vtData);
 HRESULT STDMETHODCALLTYPE Document_MemStrPtr(IDocument *this, BSTR wpString, INT_PTR *nPointer);
 HRESULT STDMETHODCALLTYPE Document_MemFree(IDocument *this, INT_PTR nPointer);
+HRESULT STDMETHODCALLTYPE Document_DebugJIT(IDocument *this);
 HRESULT STDMETHODCALLTYPE Document_Debug(IDocument *this, DWORD dwDebug, DWORD *dwResult);
 HRESULT STDMETHODCALLTYPE Document_VarType(IDocument *this, VARIANT vtData, int *nType);
 HRESULT STDMETHODCALLTYPE Document_GetArgLine(IDocument *this, BOOL bNoEncloseQuotes, BSTR *wpArgLine);
@@ -248,11 +253,12 @@ HRESULT STDMETHODCALLTYPE Document_WindowRegisterClass(IDocument *this, BSTR wpC
 HRESULT STDMETHODCALLTYPE Document_WindowUnregisterClass(IDocument *this, BSTR wpClassName, BOOL *bResult);
 HRESULT STDMETHODCALLTYPE Document_WindowRegisterDialog(IDocument *this, HWND hDlg, BOOL *bResult);
 HRESULT STDMETHODCALLTYPE Document_WindowUnregisterDialog(IDocument *this, HWND hDlg, BOOL *bResult);
-HRESULT STDMETHODCALLTYPE Document_WindowGetMessage(IDocument *this);
+HRESULT STDMETHODCALLTYPE Document_WindowGetMessage(IDocument *this, DWORD dwFlags);
 HRESULT STDMETHODCALLTYPE Document_WindowSubClass(IDocument *this, HWND hWnd, IDispatch *objFunction, SAFEARRAY **psa, INT_PTR *lpCallbackItem);
 HRESULT STDMETHODCALLTYPE Document_WindowNextProc(IDocument *this, INT_PTR *lpCallbackItem, HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, LRESULT *lResult);
 HRESULT STDMETHODCALLTYPE Document_WindowNoNextProc(IDocument *this, INT_PTR *lpCallbackItem);
 HRESULT STDMETHODCALLTYPE Document_WindowUnsubClass(IDocument *this, HWND hWnd);
+HRESULT WindowUnsubClass(void *lpScriptThread, HWND hWnd);
 HRESULT STDMETHODCALLTYPE Document_ThreadHook(IDocument *this, int idHook, IDispatch *objFunction, DWORD dwThreadId, HHOOK *hHook);
 HRESULT STDMETHODCALLTYPE Document_ThreadUnhook(IDocument *this, HHOOK hHook, BOOL *bResult);
 HRESULT STDMETHODCALLTYPE Document_ScriptNoMutex(IDocument *this, DWORD dwUnlockType, DWORD *dwResult);
@@ -272,22 +278,53 @@ void StackDeleteMessage(MSGINTSTACK *hStack, MSGINT *lpMessage);
 void StackFreeMessages(MSGINTSTACK *hStack);
 void StackFillMessages(MSGINTSTACK *hStack, SAFEARRAY *psa);
 CALLBACKITEM* StackInsertCallback(CALLBACKSTACK *hStack);
-CALLBACKITEM* StackGetCallbackByHandle(CALLBACKSTACK *hStack, HANDLE hHandle);
+int StackGetCallbackCount(CALLBACKSTACK *hStack, int nCallbackType);
+CALLBACKITEM* StackGetCallbackByHandle(CALLBACKSTACK *hStack, HANDLE hHandle, void *lpScriptThread);
 CALLBACKITEM* StackGetCallbackByObject(CALLBACKSTACK *hStack, IDispatch *objFunction);
 CALLBACKITEM* StackGetCallbackByIndex(CALLBACKSTACK *hStack, int nIndex);
 void StackDeleteCallback(CALLBACKSTACK *hStack, CALLBACKITEM *lpElement);
 void StackFreeCallbacks(CALLBACKSTACK *hStack);
 LRESULT CALLBACK DialogCallbackProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 LRESULT CALLBACK SubclassCallbackProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+BOOL CALLBACK SubclassCallbackCall(CALLBACKITEM *lpCallback, HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, LRESULT *lResult);
 LRESULT CALLBACK SubclassMainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+BOOL CALLBACK SubclassMainCall(CALLBACKITEM *lpCallback, HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, LRESULT *lResult);
 LRESULT CALLBACK SubclassEditProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+BOOL CALLBACK SubclassEditCall(CALLBACKITEM *lpCallback, HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, LRESULT *lResult);
 LRESULT CALLBACK SubclassFrameProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+BOOL CALLBACK SubclassFrameCall(CALLBACKITEM *lpCallback, HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, LRESULT *lResult);
 LRESULT CALLBACK SubclassSend(CALLBACKITEM *lpCallback, HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
-LRESULT CALLBACK Hook1CallbackProc(int nCode, WPARAM wParam, LPARAM lParam);
-LRESULT CALLBACK Hook2CallbackProc(int nCode, WPARAM wParam, LPARAM lParam);
-LRESULT CALLBACK Hook3CallbackProc(int nCode, WPARAM wParam, LPARAM lParam);
-LRESULT CALLBACK Hook4CallbackProc(int nCode, WPARAM wParam, LPARAM lParam);
-LRESULT CALLBACK HookCommonCallbackProc(CALLBACKITEM *lpCallback, int nCode, WPARAM wParam, LPARAM lParam);
+LRESULT CALLBACK HookCallback1Proc(int nCode, WPARAM wParam, LPARAM lParam);
+LRESULT CALLBACK HookCallback2Proc(int nCode, WPARAM wParam, LPARAM lParam);
+LRESULT CALLBACK HookCallback3Proc(int nCode, WPARAM wParam, LPARAM lParam);
+LRESULT CALLBACK HookCallback4Proc(int nCode, WPARAM wParam, LPARAM lParam);
+LRESULT CALLBACK HookCallback5Proc(int nCode, WPARAM wParam, LPARAM lParam);
+LRESULT CALLBACK HookCallback6Proc(int nCode, WPARAM wParam, LPARAM lParam);
+LRESULT CALLBACK HookCallback7Proc(int nCode, WPARAM wParam, LPARAM lParam);
+LRESULT CALLBACK HookCallback8Proc(int nCode, WPARAM wParam, LPARAM lParam);
+LRESULT CALLBACK HookCallback9Proc(int nCode, WPARAM wParam, LPARAM lParam);
+LRESULT CALLBACK HookCallback10Proc(int nCode, WPARAM wParam, LPARAM lParam);
+LRESULT CALLBACK HookCallback11Proc(int nCode, WPARAM wParam, LPARAM lParam);
+LRESULT CALLBACK HookCallback12Proc(int nCode, WPARAM wParam, LPARAM lParam);
+LRESULT CALLBACK HookCallback13Proc(int nCode, WPARAM wParam, LPARAM lParam);
+LRESULT CALLBACK HookCallback14Proc(int nCode, WPARAM wParam, LPARAM lParam);
+LRESULT CALLBACK HookCallback15Proc(int nCode, WPARAM wParam, LPARAM lParam);
+LRESULT CALLBACK HookCallback16Proc(int nCode, WPARAM wParam, LPARAM lParam);
+LRESULT CALLBACK HookCallback17Proc(int nCode, WPARAM wParam, LPARAM lParam);
+LRESULT CALLBACK HookCallback18Proc(int nCode, WPARAM wParam, LPARAM lParam);
+LRESULT CALLBACK HookCallback19Proc(int nCode, WPARAM wParam, LPARAM lParam);
+LRESULT CALLBACK HookCallback20Proc(int nCode, WPARAM wParam, LPARAM lParam);
+LRESULT CALLBACK HookCallback21Proc(int nCode, WPARAM wParam, LPARAM lParam);
+LRESULT CALLBACK HookCallback22Proc(int nCode, WPARAM wParam, LPARAM lParam);
+LRESULT CALLBACK HookCallback23Proc(int nCode, WPARAM wParam, LPARAM lParam);
+LRESULT CALLBACK HookCallback24Proc(int nCode, WPARAM wParam, LPARAM lParam);
+LRESULT CALLBACK HookCallback25Proc(int nCode, WPARAM wParam, LPARAM lParam);
+LRESULT CALLBACK HookCallback26Proc(int nCode, WPARAM wParam, LPARAM lParam);
+LRESULT CALLBACK HookCallback27Proc(int nCode, WPARAM wParam, LPARAM lParam);
+LRESULT CALLBACK HookCallback28Proc(int nCode, WPARAM wParam, LPARAM lParam);
+LRESULT CALLBACK HookCallback29Proc(int nCode, WPARAM wParam, LPARAM lParam);
+LRESULT CALLBACK HookCallback30Proc(int nCode, WPARAM wParam, LPARAM lParam);
+LRESULT CALLBACK HookCallbackCommonProc(int nCallbackIndex, int nCode, WPARAM wParam, LPARAM lParam);
 HWND CreateScriptsThreadDummyWindow();
 LRESULT CALLBACK ScriptsThreadProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 HRESULT CallScriptProc(IDispatch *objFunction, HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, LRESULT *lResult);

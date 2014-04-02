@@ -243,7 +243,7 @@ static void CALLCONV ParseRule(LPCWSTR pFile, BOOL bFile)
 		if(hFile == INVALID_HANDLE_VALUE)
 			return;
 		fc.hFile = hFile;
-		fc.dwBytesMax=(UINT_PTR)-1;
+		fc.dwMax=(UINT_PTR)-1;
 		fc.nCodePage=dc.nCodePage;
 		fc.bBOM=dc.bBOM;
 		fc.wpContent=NULL;

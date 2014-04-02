@@ -8,6 +8,7 @@
 #include "x64Func.h"
 #include "WideFunc.h"
 #include "AkelEdit.h"
+#include "RegExpFunc.h"
 #include "AkelDLL.h"
 #include "Coder.h"
 #include "HighLight.h"
@@ -32,6 +33,7 @@
 #include "StackFunc.h"
 
 //Include string functions
+#define WideCharUpper
 #define WideCharLower
 #define xmemcmp
 #define xmemcpy
@@ -110,6 +112,8 @@
 #include "AkelEdit.h"
 //*/
 
+//Include RegExp functions
+#include "RegExpFunc.h"
 
 //// Global variables
 wchar_t wszBuffer[BUFFER_SIZE];
@@ -3377,11 +3381,38 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                   //Add to stack
                   if (lpSkipInfo=StackInsertSkipInfo(&lpSyntaxFile->hSkipStack))
                   {
+                    if (dwFlags & FIF_REGEXPEND)
+                    {
+                      lpSkipInfo->sregEnd.dwOptions=REO_MULTILINE|(dwFlags & FIF_MATCHCASE?REO_MATCHCASE:0);
+                      if (nSkipEndLen && !PatCompile(&lpSkipInfo->sregEnd, wpSkipEnd, wpSkipEnd + nSkipEndLen))
+                      {
+                        lpSkipInfo->sregEnd.first->dwFlags&=~REGF_ROOTANY;
+                        if (lpSkipInfo->sregEnd.first->nGroupLen == -1)
+                        {
+                          xprintfW(wszMessage, GetLangStringW(wLangModule, STRID_REGEXP_FIXEDLENGTH), lpSyntaxFile->wszSyntaxFileName, nSkipEndLen, wpSkipEnd);
+                          MessageBoxW(hMainWnd, wszMessage, wszPluginTitle, MB_OK|MB_ICONEXCLAMATION);
+                          PatFree(&lpSkipInfo->sregEnd);
+                          goto FreeSkip;
+                        }
+                      }
+                      else
+                      {
+                        xprintfW(wszMessage, GetLangStringW(wLangModule, STRID_REGEXP_COMPILEERROR), lpSyntaxFile->wszSyntaxFileName, nSkipEndLen, wpSkipEnd);
+                        MessageBoxW(hMainWnd, wszMessage, wszPluginTitle, MB_OK|MB_ICONEXCLAMATION);
+                        goto FreeSkip;
+                      }
+                    }
                     lpSkipInfo->dwFlags=dwFlags;
-                    lpSkipInfo->lpSkipStart=StackInsertSkipStart(&lpSyntaxFile->hSkipStartStack, lpSkipInfo, wpSkipStart, nSkipStartLen);
+                    if (!(lpSkipInfo->lpSkipStart=StackInsertSkipStart(&lpSyntaxFile->hSkipStartStack, lpSkipInfo, wpSkipStart, nSkipStartLen)))
+                      goto FreeSkip;
                     lpSkipInfo->wpSkipEnd=wpSkipEnd;
                     lpSkipInfo->nSkipEndLen=nSkipEndLen;
                     lpSkipInfo->wchEscape=wchEscape;
+                    break;
+
+                    FreeSkip:
+                    StackDelete((stack **)&lpSyntaxFile->hSkipStack.first, (stack **)&lpSyntaxFile->hSkipStack.last, (stack *)lpSkipInfo);
+                    lpSkipInfo=NULL;
                   }
                   break;
                 }
@@ -3497,22 +3528,56 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                           dwFlags|=FIF_XMLNAMED_ONETAG;
                       }
                     }
+                    if (dwFlags & FIF_REGEXPEND)
+                    {
+                      lpFoldInfo->sregEnd.dwOptions=REO_MULTILINE|(dwFlags & FIF_MATCHCASE?REO_MATCHCASE:0);
+                      if (nFoldEndLen && !PatCompile(&lpFoldInfo->sregEnd, wpFoldEnd, wpFoldEnd + nFoldEndLen))
+                      {
+                        lpFoldInfo->sregEnd.first->dwFlags&=~REGF_ROOTANY;
+                        lpFoldInfo->nFoldEndPointLen=(int)lpFoldInfo->sregEnd.first->nGroupLen;
+                        if (lpFoldInfo->nFoldEndPointLen == -1)
+                        {
+                          xprintfW(wszMessage, GetLangStringW(wLangModule, STRID_REGEXP_FIXEDLENGTH), lpSyntaxFile->wszSyntaxFileName, nFoldEndLen, wpFoldEnd);
+                          MessageBoxW(hMainWnd, wszMessage, wszPluginTitle, MB_OK|MB_ICONEXCLAMATION);
+                          PatFree(&lpFoldInfo->sregEnd);
+                          goto FreeFold;
+                        }
+                      }
+                      else
+                      {
+                        xprintfW(wszMessage, GetLangStringW(wLangModule, STRID_REGEXP_COMPILEERROR), lpSyntaxFile->wszSyntaxFileName, nFoldEndLen, wpFoldEnd);
+                        MessageBoxW(hMainWnd, wszMessage, wszPluginTitle, MB_OK|MB_ICONEXCLAMATION);
+                        goto FreeFold;
+                      }
+                    }
                     lpFoldInfo->dwFlags=dwFlags;
-                    lpFoldInfo->lpFoldStart=StackInsertFoldStart(&lpSyntaxFile->hFoldStartStack, lpFoldInfo, wpFoldStart, nFoldStartLen);
+                    if (!(lpFoldInfo->lpFoldStart=StackInsertFoldStart(&lpSyntaxFile->hFoldStartStack, lpFoldInfo, wpFoldStart, nFoldStartLen)))
+                      goto FreeFold;
                     lpFoldInfo->wpFoldEnd=wpFoldEnd;
                     lpFoldInfo->nFoldEndLen=nFoldEndLen;
+                    if (!lpFoldInfo->nFoldEndPointLen)
+                      lpFoldInfo->nFoldEndPointLen=nFoldEndLen;
                     lpFoldInfo->wpDelimiters=wpFoldDelimiters;
                     lpFoldInfo->dwFontStyle=dwFontStyle;
                     lpFoldInfo->dwColor1=dwColor1;
                     lpFoldInfo->dwColor2=dwColor2;
 
-                    if (lpSyntaxFile->hFoldStack.nCommonFirstChar != -1)
+                    if (dwFlags & FIF_REGEXPSTART)
+                      lpSyntaxFile->hFoldStack.nCommonFirstChar=-1;
+                    else if (lpSyntaxFile->hFoldStack.nCommonFirstChar != -1)
                     {
                       if (!lpSyntaxFile->hFoldStack.nCommonFirstChar)
                         lpSyntaxFile->hFoldStack.nCommonFirstChar=*wpFoldStart;
                       else if ((wchar_t)lpSyntaxFile->hFoldStack.nCommonFirstChar != *lpFoldInfo->lpFoldStart->wpFoldStart)
                         lpSyntaxFile->hFoldStack.nCommonFirstChar=-1;
                     }
+                    if (!(dwFlags & FIF_NOLISTFOLD))
+                      lpSyntaxFile->hFoldStack.bVisible=TRUE;
+                    break;
+
+                    FreeFold:
+                    StackDelete((stack **)&lpSyntaxFile->hFoldStack.first, (stack **)&lpSyntaxFile->hFoldStack.last, (stack *)lpFoldInfo);
+                    lpFoldInfo=NULL;
                   }
                   break;
                 }
@@ -4070,7 +4135,10 @@ VARTHEME* StackInsertVarTheme(STACKVARTHEME *hStack, int nIndex)
 {
   VARTHEME *lpElement=NULL;
 
-  StackInsertIndex((stack **)&hStack->first, (stack **)&hStack->last, (stack **)&lpElement, nIndex, sizeof(VARTHEME));
+  if (!StackInsertIndex((stack **)&hStack->first, (stack **)&hStack->last, (stack **)&lpElement, nIndex, sizeof(VARTHEME)))
+  {
+    lpElement->hVarStack.lpVarThemeOwner=lpElement;
+  }
   return lpElement;
 }
 
@@ -4500,7 +4568,7 @@ int GetWord(wchar_t *wpText, wchar_t *wszWord, int nWordLenMax, wchar_t **wpNext
       if (!lpVarStack || !(lpVarInfo=StackGetVarByName(lpVarStack, wpText + 2, (int)(wpCount - (wpText + 2)))))
       {
         ++wpCount;
-        xprintfW(wszMessage, GetLangStringW(wLangModule, STRID_VARMISSING), lpLoadSyntaxFile?lpLoadSyntaxFile->wszSyntaxFileName:L"", wpCount - wpText, wpText);
+        xprintfW(wszMessage, GetLangStringW(wLangModule, STRID_VARMISSING), lpLoadSyntaxFile?lpLoadSyntaxFile->wszSyntaxFileName:L"", wpCount - wpText, wpText, ((VARTHEME *)lpVarStack->lpVarThemeOwner)->wszVarThemeName);
         MessageBoxW(hMainWnd, wszMessage, wszPluginTitle, MB_OK|MB_ICONEXCLAMATION);
         bSyntaxFileLoadError=TRUE;
         wpText=wpCount;
@@ -4554,7 +4622,7 @@ INT_PTR ExpandVars(const wchar_t *wpString, INT_PTR nStringLen, wchar_t *wszBuff
       else
       {
         ++wpVarCount;
-        xprintfW(wszMessage, GetLangStringW(wLangModule, STRID_VARMISSING), lpLoadSyntaxFile?lpLoadSyntaxFile->wszSyntaxFileName:L"", wpVarCount - wpSource, wpSource);
+        xprintfW(wszMessage, GetLangStringW(wLangModule, STRID_VARMISSING), lpLoadSyntaxFile?lpLoadSyntaxFile->wszSyntaxFileName:L"", wpVarCount - wpSource, wpSource, ((VARTHEME *)lpVarStack->lpVarThemeOwner)->wszVarThemeName);
         MessageBoxW(hMainWnd, wszMessage, wszPluginTitle, MB_OK|MB_ICONEXCLAMATION);
         bSyntaxFileLoadError=TRUE;
         wpSource=wpVarCount;
@@ -5457,7 +5525,11 @@ const wchar_t* GetLangStringW(LANGID wLangID, int nStringID)
     if (nStringID == STRID_DELETEPROMPT)
       return L"\x0412\x044B\x0020\x0443\x0432\x0435\x0440\x0435\x043D\x044B\x002C\x0020\x0447\x0442\x043E\x0020\x0445\x043E\x0442\x0438\x0442\x0435\x0020\x0443\x0434\x0430\x043B\x0438\x0442\x044C\x0020\x0442\x0435\x043C\x0443 \"%s\"?";
     if (nStringID == STRID_VARMISSING)
-      return L"\"%s\" \x0441\x043E\x0434\x0435\x0440\x0436\x0438\x0442\x0020\x043D\x0435\x0438\x0437\x0432\x0435\x0441\x0442\x043D\x0443\x044E\x0020\x043F\x0435\x0440\x0435\x043C\x0435\x043D\x043D\x0443\x044E \"%.%ds\"";
+      return L"\"%s\" \x0441\x043E\x0434\x0435\x0440\x0436\x0438\x0442\x0020\x043D\x0435\x0438\x0437\x0432\x0435\x0441\x0442\x043D\x0443\x044E\x0020\x043F\x0435\x0440\x0435\x043C\x0435\x043D\x043D\x0443\x044E \"%.%ds\", \x043A\x043E\x0442\x043E\x0440\x0430\x044F\x0020\x043E\x0442\x0441\x0443\x0442\x0441\x0442\x0432\x0443\x0435\x0442\x0020\x0432\x0020\x0430\x043A\x0442\x0438\x0432\x043D\x043E\x0439\x0020\x0442\x0435\x043C\x0435 \"%s\".";
+    if (nStringID == STRID_REGEXP_COMPILEERROR)
+      return L"\"%s\" \x0441\x043E\x0434\x0435\x0440\x0436\x0438\x0442\x0020\x043E\x0448\x0438\x0431\x043A\x0443\x0020\x0432\x0020\x0440\x0435\x0433\x0443\x043B\x044F\x0440\x043D\x043E\x043C\x0020\x0432\x044B\x0440\x0430\x0436\x0435\x043D\x0438\x0438 \"%.%ds\"";
+    if (nStringID == STRID_REGEXP_FIXEDLENGTH)
+      return L"\"%s\" \x0441\x043E\x0434\x0435\x0440\x0436\x0438\x0442\x0020\x0440\x0435\x0433\x0443\x043B\x044F\x0440\x043D\x043E\x0435\x0020\x0432\x044B\x0440\x0430\x0436\x0435\x043D\x0438\x0435\x0020\x043D\x0435\x0020\x0444\x0438\x043A\x0441\x0438\x0440\x043E\x0432\x0430\x043D\x043D\x043E\x0439\x0020\x0434\x043B\x0438\x043D\x044B \"%.%ds\"";
     if (nStringID == STRID_UNKNOWNSYNTAXFILE)
       return L"\x041D\x0435\x0020\x0443\x0434\x0430\x0435\x0442\x0441\x044F\x0020\x0430\x0441\x0441\x043E\x0446\x0438\x0438\x0440\x043E\x0432\x0430\x0442\x044C\x0020\x0442\x0435\x043C\x0443 \"%s\" \x0441\x0020\x0444\x0430\x0439\x043B\x043E\x043C \"%s\": \x043D\x0435\x0438\x0437\x0432\x0435\x0441\x0442\x043D\x044B\x0439\x0020\x0441\x0438\x043D\x0442\x0430\x043A\x0441\x0438\x0447\x0435\x0441\x043A\x0438\x0439\x0020\x0444\x0430\x0439\x043B.";
     if (nStringID == STRID_UNKNOWNVARTHEME)
@@ -5661,7 +5733,11 @@ const wchar_t* GetLangStringW(LANGID wLangID, int nStringID)
     if (nStringID == STRID_DELETEPROMPT)
       return L"Are you sure you want to delete \"%s\" theme?";
     if (nStringID == STRID_VARMISSING)
-      return L"\"%s\" contain unknown variable \"%.%ds\"";
+      return L"\"%s\" contain unknown variable \"%.%ds\" that doesn't exist in current theme \"%s\".";
+    if (nStringID == STRID_REGEXP_COMPILEERROR)
+      return L"\"%s\" contain non valid regular expression \"%.%ds\"";
+    if (nStringID == STRID_REGEXP_FIXEDLENGTH)
+      return L"\"%s\" contain non fixed length regular expression \"%.%ds\"";
     if (nStringID == STRID_UNKNOWNSYNTAXFILE)
       return L"Can't link \"%s\" theme to \"%s\" file: unknown syntax file.";
     if (nStringID == STRID_UNKNOWNVARTHEME)

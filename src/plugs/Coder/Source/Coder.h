@@ -39,8 +39,10 @@
 #define STRID_OVERWRITEPROMPT       75
 #define STRID_DELETEPROMPT          76
 #define STRID_VARMISSING            77
-#define STRID_UNKNOWNSYNTAXFILE     78
-#define STRID_UNKNOWNVARTHEME       79
+#define STRID_REGEXP_COMPILEERROR   78
+#define STRID_REGEXP_FIXEDLENGTH    79
+#define STRID_UNKNOWNSYNTAXFILE     80
+#define STRID_UNKNOWNVARTHEME       81
 
 #define DLLA_CODER_SETEXTENSION     1
 #define DLLA_CODER_CLEARCACHE       2
@@ -249,6 +251,7 @@ typedef struct {
   INT_PTR first;
   INT_PTR last;
   int nCommonFirstChar;
+  BOOL bVisible;
 } STACKFOLD;
 
 typedef struct _VARINFO {
@@ -263,6 +266,7 @@ typedef struct _VARINFO {
 typedef struct {
   VARINFO *first;
   VARINFO *last;
+  void *lpVarThemeOwner;
 } STACKVAR;
 
 typedef struct _VARTHEME {
@@ -448,7 +452,9 @@ void UninitMain();
 
 extern char szBuffer[BUFFER_SIZE];
 extern wchar_t wszBuffer[BUFFER_SIZE];
+extern wchar_t wszMessage[MAX_PATH];
 extern wchar_t wszPluginName[MAX_PATH];
+extern wchar_t wszPluginTitle[MAX_PATH];
 extern HINSTANCE hInstanceDLL;
 extern HWND hMainWnd;
 extern HWND hWndEdit;
@@ -470,6 +476,7 @@ extern BOOL bSaveCache;
 extern HSTACK hSyntaxFilesStack;
 extern HSTACK hManualStack;
 extern STACKVARTHEME hVarThemesStack;
+extern SYNTAXFILE *lpLoadSyntaxFile;
 extern VARTHEME *lpVarThemeActive;
 extern WNDPROCDATA *NewMainProcData;
 extern WNDPROCDATA *NewFrameProcData;

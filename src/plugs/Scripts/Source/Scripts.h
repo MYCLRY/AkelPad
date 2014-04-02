@@ -34,30 +34,33 @@
 #define STRID_EXECUTE_ERROR         3
 #define STRID_ENGINE_ERROR          4
 #define STRID_READFILE_ERROR        5
-#define STRID_SCRIPTERROR           6
-#define STRID_STOP                  7
-#define STRID_CONTINUE              8
-#define STRID_DEBUG                 9
-#define STRID_CODE                  10
-#define STRID_DEBUG_MEMLOCATE       11
-#define STRID_DEBUG_MEMREAD         12
-#define STRID_DEBUG_MEMWRITE        13
-#define STRID_DEBUG_MEMFREE         14
-#define STRID_DEBUG_MEMLEAK         15
-#define STRID_DEBUG_SYSCALLDLL      16
-#define STRID_DEBUG_SYSCALLFUNCTION 17
-#define STRID_SCRIPT                18
-#define STRID_HOTKEY                19
-#define STRID_STATUS                20
-#define STRID_RUNNING               21
-#define STRID_WAITING               22
-#define STRID_EXEC                  23
-#define STRID_EDIT                  24
-#define STRID_ASSIGN                25
-#define STRID_PLUGIN                26
-#define STRID_OK                    27
-#define STRID_CANCEL                28
-#define STRID_CLOSE                 29
+#define STRID_DEBUG_ERROR           6
+#define STRID_SCRIPTERROR           7
+#define STRID_STOP                  8
+#define STRID_CONTINUE              9
+#define STRID_DEBUG                 10
+#define STRID_JIT                   11
+#define STRID_FROMSTART             12
+#define STRID_CODE                  13
+#define STRID_DEBUG_MEMLOCATE       14
+#define STRID_DEBUG_MEMREAD         15
+#define STRID_DEBUG_MEMWRITE        16
+#define STRID_DEBUG_MEMFREE         17
+#define STRID_DEBUG_MEMLEAK         18
+#define STRID_DEBUG_SYSCALLDLL      19
+#define STRID_DEBUG_SYSCALLFUNCTION 20
+#define STRID_SCRIPT                21
+#define STRID_HOTKEY                22
+#define STRID_STATUS                23
+#define STRID_RUNNING               24
+#define STRID_WAITING               25
+#define STRID_EXEC                  26
+#define STRID_EDIT                  27
+#define STRID_ASSIGN                28
+#define STRID_PLUGIN                29
+#define STRID_OK                    30
+#define STRID_CANCEL                31
+#define STRID_CLOSE                 32
 
 #define OF_RECT        0x1
 #define OF_LASTSCRIPT  0x2
@@ -69,6 +72,10 @@
 #define LVI_SCRIPT_STATUS       2
 
 #define BUFFER_SIZE             1024
+
+#define JIT_NONE        0x0
+#define JIT_DEBUG       0x1
+#define JIT_FROMSTART   0x2
 
 typedef struct {
   wchar_t *wpScript;
@@ -106,22 +113,32 @@ typedef struct _SCRIPTTHREAD {
   DWORD dwThreadID;
   IActiveScript *objActiveScript;
   IActiveScriptParse *objActiveScriptParse;
+  IProcessDebugManager *objProcessDebugManager;
+  IDebugApplication *objDebugApplication;
+  IDebugDocumentHelper *objDebugDocumentHelper;
+  IRealActiveScriptSite MyActiveScriptSite;
+  IRealActiveScriptSiteWindow MyActiveScriptSiteWindow;
+  IRealActiveScriptSiteDebug MyActiveScriptSiteDebug;
   wchar_t wszScriptName[MAX_PATH];
   wchar_t wszScriptFile[MAX_PATH];
   wchar_t wszScriptInclude[MAX_PATH];
   HARGSTACK hArgStack;
   wchar_t *wszArguments;
   int nArgumentsLen;
+  const wchar_t *wpScriptText;
+  INT_PTR nScriptTextLen;
 
   //IDocument
   CALLBACKSTACK hDialogCallbackStack;
   HWND hWndScriptsThreadDummy;
-  BOOL bMessageLoop;
+  DWORD dwMessageLoop;
   BOOL bBusy;
 
   INCLUDESTACK hIncludesStack;
   POINTERSTACK hPointersStack;
   DWORD dwDebug;
+  DWORD dwDebugJIT;
+  BOOL bInitDebugJIT;
   BOOL bStopped;
 
   HWND hWndPluginEdit;
@@ -169,9 +186,11 @@ extern wchar_t wszAkelPadDir[MAX_PATH];
 extern wchar_t wszErrorMsg[BUFFER_SIZE];
 extern HTHREADSTACK hThreadStack;
 extern SCRIPTTHREAD *lpScriptThreadActiveX;
+extern BOOL bGlobalDebugJITEnable;
 
 //Functions prototypes
-BOOL CALLBACK MainDlgProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+BOOL CALLBACK MainDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
+LRESULT CALLBACK NewFilterProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 BOOL RegisterHotkey(wchar_t *wszScriptName, WORD wHotkey);
 void FillScriptList(HWND hWnd, const wchar_t *wpFilter);
 
