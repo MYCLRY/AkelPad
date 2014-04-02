@@ -21244,8 +21244,8 @@ void AE_NotifySelChanging(AKELEDIT *ae, DWORD dwType)
     sc.hdr.idFrom=ae->nEditCtrlID;
     sc.hdr.code=AEN_SELCHANGING;
     sc.hdr.docFrom=(AEHDOC)ae;
-    sc.crSel.ciMin=ae->ciSelStartIndex;
-    sc.crSel.ciMax=ae->ciSelEndIndex;
+    sc.aes.crSel.ciMin=ae->ciSelStartIndex;
+    sc.aes.crSel.ciMax=ae->ciSelEndIndex;
     sc.ciCaret=ae->ciCaretIndex;
     sc.dwType=dwType;
     sc.bColumnSel=ae->bColumnSel;
@@ -21266,8 +21266,8 @@ void AE_NotifySelChanged(AKELEDIT *ae)
     sc.hdr.idFrom=ae->nEditCtrlID;
     sc.hdr.code=AEN_SELCHANGED;
     sc.hdr.docFrom=(AEHDOC)ae;
-    sc.crSel.ciMin=ae->ciSelStartIndex;
-    sc.crSel.ciMax=ae->ciSelEndIndex;
+    sc.aes.crSel.ciMin=ae->ciSelStartIndex;
+    sc.aes.crSel.ciMax=ae->ciSelEndIndex;
     sc.ciCaret=ae->ciCaretIndex;
     sc.dwType=ae->dwNotifySelChange;
     sc.bColumnSel=ae->bColumnSel;
@@ -21318,8 +21318,8 @@ void AE_NotifyTextChanging(AKELEDIT *ae, DWORD dwType)
     tc.hdr.idFrom=ae->nEditCtrlID;
     tc.hdr.code=AEN_TEXTCHANGING;
     tc.hdr.docFrom=(AEHDOC)ae;
-    tc.crSel.ciMin=ae->ciSelStartIndex;
-    tc.crSel.ciMax=ae->ciSelEndIndex;
+    tc.aes.crSel.ciMin=ae->ciSelStartIndex;
+    tc.aes.crSel.ciMax=ae->ciSelEndIndex;
     tc.ciCaret=ae->ciCaretIndex;
     tc.dwType=ae->dwNotifyTextChange;
     tc.bColumnSel=ae->bColumnSel;
@@ -21342,8 +21342,8 @@ void AE_NotifyTextChanged(AKELEDIT *ae)
     tc.hdr.idFrom=ae->nEditCtrlID;
     tc.hdr.code=AEN_TEXTCHANGED;
     tc.hdr.docFrom=(AEHDOC)ae;
-    tc.crSel.ciMin=ae->ciSelStartIndex;
-    tc.crSel.ciMax=ae->ciSelEndIndex;
+    tc.aes.crSel.ciMin=ae->ciSelStartIndex;
+    tc.aes.crSel.ciMax=ae->ciSelEndIndex;
     tc.ciCaret=ae->ciCaretIndex;
     tc.dwType=ae->dwNotifyTextChange;
     tc.bColumnSel=ae->bColumnSel;

@@ -1353,7 +1353,7 @@ typedef struct {
 
 typedef struct {
   AENMHDR hdr;
-  AECHARRANGE crSel;     //Current selection.
+  AESELECTION aes;     //Current selection.
   AECHARINDEX ciCaret;   //Caret character index position.
   DWORD dwType;          //See AESCT_* defines.
   BOOL bColumnSel;       //Column selection.
@@ -1362,7 +1362,7 @@ typedef struct {
 
 typedef struct {
   AENMHDR hdr;
-  AECHARRANGE crSel;     //Current selection.
+  AESELECTION aes;     //Current selection.
   AECHARINDEX ciCaret;   //Caret character index position.
   DWORD dwType;          //See AETCT_* defines.
   BOOL bColumnSel;       //Column selection.
@@ -1371,7 +1371,7 @@ typedef struct {
 
 typedef struct {
   AENMHDR hdr;
-  AECHARRANGE crSel;       //Reserved.
+  AESELECTION aes;       //Reserved.
   AECHARINDEX ciCaret;     //Reserved.
   DWORD dwType;            //See AETCT_* defines.
   const wchar_t *wpText;   //Text to insert.
@@ -1385,7 +1385,7 @@ typedef struct {
 
 typedef struct {
   AENMHDR hdr;
-  AECHARRANGE crSel;       //Reserved.
+  AESELECTION aes;       //Reserved.
   AECHARINDEX ciCaret;     //Reserved.
   DWORD dwType;            //See AETCT_* defines.
   BOOL bColumnSel;         //Column selection.
