@@ -8,7 +8,7 @@
   #define MAKE_IDENTIFIER(a, b, c, d)  ((DWORD)MAKELONG(MAKEWORD(a, b), MAKEWORD(c, d)))
 #endif
 
-#define AKELDLL MAKE_IDENTIFIER(1, 9, 1, 0)
+#define AKELDLL MAKE_IDENTIFIER(2, 0, 0, 1)
 
 
 //// Defines
@@ -90,6 +90,7 @@
 #define OD_ADT_NOMESSAGES        ADT_NOMESSAGES       //See ADT_NOMESSAGES.
 #define OD_REOPEN                0x00000100           //Don't create new MDI window, use the exited one.
 #define OD_NOSCROLL              0x00000200           //Don't restore scroll position.
+#define OD_MULTIFILE             0x00000400           //More documents is on queue. Use MB_YESNOCANCEL instead of MB_OKCANCEL.
 
 //Open document errors
 #define EOD_SUCCESS              0          //Success.
@@ -212,6 +213,8 @@
 //Execution
 #define MI_ONSTART                   90   //Return: TRUE - execution is between AKDN_MAIN_ONSTART and AKDN_MAIN_ONSTART_FINISH, FALSE - elsewhere.
 #define MI_ONFINISH                  91   //Return: see MOF_* defines.
+#define MI_AKELEXEA                  95   //Return: copied chars. (char *)lParam - buffer that receives AkelPad executable string.
+#define MI_AKELEXEW                  96   //Return: copied chars. (wchar_t *)lParam - buffer that receives AkelPad executable string.
 //Compile
 #define MI_X64                       101  //Return: TRUE - x64 version, FALSE - x86 version.
 #define MI_AKELEDITSTATICBUILD       102  //Return: TRUE - AkelEdit is compiled statically, FALSE - AkelEdit is compiled as standalone library.
@@ -224,6 +227,7 @@
 #define MI_STATUSUSERFORMAT          112  //Return: copied chars. (wchar_t *)lParam - buffer that receives "StatusUserFormat" string.
 #define MI_WORDBREAKCUSTOM           117  //Return: "WordBreak" flags.
 #define MI_PAINTOPTIONS              121  //Return: "PaintOptions" flags, see PAINT_* defines.
+#define MI_EDITSTYLE                 122  //Return: "EditStyle" flags, see EDS_* defines.
 #define MI_RICHEDITCLASS             125  //Return: "RichEditClass" type.
 #define MI_AKELADMINRESIDENT         126  //Return: AkelAdmin.exe resident - TRUE or unloaded immediately after execution - FALSE.
 #define MI_DATELOGFORMAT             129  //Return: copied chars. (wchar_t *)lParam - buffer that receives "DateLogFormat" string.
@@ -239,7 +243,7 @@
 #define MI_WATCHFILE                 147  //Return: watch file change (on\off).
 #define MI_SAVETIME                  148  //Return: save original file time (on\off).
 #define MI_SINGLEOPENFILE            152  //Return: single open file (on\off).
-#define MI_SINGLEOPENPROGRAM         153  //Return: single open program (on\off).
+#define MI_SINGLEOPENPROGRAM         153  //Return: single open program flags, see SOP_* defines.
 #define MI_TABOPTIONSMDI             157  //Return: tab flags, see TAB_* defines.
 //Settings dialog
 #define MI_EXECUTECOMMAND            171  //Return: copied chars. (wchar_t *)lParam - buffer that receives execution command string.
@@ -294,6 +298,7 @@
 #define MIS_STATUSUSERFORMAT          112  //(wchar_t *)lParam - "StatusUserFormat" string.
 #define MIS_WORDBREAKCUSTOM           117  //(DWORD)lParam - "WordBreak" flags. Changes are applied for a new edit windows.
 #define MIS_PAINTOPTIONS              121  //(DWORD)lParam - "PaintOptions" flags, see PAINT_* defines. Changes are applied for a new edit windows.
+#define MIS_EDITSTYLE                 122  //(DWORD)lParam - "EditStyle" flags, see EDS_* defines. Changes are applied for a new edit windows.
 #define MIS_RICHEDITCLASS             125  //(BOOL)lParam - "RichEditClass" type. Changes are applied for a new edit windows.
 #define MIS_AKELADMINRESIDENT         126  //(BOOL)lParam - AkelAdmin.exe resident - TRUE or unloaded immediately after execution - FALSE.
 #define MIS_DATELOGFORMAT             129  //(wchar_t *)lParam - "DateLogFormat" string.
@@ -309,7 +314,7 @@
 #define MIS_WATCHFILE                 147  //(BOOL)lParam - watch file change (on\off).
 #define MIS_SAVETIME                  148  //(BOOL)lParam - save original file time (on\off).
 #define MIS_SINGLEOPENFILE            152  //(BOOL)lParam - single open file (on\off).
-#define MIS_SINGLEOPENPROGRAM         153  //(BOOL)lParam - single open program (on\off).
+#define MIS_SINGLEOPENPROGRAM         153  //(DWORD)lParam - single open program flags, see SOP_* defines.
 #define MIS_TABOPTIONSMDI             157  //(DWORD)lParam - tab flags, see TAB_* defines.
 //Settings dialog
 #define MIS_EXECUTECOMMAND            171  //(wchar_t *)lParam - execution command string.
@@ -481,6 +486,12 @@
 #define PAINT_STATICEDGE            0x00000200  //Draw thin edit window border.
 #define PAINT_NOEDGE                0x00000400  //Draw no edit window border.
 
+//Edit styles
+#define EDS_GLOBALUNDO              0x00000001  //Use process heap for Undo/Redo instead of window heap. Required for AEM_DETACHUNDO and AEM_ATTACHUNDO.
+                                                //Compatibility: define same as ES_SUNKEN.
+#define EDS_HEAPSERIALIZE           0x00000002  //Mutual exclusion will be used when the heap functions allocate and free memory from window heap. Serialization of heap access allows two or more threads to simultaneously allocate and free memory from the same heap.
+                                                //Compatibility: define same as ES_SAVESEL.
+
 //Status bar position type
 #define SPT_COLUMN      0x00000001  //"Line:Column". By default: "Line:Symbol".
 #define SPT_LINEWRAP    0x00000002  //Wrap line numbers. By default: Non-wrap line numbers.
@@ -499,6 +510,10 @@
 #define SBP_NEWLINE    3
 #define SBP_CODEPAGE   4
 #define SBP_USER       5
+
+//"Don't open a program twice" flags
+#define SOP_ON       0x00000001  //"Don't open a program twice" is on.
+#define SOP_SAMEEXE  0x00000002  //"Don't open a program twice" only if AkelPad executable is the same.
 
 //Tab options MDI
 #define TAB_VIEW_NONE           0x00000001  //Hide tab bar.
@@ -657,6 +672,9 @@
 #define FRF_DOWN               0x00000001  //Same as AEFR_DOWN.
 #define FRF_WHOLEWORD          0x00000002  //Same as AEFR_WHOLEWORD.
 #define FRF_MATCHCASE          0x00000004  //Same as AEFR_MATCHCASE.
+#define FRF_WHOLEWORDGOODSTART 0x00000010  //Internal.
+#define FRF_WHOLEWORDGOODEND   0x00000020  //Internal.
+#define FRF_FINDFROMREPLACE    0x00000040  //Internal.
 #define FRF_REGEXPNONEWLINEDOT 0x00040000  //Symbol . specifies any character except new line. Uses with FRF_REGEXP.
 #define FRF_REGEXP             0x00080000  //Same as AEFR_REGEXP.
 #define FRF_UP                 0x00100000
@@ -668,9 +686,7 @@
 #define FRF_CHECKINSELIFSEL    0x04000000
 #define FRF_CYCLESEARCH        0x08000000
 #define FRF_CYCLESEARCHPROMPT  0x10000000
-#define FRF_FINDFROMREPLACE    0x20000000
-#define FRF_WHOLEWORDGOODSTART 0x40000000
-#define FRF_WHOLEWORDGOODEND   0x80000000
+#define FRF_REPLACEALLNOMSG    0x20000000
 
 //AKD_PASTE
 #define PASTE_ANSI       0x00000001  //Paste text as ANSI. Default is paste as Unicode text, if no Unicode text available ANSI text will be used.
@@ -792,7 +808,7 @@ typedef struct {
     AECHARINDEX ciMax;
   } AECHARRANGE;
 
-  typedef struct _AECOLORS {
+  typedef struct {
     DWORD dwFlags;
     COLORREF crCaret;
     COLORREF crBasicText;
@@ -975,10 +991,12 @@ typedef struct {
 
 typedef struct {
   HANDLE hFile;          //File handle, returned by CreateFile function.
-  UINT_PTR dwBytesMax;   //Maximum bytes to read, if -1 read entire file.
+  UINT_PTR dwMax;        //AKD_READFILECONTENT: maximum bytes to read, if -1 read entire file.
+                         //AKD_WRITEFILECONTENT: wpContent length in characters. If this value is -1, the wpContent is assumed to be null-terminated and the length is calculated automatically.
   int nCodePage;         //File codepage.
   BOOL bBOM;             //File BOM.
-  wchar_t *wpContent;    //Returned file contents.
+  wchar_t *wpContent;    //AKD_READFILECONTENT: returned file contents.
+                         //AKD_WRITEFILECONTENT: text to save.
 } FILECONTENT;
 
 typedef struct {
@@ -1476,6 +1494,7 @@ typedef struct {
   DWORD dwPrintFlags;
   WORD nFromPage;
   WORD nToPage;
+  WORD nCopies;
 
   //PAGESETUPDLG
   DWORD dwPageFlags;
@@ -1662,55 +1681,55 @@ typedef struct {
                                               //Return Value: zero.
                                               //
 #define IDM_EDIT_INSERT_TAB             4164  //Insert tabulation.
-                                              //Return Value: zero.
+                                              //Return Value: TRUE - success, FALSE - failed.
                                               //
 #define IDM_EDIT_INSERT_TAB_MENU        4165  //Insert tabulation only if several lines selected.
-                                              //Return Value: zero.
+                                              //Return Value: TRUE - success, FALSE - failed.
                                               //
 #define IDM_EDIT_DELETE_TAB             4166  //Delete tabulation.
-                                              //Return Value: zero.
+                                              //Return Value: TRUE - success, FALSE - failed.
                                               //
 #define IDM_EDIT_DELETE_TAB_MENU        4167  //Delete tabulation only if several lines selected.
-                                              //Return Value: zero.
+                                              //Return Value: TRUE - success, FALSE - failed.
                                               //
 #define IDM_EDIT_INSERT_SPACE           4168  //Insert space.
-                                              //Return Value: zero.
+                                              //Return Value: TRUE - success, FALSE - failed.
                                               //
 #define IDM_EDIT_INSERT_SPACE_MENU      4169  //Insert space only if several lines selected.
-                                              //Return Value: zero.
+                                              //Return Value: TRUE - success, FALSE - failed.
                                               //
 #define IDM_EDIT_DELETE_SPACE           4170  //Delete space.
-                                              //Return Value: zero.
+                                              //Return Value: TRUE - success, FALSE - failed.
                                               //
 #define IDM_EDIT_DELETE_SPACE_MENU      4171  //Delete space only if several lines selected.
-                                              //Return Value: zero.
+                                              //Return Value: TRUE - success, FALSE - failed..
                                               //
 #define IDM_EDIT_DELETE_FIRST_CHAR      4172  //Delete first char.
-                                              //Return Value: zero.
+                                              //Return Value: TRUE - success, FALSE - failed.
                                               //
 #define IDM_EDIT_DELETE_FIRST_CHAR_MENU 4173  //Delete first char only if selection not empty.
-                                              //Return Value: zero.
+                                              //Return Value: TRUE - success, FALSE - failed.
                                               //
 #define IDM_EDIT_DELETE_TRAILING_WHITESPACES 4174  //Delete trailing whitespaces.
-                                                   //Return Value: zero.
+                                                   //Return Value: TRUE - success, FALSE - failed.
                                                    //
 #define IDM_EDIT_UPPERCASE              4175  //Convert text to UPPERCASE.
-                                              //Return Value: zero.
+                                              //Return Value: TRUE - success, FALSE - failed.
                                               //
 #define IDM_EDIT_LOWERCASE              4176  //Convert text to lowercase.
-                                              //Return Value: zero.
+                                              //Return Value: TRUE - success, FALSE - failed.
                                               //
 #define IDM_EDIT_SENTENCECASE           4177  //Convert text to Sentence case.
-                                              //Return Value: zero.
+                                              //Return Value: TRUE - success, FALSE - failed.
                                               //
 #define IDM_EDIT_TITLECASE              4178  //Convert text to Title Case.
-                                              //Return Value: zero.
+                                              //Return Value: TRUE - success, FALSE - failed.
                                               //
 #define IDM_EDIT_INVERTCASE             4179  //Convert text to iNVERT cASE.
-                                              //Return Value: zero.
+                                              //Return Value: TRUE - success, FALSE - failed.
                                               //
 #define IDM_EDIT_LOOPCASE               4180  //Cycle case.
-                                              //Return Value: zero.
+                                              //Return Value: TRUE - success, FALSE - failed.
                                               //
 #define IDM_EDIT_RECODE                 4182  //Recode dialog.
                                               //Return Value: zero.
@@ -1737,6 +1756,9 @@ typedef struct {
                                               //Return Value: TRUE - success, FALSE - failed.
                                               //
 #define IDM_EDIT_PASTEAFTER             4193  //Paste text after caret.
+                                              //Return Value: TRUE - success, FALSE - failed.
+                                              //
+#define IDM_EDIT_DELETESELWHITESPACES   4195  //Delete all whitespaces in selection.
                                               //Return Value: TRUE - success, FALSE - failed.
                                               //
 #define IDM_EDIT_AUTOINDENT             4196  //Insert new line with keeping left spaces.
@@ -2005,6 +2027,7 @@ typedef struct {
 #define AKD_PARSECMDLINEW          (WM_USER + 125)
 
 //Text retrieval and modification
+#define AKD_WRITEFILECONTENT       (WM_USER + 141)
 #define AKD_DETECTANSITEXT         (WM_USER + 146)
 #define AKD_DETECTUNITEXT          (WM_USER + 147)
 #define AKD_CONVERTANSITEXT        (WM_USER + 148)
@@ -2091,10 +2114,10 @@ typedef struct {
 #define AKD_FRAMEAPPLYEDIT         (WM_USER + 272)
 
 //Thread
-#define AKD_GLOBALALLOC            (WM_USER + 281)
-#define AKD_GLOBALLOCK             (WM_USER + 282)
-#define AKD_GLOBALUNLOCK           (WM_USER + 283)
-#define AKD_GLOBALFREE             (WM_USER + 284)
+#define AKD_MEMCREATE              (WM_USER + 281)
+#define AKD_MEMMAP                 (WM_USER + 282)
+#define AKD_MEMUNMAP               (WM_USER + 283)
+#define AKD_MEMCLOSE               (WM_USER + 284)
 #define AKD_STRLENA                (WM_USER + 285)
 #define AKD_STRLENW                (WM_USER + 286)
 #define AKD_CREATEWINDOW           (WM_USER + 287)
@@ -2150,7 +2173,7 @@ typedef struct {
 #define AKD_INISETVALUEW           (WM_USER + 359)
 #define AKD_INICLOSE               (WM_USER + 360)
 
-//Regular expressions. Requires for include "RegExpFunc.h".
+//Regular expressions. Requires include of "RegExpFunc.h".
 #define AKD_PATEXEC                (WM_USER + 391)
 #define AKD_PATREPLACE             (WM_USER + 392)
 #define AKD_PATGROUPSTR            (WM_USER + 393)
@@ -2842,7 +2865,7 @@ Example (bOldWindows == TRUE):
      //Read contents
      if ((fc.hFile=CreateFileA(df.pFile, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, NULL)) != INVALID_HANDLE_VALUE)
      {
-       fc.dwBytesMax=(UINT_PTR)-1;
+       fc.dwMax=(UINT_PTR)-1;
        fc.nCodePage=df.nCodePage;
        fc.bBOM=df.bBOM;
        if (nResult=SendMessage(hMainWnd, AKD_READFILECONTENT, 0, (LPARAM)&fc))
@@ -2890,7 +2913,7 @@ Example (bOldWindows == FALSE):
      //Read contents
      if ((fc.hFile=CreateFileW(df.pFile, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, NULL)) != INVALID_HANDLE_VALUE)
      {
-       fc.dwBytesMax=(UINT_PTR)-1;
+       fc.dwMax=(UINT_PTR)-1;
        fc.nCodePage=df.nCodePage;
        fc.bBOM=df.bBOM;
        if (nResult=SendMessage(hMainWnd, AKD_READFILECONTENT, 0, (LPARAM)&fc))
@@ -2917,6 +2940,58 @@ Example (bOldWindows == FALSE):
      SendMessage(hMainWnd, AKD_FREETEXT, 0, (LPARAM)wpContent);
    }
  }
+
+
+AKD_WRITEFILECONTENT
+____________________
+
+Write file contents.
+
+lParam                == not used.
+(FILECONTENT *)lParam == pointer to a FILECONTENT structure.
+
+Return Value
+ See ESD_* defines.
+
+Example (bOldWindows == TRUE):
+ int WriteFileContentA(const char *pFile, wchar_t *wpContent, INT_PTR nContentLen, int nCodePage, BOOL bBOM)
+ {
+   FILECONTENT fc;
+   int nResult=0;
+
+   if ((fc.hFile=CreateFileA(pFile, GENERIC_WRITE, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL)) != INVALID_HANDLE_VALUE)
+   {
+     fc.wpContent=wpContent;
+     fc.dwMax=nContentLen;
+     fc.nCodePage=nCodePage;
+     fc.bBOM=bBOM;
+     nResult=SendMessage(hMainWnd, AKD_WRITEFILECONTENT, 0, (LPARAM)&fc);
+     CloseHandle(fc.hFile);
+   }
+   return nResult;
+ }
+ //Call WriteFileContentA function
+ WriteFileContentA("C:\\MyFile.txt", L"123", -1, 65001, TRUE);
+
+Example (bOldWindows == FALSE):
+ int WriteFileContentW(const wchar_t *wpFile, wchar_t *wpContent, INT_PTR nContentLen, int nCodePage, BOOL bBOM)
+ {
+   FILECONTENT fc;
+   int nResult=0;
+
+   if ((fc.hFile=CreateFileW(wpFile, GENERIC_WRITE, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL)) != INVALID_HANDLE_VALUE)
+   {
+     fc.wpContent=wpContent;
+     fc.dwMax=nContentLen;
+     fc.nCodePage=nCodePage;
+     fc.bBOM=bBOM;
+     nResult=SendMessage(hMainWnd, AKD_WRITEFILECONTENT, 0, (LPARAM)&fc);
+     CloseHandle(fc.hFile);
+   }
+   return nResult;
+ }
+ //Call WriteFileContentW function
+ WriteFileContentW(L"C:\\MyFile.txt", L"123", -1, 65001, TRUE);
 
 
 AKD_OPENDOCUMENT, AKD_OPENDOCUMENTA, AKD_OPENDOCUMENTW
@@ -3024,7 +3099,7 @@ Return Value
 
 Example:
  wchar_t *wpText;
- INT_PTR nTextLen=0;
+ int nTextLen=0;
 
  wpText=(wchar_t *)SendMessage(pd->hMainWnd, AKD_GETSELTEXTW, (WPARAM)pd->hWndEdit, (LPARAM)&nTextLen);
  SendMessage(pd->hMainWnd, AKD_FREETEXT, 0, (LPARAM)wpText);
@@ -3842,64 +3917,101 @@ Example:
  See AKD_FRAMEINIT example.
 
 
-AKD_GLOBALALLOC
-_______________
+AKD_MEMCREATE
+_____________
 
-Allocates the specified number of bytes from the heap (see description for GlobalAlloc in MSDN).
+Creates or opens a named memory object.
 
-(DWORD)wParam == memory allocation attributes.
-(DWORD)lParam == number of bytes to allocate.
+(const char *)wParam == memory object name (see description for CreateFileMapping in MSDN).
+(DWORD)lParam        == number of bytes to allocate. If zero, then open already created memory object.
 
 Return Value
- Handle to the newly allocated memory object.
+ Handle to the memory object.
 
-Example:
- HGLOBAL hMem=(HGLOBAL)SendMessage(pd->hMainWnd, AKD_GLOBALALLOC, GPTR, 128);
+Example (get executable file of specified AkelPad window):
+ wchar_t szExeFile[MAX_PATH];
+
+ GetAkelPadExe(hWndRemote, pd->hMainWnd, szExeFile, MAX_PATH);
+
+ int GetAkelPadExe(HWND hWndRemote, HWND hWndLocal, wchar_t *szExeFile, int nExeFileMax)
+ {
+   HANDLE hMemRemote;
+   HANDLE hMemLocal;
+   wchar_t *wszMemRemote;
+   wchar_t *wszMemLocal;
+   DWORD dwMemSize=nExeFileMax * sizeof(wchar_t);
+   int nResult=0;
+
+   if (hMemRemote=(HANDLE)SendMessage(hWndRemote, AKD_MEMCREATE, (WPARAM)"Global\\AkelPad", dwMemSize))
+   {
+     if (wszMemRemote=(wchar_t *)SendMessage(hWndRemote, AKD_MEMMAP, (WPARAM)hMemRemote, dwMemSize))
+     {
+       SendMessage(hWndRemote, AKD_GETMAININFO, MI_AKELEXEW, (WPARAM)wszMemRemote);
+
+       //Read data from other process
+       if (hMemLocal=(HANDLE)SendMessage(hWndLocal, AKD_MEMCREATE, (WPARAM)"Global\\AkelPad", 0))
+       {
+         if (wszMemLocal=(wchar_t *)SendMessage(hWndLocal, AKD_MEMMAP, (WPARAM)hMemLocal, dwMemSize))
+         {
+           lstrcpynW(szExeFile, wszMemLocal, nExeFileMax);
+           nResult=lstrlenW(szExeFile);
+           SendMessage(hWndLocal, AKD_MEMUNMAP, (WPARAM)wszMemLocal, 0);
+         }
+         SendMessage(hWndLocal, AKD_MEMCLOSE, (WPARAM)hMemLocal, 0);
+       }
+       SendMessage(hWndRemote, AKD_MEMUNMAP, (WPARAM)wszMemRemote, 0);
+     }
+     SendMessage(hWndRemote, AKD_MEMCLOSE, (WPARAM)hMemRemote, 0);
+   }
+   return nResult;
+ }
 
 
-AKD_GLOBALLOCK
-______________
+AKD_MEMMAP
+__________
 
-Locks a global memory object (see description for GlobalLock in MSDN).
+Maps memory object into the address space of a calling process.
 
-(HGLOBAL)wParam == handle to the global memory object.
-lParam          == not used.
+(HANDLE)wParam == handle to the memory object.
+(DWORD)lParam  == number of bytes to map.
 
 Return Value
  Pointer to the first byte of the memory block.
 
 Example:
- void *pMem=(void *)SendMessage(pd->hMainWnd, AKD_GLOBALLOCK, (WPARAM)hMem, 0);
+ See AKD_MEMCREATE example.
 
 
-AKD_GLOBALUNLOCK
-________________
+AKD_MEMUNMAP
+____________
 
-Decrements the lock count associated with a memory object (see description for GlobalUnlock in MSDN).
+Unmaps a mapped memory object from the calling process's address space.
 
-(HGLOBAL)wParam == handle to the global memory object.
-lParam          == not used.
-
-Return Value
- Unlock result.
-
-Example:
- BOOL bUnlock=SendMessage(pd->hMainWnd, AKD_GLOBALUNLOCK, (WPARAM)hMem, 0);
-
-
-AKD_GLOBALFREE
-______________
-
-Frees the specified global memory object (see description for GlobalFree in MSDN).
-
-(HGLOBAL)wParam == handle to the global memory object.
-lParam          == not used.
+(HANDLE)wParam == pointer to the first byte of the memory block.
+lParam         == not used.
 
 Return Value
- Free result.
+ TRUE  success.
+ FALSE error.
 
 Example:
- HGLOBAL hMem=SendMessage(pd->hMainWnd, AKD_GLOBALFREE, (WPARAM)hMem, 0);
+ See AKD_MEMCREATE example.
+
+
+AKD_MEMCLOSE
+____________
+
+Close the specified memory object.
+
+(HANDLE)wParam == handle to the memory object.
+lParam         == not used.
+
+Return Value
+ TRUE  success.
+ FALSE error.
+
+Example:
+ See AKD_MEMCREATE example.
 
 
 AKD_STRLENA
@@ -4694,7 +4806,7 @@ Example:
 AKD_PATEXEC
 ___________
 
-Compile and execute regular expressions pattern. Requires for include "RegExpFunc.h".
+Compile and execute regular expressions pattern. Requires include of "RegExpFunc.h".
 
 wParam            == not used.
 (PATEXEC *)lParam == pointer to a PATEXEC structure.
@@ -4713,6 +4825,8 @@ Example:
  pe.lpREGroupStack=0;
  pe.wpStr=L"1234567890 11223344556677889900";
  pe.wpMaxStr=pe.wpStr + lstrlenW(pe.wpStr);
+ pe.wpText=pe.wpStr;
+ pe.wpMaxText=pe.wpMaxStr;
  pe.wpPat=L"(23)(.*)(89)";
  pe.wpMaxPat=pe.wpPat + lstrlenW(pe.wpPat);
  pe.dwOptions=REPE_MATCHCASE;
@@ -4727,12 +4841,12 @@ Example:
 
    do
    {
-     if (lpREGroupNext->wpStrStart != lpREGroupNext->wpStrEnd && lpREGroupNext->nIndex != -1)
+     if (lpREGroupNext->nStrLen && lpREGroupNext->nIndex != -1)
      {
-       //wpResult+=xprintfW(wpResult, L"%d [%.%ds]\n", lpREGroupNext->nIndex, lpREGroupNext->wpStrEnd - lpREGroupNext->wpStrStart, lpREGroupNext->wpStrStart);
+       //wpResult+=xprintfW(wpResult, L"%d [%.%ds]\n", lpREGroupNext->nIndex, lpREGroupNext->nStrLen, lpREGroupNext->wpStrStart);
        wpResult+=wsprintfW(wpResult, L"%d [", lpREGroupNext->nIndex);
-       lstrcpynW(wpResult, lpREGroupNext->wpStrStart, (lpREGroupNext->wpStrEnd - lpREGroupNext->wpStrStart) + 1);
-       wpResult+=lpREGroupNext->wpStrEnd - lpREGroupNext->wpStrStart;
+       lstrcpynW(wpResult, lpREGroupNext->wpStrStart, (lpREGroupNext->nStrLen) + 1);
+       wpResult+=lpREGroupNext->nStrLen;
        wpResult+=wsprintfW(wpResult, L"]\n");
      }
    }
@@ -4748,7 +4862,7 @@ Example:
 AKD_PATREPLACE
 ______________
 
-Replace in string using regular expressions. Requires for include "RegExpFunc.h".
+Replace in string using regular expressions. Requires include of "RegExpFunc.h".
 
 wParam               == not used.
 (PATREPLACE *)lParam == pointer to a PATREPLACE structure.
@@ -4761,13 +4875,15 @@ Example:
  INT_PTR nLen;
 
  //Calculate result string length
- pr.wpStr=L"123ABC200DEF";
+ pr.wpStr=L"1234567890 1234567890";
  pr.wpMaxStr=pr.wpStr + lstrlenW(pr.wpStr);
- pr.wpPat=L"(.2)";
+ pr.wpText=pr.wpStr;
+ pr.wpMaxText=pr.wpMaxStr;
+ pr.wpPat=L"(23)(.*)(89)";
  pr.wpMaxPat=pr.wpPat + lstrlenW(pr.wpPat);
- pr.wpRep=L"[$1]";
+ pr.wpRep=L"\\1abc\\3";
  pr.wpMaxRep=pr.wpRep + lstrlenW(pr.wpRep);
- pr.dwOptions=REPE_GLOBAL|REPE_MATCHCASE;
+ pr.dwOptions=REPE_GLOBAL|REPE_MULTILINE;
  pr.wpDelim=NULL;
  pr.wpNewLine=NULL;
  pr.wszResult=NULL;
@@ -4785,7 +4901,7 @@ Example:
 AKD_PATGROUPSTR
 _______________
 
-Translate string that contain group indexes, like "[$1$2]". Requires for include "RegExpFunc.h".
+Expand string that contain group indexes, like "\2 and \1". Requires include of "RegExpFunc.h".
 
 wParam                == not used.
 (PATGROUPSTR *)lParam == pointer to a PATGROUPSTR structure.
@@ -4800,6 +4916,8 @@ Example:
  pe.lpREGroupStack=0;
  pe.wpStr=L"1234567890";
  pe.wpMaxStr=pe.wpStr + lstrlenW(pe.wpStr);
+ pe.wpText=pe.wpStr;
+ pe.wpMaxText=pe.wpMaxStr;
  pe.wpPat=L"(23)(.*)(89)";
  pe.wpMaxPat=pe.wpPat + lstrlenW(pe.wpPat);
  pe.dwOptions=REPE_MATCHCASE;
@@ -4813,7 +4931,7 @@ Example:
 
    //Calculate result string length
    pgs.lpREGroupStack=pe.lpREGroupStack;
-   pgs.wpStr=L"<$3><$1><$2>";
+   pgs.wpStr=L"<\\3><\\1><\\2>";
    pgs.wpMaxStr=pgs.wpStr + lstrlenW(pgs.wpStr);
    pgs.wszResult=NULL;
    nLen=SendMessage(pd->hMainWnd, AKD_PATGROUPSTR, 0, (LPARAM)&pgs);
@@ -4832,7 +4950,7 @@ Example:
 AKD_PATGETGROUP
 _______________
 
-Retrieve pattern group by index. Requires for include "RegExpFunc.h".
+Retrieve pattern group by index. Requires include of "RegExpFunc.h".
 
 (STACKREGROUP *)wParam == pointer to a STACKREGROUP structure.
 (int)lParam            == group index.
@@ -4847,7 +4965,7 @@ Example:
 AKD_PATNEXTGROUP
 ________________
 
-Retrieve next pattern group. Requires for include "RegExpFunc.h".
+Retrieve next pattern group. Requires include of "RegExpFunc.h".
 
 (REGROUP *)wParam == pointer to a REGROUP structure.
 lParam            == not used.
@@ -4862,7 +4980,7 @@ Example:
 AKD_PATPREVGROUP
 ________________
 
-Retrieve previous pattern group. Requires for include "RegExpFunc.h".
+Retrieve previous pattern group. Requires include of "RegExpFunc.h".
 
 (REGROUP *)wParam == pointer to a REGROUP structure.
 lParam            == not used.
@@ -4877,7 +4995,7 @@ Example:
 AKD_PATFREE
 ___________
 
-Free regular expressions pattern. Requires for include "RegExpFunc.h".
+Free regular expressions pattern. Requires include of "RegExpFunc.h".
 
 wParam            == not used.
 (PATEXEC *)lParam == pointer to a PATEXEC structure.

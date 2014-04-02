@@ -85,6 +85,7 @@ BEGIN
         POPUP "&Selection"
         BEGIN
             MENUITEM "Columnar paste\tAlt+V",       IDM_EDIT_PASTECOLUMN
+            MENUITEM SEPARATOR
             MENUITEM "Ta&b indent\tTab",            IDM_EDIT_INSERT_TAB_MENU
             MENUITEM "&Tab unindent\tShift+Tab",    IDM_EDIT_DELETE_TAB_MENU
             MENUITEM "Spa&ce indent\tSpace",        IDM_EDIT_INSERT_SPACE_MENU
@@ -97,6 +98,8 @@ BEGIN
 
             MENUITEM "Trim trailing &whitespace\tAlt+Backspace", 
                                                     IDM_EDIT_DELETE_TRAILING_WHITESPACES
+            MENUITEM "Delete selection whitespaces",
+                                                    IDM_EDIT_DELETESELWHITESPACES
 
             MENUITEM SEPARATOR
             MENUITEM "&UPPERCASE\tCtrl+6",          IDM_EDIT_UPPERCASE
@@ -885,17 +888,20 @@ BEGIN
                     WS_TABSTOP,9,59,200,10
     EDITTEXT        IDC_OPTIONS_DEFAULT_SAVE_EXT,9,75,24,13,ES_AUTOHSCROLL
     LTEXT           "default saving extension",IDC_STATIC,37,77,171,8
-    GROUPBOX        "Find/Replace dialog",IDC_STATIC,9,96,200,53
+    GROUPBOX        "Find/Replace dialog",IDC_STATIC,9,96,200,66
     CONTROL         """Replace all"" closes dialog",
                     IDC_OPTIONS_REPLACEALL_CLOSE,"Button",BS_AUTOCHECKBOX | 
                     WS_TABSTOP,17,109,185,10
+    CONTROL         """Replace all"" without message",
+                    IDC_OPTIONS_REPLACEALL_NOMSG,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,17,121,185,10
     CONTROL         "Check ""In selection"" if selection not empty",
                     IDC_OPTIONS_INSELIFSEL,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,17,121,185,10
+                    WS_TABSTOP,17,133,185,10
     CONTROL         "Cycle search",IDC_OPTIONS_CYCLESEARCH,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,17,133,102,10
+                    BS_AUTOCHECKBOX | WS_TABSTOP,17,145,102,10
     CONTROL         "Prompt",IDC_OPTIONS_CYCLESEARCHPROMPT,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,122,133,83,10
+                    BS_AUTOCHECKBOX | WS_TABSTOP,122,145,83,10
 END
 
 IDD_ABOUT DIALOGEX 0, 0, 220, 207
@@ -910,7 +916,7 @@ BEGIN
     LTEXT           "Homepage:",IDC_STATIC,19,41,85,11
     PUSHBUTTON      "",IDC_ABOUT_HOMEPAGE,105,40,92,14,0,WS_EX_STATICEDGE
     GROUPBOX        "Authors:",IDC_STATIC,20,62,177,109
-    LTEXT           "Shengalts Aleksander, 2006-2013",IDC_STATIC,73,82,120,
+    LTEXT           "Shengalts Aleksander, 2006-2014",IDC_STATIC,73,82,120,
                     12,NOT WS_GROUP
     LTEXT           "E-Mail:",IDC_STATIC,46,98,22,12,NOT WS_GROUP,
                     WS_EX_RIGHT
@@ -953,7 +959,7 @@ BEGIN
     "  #else\r\n"
     "    #define RC_VERSIONDESCRIPTION ""AkelPad (x86) language module""\r\n"
     "  #endif\r\n"
-    "  #define RC_VERSIONCOPYRIGHT ""© 2013 Shengalts Aleksander aka Instructor""\r\n"
+    "  #define RC_VERSIONCOPYRIGHT ""© 2014 Shengalts Aleksander aka Instructor""\r\n"
     "  #define RC_VERSIONNAME ""English.dll""\r\n"
     "#endif\r\n"
     "#include ""winresrc.h""\r\n"
@@ -1002,6 +1008,7 @@ BEGIN
     MSG_UPDATE_LANGMODULE   "Update %s\n\nCurrent version: %d.%d.%d.%d\nRequired version: %d.%d.%d.%d"
     MSG_HOTKEY_EXISTS       "Hotkey already assigned to ""%s""."
     MSG_CANNOT_OPEN_FILE    "Cannot open file ""%s""."
+    MSG_WRONG_FILENAME      "%s\nWrong file name."
     MSG_WRONG_STRING        "Invalid line number."
     MSG_LONG_FILELIST       "Too many files chosen."
     MSG_DOCUMENT_CHANGED    "Document was modified. Do you want to save it?"

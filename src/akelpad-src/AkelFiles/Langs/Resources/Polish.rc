@@ -85,6 +85,7 @@ BEGIN
         POPUP "Zaznaczen&ie"
         BEGIN
             MENUITEM "Wkl&ej pionowo\tAlt+V",       IDM_EDIT_PASTECOLUMN
+            MENUITEM SEPARATOR
             MENUITEM "Dodaj wciêcie &tabem\tTab",   IDM_EDIT_INSERT_TAB_MENU
             MENUITEM "Usuñ wciêcie t&abem\tShift+Tab", 
                                                     IDM_EDIT_DELETE_TAB_MENU
@@ -99,6 +100,8 @@ BEGIN
 
             MENUITEM "Usuñ &bia³e znaki na koñcu\tAlt+Backspace", 
                                                     IDM_EDIT_DELETE_TRAILING_WHITESPACES
+            MENUITEM "Delete selection whitespaces",
+                                                    IDM_EDIT_DELETESELWHITESPACES
 
             MENUITEM SEPARATOR
             MENUITEM "&WIELKIE LITERY\tCtrl+6",     IDM_EDIT_UPPERCASE
@@ -891,17 +894,20 @@ BEGIN
     EDITTEXT        IDC_OPTIONS_DEFAULT_SAVE_EXT,9,75,24,13,ES_AUTOHSCROLL
     LTEXT           "domyœlne rozszerzenie nazwy przy zapisie",IDC_STATIC,37,
                     77,171,8
-    GROUPBOX        "Okna dialogowe: ZnajdŸ/Zamieñ",IDC_STATIC,9,96,200,53
+    GROUPBOX        "Okna dialogowe: ZnajdŸ/Zamieñ",IDC_STATIC,9,96,200,66
     CONTROL         """Zamieñ wszystko"" - zamyka okno dialogowe",
                     IDC_OPTIONS_REPLACEALL_CLOSE,"Button",BS_AUTOCHECKBOX | 
                     WS_TABSTOP,17,109,185,10
+    CONTROL         """Zamieñ wszystko"" bez komunikatu",
+                    IDC_OPTIONS_REPLACEALL_NOMSG,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,17,121,185,10
     CONTROL         "Ustaw ""W zaznaczeniu"" jeœli jest zaznaczenie",
                     IDC_OPTIONS_INSELIFSEL,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,17,121,185,10
+                    WS_TABSTOP,17,133,185,10
     CONTROL         "Szukaj wko³o",IDC_OPTIONS_CYCLESEARCH,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,17,133,102,10
+                    BS_AUTOCHECKBOX | WS_TABSTOP,17,145,102,10
     CONTROL         "Zapytanie",IDC_OPTIONS_CYCLESEARCHPROMPT,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,122,133,83,10
+                    BS_AUTOCHECKBOX | WS_TABSTOP,122,145,83,10
 END
 
 IDD_ABOUT DIALOGEX 0, 0, 220, 207
@@ -916,7 +922,7 @@ BEGIN
     LTEXT           "Strona domowa:",IDC_STATIC,19,41,85,11
     PUSHBUTTON      "",IDC_ABOUT_HOMEPAGE,105,40,92,14,0,WS_EX_STATICEDGE
     GROUPBOX        "Autorzy:",IDC_STATIC,20,62,177,109
-    LTEXT           "Shengalts Aleksander, 2006-2013",IDC_STATIC,73,82,120,
+    LTEXT           "Shengalts Aleksander, 2006-2014",IDC_STATIC,73,82,120,
                     12,NOT WS_GROUP
     LTEXT           "E-Mail:",IDC_STATIC,46,98,22,12,NOT WS_GROUP,
                     WS_EX_RIGHT
@@ -959,7 +965,7 @@ BEGIN
     "  #else\r\n"
     "    #define RC_VERSIONDESCRIPTION ""AkelPad (x86) language module""\r\n"
     "  #endif\r\n"
-    "  #define RC_VERSIONCOPYRIGHT ""© 2013 Krzysztof Janicki""\r\n"
+    "  #define RC_VERSIONCOPYRIGHT ""© 2014 Krzysztof Janicki""\r\n"
     "  #define RC_VERSIONNAME ""Polish.dll""\r\n"
     "#endif\r\n"
     "#include ""winresrc.h""\r\n"
@@ -1010,6 +1016,7 @@ BEGIN
     MSG_UPDATE_LANGMODULE   "Zaktualizuj %s\n\nAktualna wersja: %d.%d.%d.%d\nWymagana wersja: %d.%d.%d.%d"
     MSG_HOTKEY_EXISTS       "Klawisz skrótu jest ju¿ przypisany do ""%s""."
     MSG_CANNOT_OPEN_FILE    "Nie mo¿na otworzyæ pliku ""%s""."
+    MSG_WRONG_FILENAME      "%s\nWrong file name."
     MSG_WRONG_STRING        "Nieprawid³owy numer wiersza."
     MSG_LONG_FILELIST       "Wybrano za du¿o plików."
     MSG_DOCUMENT_CHANGED    "Dokument zosta³ zmodyfikowany. Czy zapisaæ zmiany?"

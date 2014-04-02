@@ -13,7 +13,7 @@
   #else
     #define RC_VERSIONDESCRIPTION "AkelPad (x86) language module"
   #endif
-  #define RC_VERSIONCOPYRIGHT "© 2013 Mister Sh, naben"
+  #define RC_VERSIONCOPYRIGHT "© 2014 Mister Sh, naben"
   #define RC_VERSIONNAME "Belorussian.dll"
 #endif
 #include "winresrc.h"
@@ -85,6 +85,7 @@ BEGIN
         POPUP "Вы&лучэнне"
         BEGIN
             MENUITEM "Вертыкальная ўстаўка\tAlt+V", IDM_EDIT_PASTECOLUMN
+            MENUITEM SEPARATOR
             MENUITEM "&Дадаць Tab\tTab",            IDM_EDIT_INSERT_TAB_MENU
             MENUITEM "&Прыбраць Tab\tShift+Tab",    IDM_EDIT_DELETE_TAB_MENU
             MENUITEM "Д&адаць прабел\tSpace",       IDM_EDIT_INSERT_SPACE_MENU
@@ -97,6 +98,8 @@ BEGIN
 
             MENUITEM "Пры&браць Tab'ы і прабелы ў канцы\tAlt+Backspace", 
                                                     IDM_EDIT_DELETE_TRAILING_WHITESPACES
+            MENUITEM "Убрать Tab'ы и пробелы в выделении", 
+                                                    IDM_EDIT_DELETESELWHITESPACES
 
             MENUITEM SEPARATOR
             MENUITEM "УСЁ &ПРАПІСНЫЯ\tCtrl+6",      IDM_EDIT_UPPERCASE
@@ -892,17 +895,20 @@ BEGIN
     EDITTEXT        IDC_OPTIONS_DEFAULT_SAVE_EXT,9,75,24,13,ES_AUTOHSCROLL
     LTEXT           "пашырэнне па змаўчанні пры захаванні дакумента",
                     IDC_STATIC,37,77,171,8
-    GROUPBOX        "Дыялог пошуку/замены",IDC_STATIC,9,96,200,53
+    GROUPBOX        "Дыялог пошуку/замены",IDC_STATIC,9,96,200,66
     CONTROL         """Замяніць усё"" зачыняе дыялог",
                     IDC_OPTIONS_REPLACEALL_CLOSE,"Button",BS_AUTOCHECKBOX | 
                     WS_TABSTOP,17,109,185,10
+    CONTROL         """Заменить всё"" без сообщения",
+                    IDC_OPTIONS_REPLACEALL_NOMSG,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,17,121,185,10
     CONTROL         "Адзначыць ""У вылучэнні"", калі ёсць вылучэнне",
                     IDC_OPTIONS_INSELIFSEL,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,17,121,185,10
+                    WS_TABSTOP,17,133,185,10
     CONTROL         "Пошук па крузе",IDC_OPTIONS_CYCLESEARCH,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,17,133,102,10
+                    BS_AUTOCHECKBOX | WS_TABSTOP,17,145,102,10
     CONTROL         "Запрос",IDC_OPTIONS_CYCLESEARCHPROMPT,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,122,133,83,10
+                    BS_AUTOCHECKBOX | WS_TABSTOP,122,145,83,10
 END
 
 IDD_ABOUT DIALOGEX 0, 0, 220, 207
@@ -917,7 +923,7 @@ BEGIN
     LTEXT           "Хатняя старонка:",IDC_STATIC,19,41,85,11
     PUSHBUTTON      "",IDC_ABOUT_HOMEPAGE,105,40,92,14,0,WS_EX_STATICEDGE
     GROUPBOX        "Аўтары:",IDC_STATIC,20,62,177,109
-    LTEXT           "Шэнгальц Аляксандр, 2006-2013",IDC_STATIC,73,82,120,12,
+    LTEXT           "Шэнгальц Аляксандр, 2006-2014",IDC_STATIC,73,82,120,12,
                     NOT WS_GROUP
     LTEXT           "E-Mail:",IDC_STATIC,46,98,22,12,NOT WS_GROUP,
                     WS_EX_RIGHT
@@ -960,7 +966,7 @@ BEGIN
     "  #else\r\n"
     "    #define RC_VERSIONDESCRIPTION ""AkelPad (x86) language module""\r\n"
     "  #endif\r\n"
-    "  #define RC_VERSIONCOPYRIGHT ""© 2013 Mister Sh, naben""\r\n"
+    "  #define RC_VERSIONCOPYRIGHT ""© 2014 Mister Sh, naben""\r\n"
     "  #define RC_VERSIONNAME ""Belorussian.dll""\r\n"
     "#endif\r\n"
     "#include ""winresrc.h""\r\n"
@@ -1030,6 +1036,7 @@ BEGIN
     MSG_UPDATE_LANGMODULE   "Абнавіце %s\n\nБягучая версія: %d.%d.%d.%d\nПатрабаваная версія: %d.%d.%d.%d"
     MSG_HOTKEY_EXISTS       "Гарачая клавіша ўжо прызначаная для ""%s""."
     MSG_CANNOT_OPEN_FILE    "Немагчыма адкрыць файл ""%s""."
+    MSG_WRONG_FILENAME      "%s\nНедопустимое имя файла."
     MSG_WRONG_STRING        "Няправільны нумар радка."
     MSG_LONG_FILELIST       "Вылучана занадта шмат файлаў."
     MSG_DOCUMENT_CHANGED    "Дакумент быў зменены. Захаваць?"

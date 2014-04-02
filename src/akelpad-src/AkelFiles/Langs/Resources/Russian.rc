@@ -85,6 +85,7 @@ BEGIN
         POPUP "Выде&ление"
         BEGIN
             MENUITEM "Вертикальная вставка\tAlt+V", IDM_EDIT_PASTECOLUMN
+            MENUITEM SEPARATOR
             MENUITEM "&Добавить Tab\tTab",          IDM_EDIT_INSERT_TAB_MENU
             MENUITEM "&Убрать Tab\tShift+Tab",      IDM_EDIT_DELETE_TAB_MENU
             MENUITEM "Д&обавить пробел\tSpace",     IDM_EDIT_INSERT_SPACE_MENU
@@ -96,6 +97,8 @@ BEGIN
 
             MENUITEM "Убра&ть Tab'ы и пробелы в конце\tAlt+Backspace", 
                                                     IDM_EDIT_DELETE_TRAILING_WHITESPACES
+            MENUITEM "Убрать Tab'ы и пробелы в выделении", 
+                                                    IDM_EDIT_DELETESELWHITESPACES
 
             MENUITEM SEPARATOR
             MENUITEM "ВСЕ &ПРОПИСНЫЕ\tCtrl+6",      IDM_EDIT_UPPERCASE
@@ -478,7 +481,7 @@ STYLE DS_MODALFRAME | DS_3DLOOK | WS_POPUP | WS_VISIBLE | WS_CAPTION |
     WS_SYSMENU
 EXSTYLE WS_EX_DLGMODALFRAME
 CAPTION "Поиск"
-FONT 8, "MS Shell Dlg"
+FONT 8, "MS Shell Dlg", 0, 0, 0x1
 BEGIN
     COMBOBOX        IDC_SEARCH_FIND,27,9,160,100,CBS_DROPDOWN | 
                     CBS_AUTOHSCROLL | WS_VSCROLL | WS_TABSTOP
@@ -515,7 +518,7 @@ STYLE DS_MODALFRAME | DS_3DLOOK | WS_POPUP | WS_VISIBLE | WS_CAPTION |
     WS_SYSMENU
 EXSTYLE WS_EX_DLGMODALFRAME
 CAPTION "Замена"
-FONT 8, "MS Shell Dlg"
+FONT 8, "MS Shell Dlg", 0, 0, 0x1
 BEGIN
     COMBOBOX        IDC_SEARCH_FIND,27,9,160,100,CBS_DROPDOWN | 
                     CBS_AUTOHSCROLL | WS_VSCROLL | WS_TABSTOP
@@ -892,17 +895,20 @@ BEGIN
     EDITTEXT        IDC_OPTIONS_DEFAULT_SAVE_EXT,9,75,24,13,ES_AUTOHSCROLL
     LTEXT           "расширение по умолчанию при сохранении документа",
                     IDC_STATIC,37,77,171,8
-    GROUPBOX        "Диалог поиска/замены",IDC_STATIC,9,96,200,53
+    GROUPBOX        "Диалог поиска/замены",IDC_STATIC,9,96,200,66
     CONTROL         """Заменить всё"" закрывает диалог",
                     IDC_OPTIONS_REPLACEALL_CLOSE,"Button",BS_AUTOCHECKBOX | 
                     WS_TABSTOP,17,109,185,10
+    CONTROL         """Заменить всё"" без сообщения",
+                    IDC_OPTIONS_REPLACEALL_NOMSG,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,17,121,185,10
     CONTROL         "Отметить ""В выделении"", если есть выделение",
                     IDC_OPTIONS_INSELIFSEL,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,17,121,185,10
+                    WS_TABSTOP,17,133,185,10
     CONTROL         "Поиск по кругу",IDC_OPTIONS_CYCLESEARCH,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,17,133,102,10
+                    BS_AUTOCHECKBOX | WS_TABSTOP,17,145,102,10
     CONTROL         "Запрос",IDC_OPTIONS_CYCLESEARCHPROMPT,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,122,133,83,10
+                    BS_AUTOCHECKBOX | WS_TABSTOP,122,145,83,10
 END
 
 IDD_ABOUT DIALOGEX 0, 0, 220, 207
@@ -917,7 +923,7 @@ BEGIN
     LTEXT           "Домашняя страница:",IDC_STATIC,19,41,85,11
     PUSHBUTTON      "",IDC_ABOUT_HOMEPAGE,105,40,92,14,0,WS_EX_STATICEDGE
     GROUPBOX        "Авторы:",IDC_STATIC,20,62,177,109
-    LTEXT           "Шенгальц Александр, 2006-2013",IDC_STATIC,73,82,120,12,
+    LTEXT           "Шенгальц Александр, 2006-2014",IDC_STATIC,73,82,120,12,
                     NOT WS_GROUP
     LTEXT           "E-Mail:",IDC_STATIC,46,98,22,12,NOT WS_GROUP,
                     WS_EX_RIGHT
@@ -960,7 +966,7 @@ BEGIN
     "  #else\r\n"
     "    #define RC_VERSIONDESCRIPTION ""AkelPad (x86) language module""\r\n"
     "  #endif\r\n"
-    "  #define RC_VERSIONCOPYRIGHT ""© 2013 Shengalts Aleksander aka Instructor""\r\n"
+    "  #define RC_VERSIONCOPYRIGHT ""© 2014 Shengalts Aleksander aka Instructor""\r\n"
     "  #define RC_VERSIONNAME ""Russian.dll""\r\n"
     "#endif\r\n"
     "#include ""winresrc.h""\r\n"
@@ -1025,6 +1031,7 @@ BEGIN
     MSG_UPDATE_LANGMODULE   "Обновите %s\n\nТекущая версия: %d.%d.%d.%d\nТребуемая версия: %d.%d.%d.%d"
     MSG_HOTKEY_EXISTS       "Горячая клавиша уже назначена для ""%s""."
     MSG_CANNOT_OPEN_FILE    "Невозможно открыть файл ""%s""."
+    MSG_WRONG_FILENAME      "%s\nНедопустимое имя файла."
     MSG_WRONG_STRING        "Неправильный номер строки."
     MSG_LONG_FILELIST       "Выбрано слишком много файлов."
     MSG_DOCUMENT_CHANGED    "Документ был изменён. Сохранить?"

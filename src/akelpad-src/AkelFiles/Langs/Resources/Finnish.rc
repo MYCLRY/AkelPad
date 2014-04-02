@@ -13,7 +13,7 @@
   #else
     #define RC_VERSIONDESCRIPTION "AkelPad (x86) language module"
   #endif
-  #define RC_VERSIONCOPYRIGHT "© 2013 Jani Kinnunen"
+  #define RC_VERSIONCOPYRIGHT "© 2014 Jani Kinnunen"
   #define RC_VERSIONNAME "Finnish.dll"
 #endif
 #include "winresrc.h"
@@ -85,6 +85,7 @@ BEGIN
         POPUP "&Valinta"
         BEGIN
             MENUITEM "&Liitä sarakkeittain\tAlt+V", IDM_EDIT_PASTECOLUMN
+            MENUITEM SEPARATOR
             MENUITEM "&Sarkainsisennys\tTab",       IDM_EDIT_INSERT_TAB_MENU
             MENUITEM "&Poista sarkainsisennys\tShift+Tab", 
                                                     IDM_EDIT_DELETE_TAB_MENU
@@ -98,6 +99,8 @@ BEGIN
 
             MENUITEM "Poista tyhjät v&älit rivien lopuista\tAlt+Backspace", 
                                                     IDM_EDIT_DELETE_TRAILING_WHITESPACES
+            MENUITEM "Delete selection whitespaces",
+                                                    IDM_EDIT_DELETESELWHITESPACES
 
             MENUITEM SEPARATOR
             MENUITEM "&ISOT KIRJAIMET\tCtrl+6",     IDM_EDIT_UPPERCASE
@@ -900,17 +903,20 @@ BEGIN
     EDITTEXT        IDC_OPTIONS_DEFAULT_SAVE_EXT,9,75,24,13,ES_AUTOHSCROLL
     LTEXT           "Tiedoston oletuspääte tallennettaessa",IDC_STATIC,37,77,
                     171,8
-    GROUPBOX        "Etsi/korvaa-valintaikkuna",IDC_STATIC,9,96,200,53
+    GROUPBOX        "Etsi/korvaa-valintaikkuna",IDC_STATIC,9,96,200,66
     CONTROL         "&Korvaa kaikki -toiminto sulkee valintaikkunan",
                     IDC_OPTIONS_REPLACEALL_CLOSE,"Button",BS_AUTOCHECKBOX | 
                     WS_TABSTOP,17,109,185,10
+    CONTROL         """Replace all"" without message",
+                    IDC_OPTIONS_REPLACEALL_NOMSG,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,17,121,185,10
     CONTROL         "&Valitse ""Valinta""-vaihtoehto, jos valintaa ei ole",
                     IDC_OPTIONS_INSELIFSEL,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,17,121,185,10
+                    WS_TABSTOP,17,133,185,10
     CONTROL         "Aloita haku alusta",IDC_OPTIONS_CYCLESEARCH,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,17,133,102,10
+                    BS_AUTOCHECKBOX | WS_TABSTOP,17,145,102,10
     CONTROL         "Kysy",IDC_OPTIONS_CYCLESEARCHPROMPT,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,122,133,83,10
+                    BS_AUTOCHECKBOX | WS_TABSTOP,122,145,83,10
 END
 
 IDD_ABOUT DIALOGEX 0, 0, 220, 207
@@ -925,7 +931,7 @@ BEGIN
     LTEXT           "Kotisivu:",IDC_STATIC,19,41,85,11
     PUSHBUTTON      "",IDC_ABOUT_HOMEPAGE,105,40,92,14,0,WS_EX_STATICEDGE
     GROUPBOX        "Tekijät:",IDC_STATIC,20,62,177,109
-    LTEXT           "Shengalts Aleksander, 2006-2013",IDC_STATIC,73,82,120,
+    LTEXT           "Shengalts Aleksander, 2006-2014",IDC_STATIC,73,82,120,
                     12,NOT WS_GROUP
     LTEXT           "Sähköposti:",IDC_STATIC,28,98,40,12,NOT WS_GROUP,
                     WS_EX_RIGHT
@@ -968,7 +974,7 @@ BEGIN
     "  #else\r\n"
     "    #define RC_VERSIONDESCRIPTION ""AkelPad (x86) language module""\r\n"
     "  #endif\r\n"
-    "  #define RC_VERSIONCOPYRIGHT ""© 2013 Jani Kinnunen""\r\n"
+    "  #define RC_VERSIONCOPYRIGHT ""© 2014 Jani Kinnunen""\r\n"
     "  #define RC_VERSIONNAME ""Finnish.dll""\r\n"
     "#endif\r\n"
     "#include ""winresrc.h""\r\n"
@@ -1018,6 +1024,7 @@ BEGIN
     MSG_UPDATE_LANGMODULE   "Päivitä %s\n\nNykyinen versio: %d.%d.%d.%d\nTarvitaan versio: %d.%d.%d.%d"
     MSG_HOTKEY_EXISTS       "Pikanäppäin on jo liitetty toimintoon ""%s""."
     MSG_CANNOT_OPEN_FILE    "Ei voi avata tiedostoa ""%s""."
+    MSG_WRONG_FILENAME      "%s\nWrong file name."
     MSG_WRONG_STRING        "Rivinumero on virheellinen."
     MSG_LONG_FILELIST       "Liian monta tiedostoa valittuna."
     MSG_DOCUMENT_CHANGED    "Asiakirjaa on muokattu. Haluatko tallentaa sen?"

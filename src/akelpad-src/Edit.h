@@ -5,9 +5,9 @@
 //// Defines
 
 #ifdef _WIN64
-  #define APP_ABOUT_VERSIONW        L"AkelPad 4.8.7 (x64)"
+  #define APP_ABOUT_VERSIONW        L"AkelPad 4.8.8 (x64)"
 #else
-  #define APP_ABOUT_VERSIONW        L"AkelPad 4.8.7 (x86)"
+  #define APP_ABOUT_VERSIONW        L"AkelPad 4.8.8 (x86)"
 #endif
 #ifdef AKELPAD_DLLBUILD
   #define APP_MAIN_CLASSA            "AkelPad4 Library"
@@ -268,11 +268,14 @@
 #define AKDLG_RECODEUPDATE      (WM_USER + 100)
 
 //Insert/Delete char in selection
-#define STRSEL_CHECK   0x00000001
-#define STRSEL_INSERT  0x00000002
-#define STRSEL_DELETE  0x00000004
-#define STRSEL_TAB     0x00000008
-#define STRSEL_SPACE   0x00000010
+#define STRSEL_CHECK      0x00000001
+#define STRSEL_MULTILINE  0x00000002
+#define STRSEL_FULLLINE   0x00000004
+#define STRSEL_INSERT     0x00000008
+#define STRSEL_DELETE     0x00000010
+#define STRSEL_LEADTAB    0x00000020  //Uses only with STRSEL_DELETE.
+#define STRSEL_LEADSPACE  0x00000040  //Uses only with STRSEL_DELETE.
+#define STRSEL_ALLSPACES  0x00000080  //Uses only with STRSEL_DELETE.
 
 //Selection case
 #define UPPERCASE      1
@@ -373,6 +376,7 @@ typedef struct {
   DWORD dwStatusUserFlags;
   DWORD dwWordBreakCustom;
   DWORD dwPaintOptions;
+  DWORD dwEditStyle;
   BOOL bRichEditClass;
   BOOL bAkelAdminResident;
   wchar_t wszDateLogFormat[128];
@@ -391,7 +395,7 @@ typedef struct {
   BOOL bWatchFile;
   BOOL bSaveTime;
   BOOL bSingleOpenFile;
-  BOOL bSingleOpenProgram;
+  DWORD dwSingleOpenProgram;
   int nMDI;
   DWORD dwTabOptionsMDI;
 
@@ -705,7 +709,7 @@ void SplitVisUpdate(FRAMEDATA *lpFrame);
 BOOL DoFileNew();
 BOOL CloseDocument(DWORD dwPrompt);
 HWND DoFileNewWindow(DWORD dwAddFlags);
-BOOL CALLBACK EnumThreadWindowsProc(HWND hwnd, LPARAM lParam);
+BOOL CALLBACK EnumThreadWindowsProc(HWND hWnd, LPARAM lParam);
 BOOL DoFileOpen();
 int DoFileReopenAs(DWORD dwFlags, int nCodePage, BOOL bBOM);
 BOOL DoFileSave();
@@ -725,7 +729,7 @@ void DoEditSelectAll(HWND hWnd);
 void DoEditInsertDate(HWND hWnd);
 void DoEditInsertChar();
 void DoEditRecode();
-BOOL DoEditInsertStringInSelectionW(HWND hWnd, int nAction, const wchar_t *wpString);
+BOOL DoEditModifyStringInSelection(HWND hWnd, int nAction, const wchar_t *wpString);
 BOOL DoEditDeleteFirstCharW(HWND hWnd);
 BOOL DoEditDeleteTrailingWhitespacesW(HWND hWnd);
 BOOL DoEditChangeCaseW(HWND hWnd, int nCase);
@@ -747,7 +751,7 @@ void DoSettingsKeepSpace(BOOL bState);
 void DoSettingsWatchFile(BOOL bState);
 void DoSettingsSaveTime(BOOL bState);
 void DoSettingsSingleOpenFile(BOOL bState);
-void DoSettingsSingleOpenProgram(BOOL bState);
+void DoSettingsSingleOpenProgram(DWORD dwState);
 void DoSettingsPlugins();
 void DoSettingsOptions();
 void DoWindowTabView(DWORD dwNewView, BOOL bFirst);
@@ -792,13 +796,11 @@ int OpenDocument(HWND hWnd, const wchar_t *wpFile, DWORD dwFlags, int nCodePage,
 void FileStreamIn(FILESTREAMDATA *lpData);
 DWORD CALLBACK InputStreamCallback(UINT_PTR dwCookie, wchar_t *wszBuf, DWORD dwBufBytesLen, DWORD *dwBufBytesDone);
 UINT_PTR ReadFileContent(HANDLE hFile, UINT_PTR dwBytesMax, int nCodePage, BOOL bBOM, wchar_t **wpContent);
+int WriteFileContent(HANDLE hFile, const wchar_t *wpContent, INT_PTR nContentLen, int nCodePage, BOOL bBOM);
 BOOL OpenDocumentSend(HWND hWnd, HWND hWndEditCtrl, const wchar_t *wpFile, DWORD dwFlags, int nCodePage, BOOL bBOM, BOOL bOtherProcess);
 int SaveDocument(HWND hWnd, const wchar_t *wpFile, int nCodePage, BOOL bBOM, DWORD dwFlags);
 void FileStreamOut(FILESTREAMDATA *lpData);
 DWORD CALLBACK OutputStreamCallback(UINT_PTR dwCookie, wchar_t *wszBuf, DWORD dwBufBytesLen, DWORD *dwBufBytesDone);
-BOOL AkelAdminInit(const wchar_t *wpFile);
-BOOL AkelAdminSend(int nAction, const wchar_t *wpFile);
-void AkelAdminExit();
 BOOL OpenDirectory(wchar_t *wpPath, BOOL bSubDir);
 void DropFiles(HDROP hDrop);
 void CheckModificationTime(FRAMEDATA *lpFrame);
@@ -828,7 +830,7 @@ PRINTPAGE* StackPageGet(HSTACK *hStack, int nPage);
 int StackPageFind(HSTACK *hStack, const AECHARINDEX *ciPos);
 void StackPageFree(HSTACK *hStack);
 
-UINT_PTR CALLBACK CodePageDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
+UINT_PTR CALLBACK FileDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
 LRESULT CALLBACK NewFilePreviewProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 void FillComboboxCodepage(HWND hWnd, int *lpCodepageList);
 void FillListBoxCodepage(HWND hWnd, int *lpCodepageList);
@@ -856,8 +858,8 @@ int GetDetectionIndex(DWORD dwLangID);
 BOOL IsLangEasternEurope(DWORD dwLangID);
 BOOL IsLangWesternEurope(DWORD dwLangID);
 BOOL IsCharLegalUTF8(const unsigned char *pSource, unsigned int nTrailingBytes);
-void ChangeTwoBytesOrder(unsigned char *lpBuffer, UINT_PTR dwBufferLen);
-void ChangeFourBytesOrder(unsigned char *lpBuffer, UINT_PTR dwBufferLen);
+void ChangeTwoBytesOrder(unsigned char *pSrc, UINT_PTR dwSrcSize, unsigned char *pDst);
+void ChangeFourBytesOrder(unsigned char *pSrc, UINT_PTR dwSrcSize, unsigned char *pDst);
 BOOL IsCodePageUnicode(int nCodePage);
 BOOL IsCodePageValid(int nCodePage);
 unsigned int TranslateNewLinesToUnixW(wchar_t *wszWideString, unsigned int nWideStringLen);
@@ -873,6 +875,7 @@ INT_PTR TextReplaceW(FRAMEDATA *lpFrame, DWORD dwFlags, const wchar_t *wpFindIt,
 INT_PTR StrReplaceW(const wchar_t *wpText, INT_PTR nTextLen, const wchar_t *wpIt, int nItLen, const wchar_t *wpWith, int nWithLen, DWORD dwFlags, wchar_t *wszResult, INT_PTR *nResultLen, INT_PTR *nMin, INT_PTR *nMax, INT_PTR *nFirstVis);
 INT_PTR EscapeStringToEscapeDataW(const wchar_t *wpInput, INT_PTR nInputLen, wchar_t *wszOutput, int nNewLine);
 void EscapeDataToEscapeStringW(const wchar_t *wpInput, wchar_t *wszOutput);
+BOOL SetDefButtonStyle(HWND hWnd, HWND hWndNewDef);
 
 void GetSel(HWND hWnd, AECHARRANGE *crSel, BOOL *bColumnSel, AECHARINDEX *ciCaret);
 void SetSel(HWND hWnd, AECHARRANGE *crSel, DWORD dwFlags, AECHARINDEX *ciCaret);
@@ -1060,6 +1063,15 @@ FONTITEM* StackFontItemInsert(HSTACK *hStack, const LOGFONTW *lfFont);
 FONTITEM* StackFontItemGet(HSTACK *hStack, const LOGFONTW *lfFont);
 void StackFontItemsFree(HSTACK *hStack);
 
+HANDLE MemCreate(const char *pName, DWORD dwSize);
+void* MemMap(HANDLE hMem, DWORD dwSize);
+BOOL MemUnmap(void *lpMem);
+BOOL MemClose(HANDLE hMem);
+
+BOOL AkelAdminInit(const wchar_t *wpFile);
+BOOL AkelAdminSend(int nAction, const wchar_t *wpFile);
+void AkelAdminExit();
+
 wchar_t* GetCommandLineParamsWide(const unsigned char *pCmdParams, wchar_t **wppCmdParamsStart, wchar_t **wppCmdParamsEnd);
 char* GetCommandLineParamsA();
 wchar_t* GetCommandLineParamsW();
@@ -1094,8 +1106,7 @@ BOOL IsReadOnly(HWND hWnd);
 int IsFile(const wchar_t *wpFile);
 BOOL IsPathFull(const wchar_t *wpPath);
 BOOL GetFileWin32Data(const wchar_t *wpFile, WIN32_FIND_DATAW *wfd);
-int GetExeDir(HINSTANCE hInstance, wchar_t *wszExeDir, int nLen);
-int GetFileDir(const wchar_t *wpFile, int nFileLen, wchar_t *wszFileDir, DWORD dwFileDirLen);
+int GetFileDir(const wchar_t *wpFile, int nFileLen, wchar_t *wszFileDir, DWORD dwFileDirMax);
 BOOL GetFullName(const wchar_t *wpFile, wchar_t *wszFileFullName, int nFileMax, int *lpnFileLen);
 const wchar_t* GetFileName(const wchar_t *wpFile, int nFileLen);
 int GetBaseName(const wchar_t *wpFile, wchar_t *wszBaseName, int nBaseNameMaxLen);
@@ -1116,6 +1127,9 @@ BOOL SwitchLayout(HWND hWndEdit, AECHARINDEX *lpciCaret);
 int DetectCharLayout(int nChar);
 void ActivateKeyboard(HKL dwInputLocale);
 void ActivateWindow(HWND hWnd);
+HWND FindAkelCopy();
+BOOL CALLBACK EnumAkelCopyProc(HWND hWnd, LPARAM lParam);
+int GetAkelPadExe(HWND hWnd, wchar_t *szExeFile, int nExeFileMax);
 HWND NextDialog(BOOL bPrevious);
 BOOL CALLBACK EnumDialogsProc(HWND hWnd, LPARAM lParam);
 HWND NextClone(BOOL bPrevious);

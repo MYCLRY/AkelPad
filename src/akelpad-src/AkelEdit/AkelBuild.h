@@ -347,6 +347,11 @@ typedef struct _AETHEMEITEMW {
 } AETHEMEITEMW;
 
 typedef struct {
+  AETHEMEITEMW *first;
+  AETHEMEITEMW *last;
+} AESTACKTHEME;
+
+typedef struct {
   HDC hDC;
   AECHARINDEX ciDrawLine;
   INT_PTR nDrawCharOffset;
@@ -445,17 +450,23 @@ typedef struct {
   AEFOLD *last;
 } AESTACKFOLD;
 
-typedef struct _AESTACKUNDO {
+typedef struct {
   AEUNDOITEM *first;
   AEUNDOITEM *last;
 } AESTACKUNDO;
 
-typedef struct _AESTACKURL {
+typedef struct {
+  AEUNDOITEM *first;
+  AEUNDOITEM *last;
+  DWORD dwUndoCount;
+} AEUNDOATTACH;
+
+typedef struct {
   AEURLITEM *first;
   AEURLITEM *last;
 } AESTACKURL;
 
-typedef struct _AESTACKERASE {
+typedef struct {
   AEERASE *first;
   AEERASE *last;
 } AESTACKERASE;
@@ -463,7 +474,7 @@ typedef struct _AESTACKERASE {
 
 //// AKELEDIT
 
-typedef struct _AKELTEXT {
+typedef struct {
   HANDLE hHeap;
   AESTACKLINE hLinesStack;
   AESTACKPOINT hPointsStack;
@@ -539,7 +550,7 @@ typedef struct _AKELTEXT {
   int nVPosFoldHiddenLines;
 } AKELTEXT;
 
-typedef struct _AKELOPTIONS {
+typedef struct {
   DWORD dwEventMask;
   DWORD dwRichEventMask;
   DWORD dwOptions;
@@ -565,6 +576,11 @@ typedef struct _AKELOPTIONS {
   HBITMAP hCaretOvertype;
   int nCaretInsertWidth;
   int nCaretOvertypeHeight;
+  DWORD dwCaretScrollFlags;
+  DWORD dwCaretScrollSelFlags;
+  DWORD dwCaretScrollSelType;
+  int nCaretScrollOffsetX;
+  int nCaretScrollOffsetY;
   HPEN hActiveColumnPen;
   HPEN hColumnMarkerPen;
   DWORD dwColumnMarkerType;
@@ -691,6 +707,9 @@ typedef struct _AKELEDIT {
   AEPOINT *lpSelEndPoint;
   AEPOINT *lpCaretPoint;
   //RECT rcCloneMargins;
+
+  //Undo window heap or global heap
+  struct _AKELEDIT *aeUndo;
 } AKELEDIT;
 
 typedef struct _AESTACKEDIT {
@@ -748,7 +767,7 @@ typedef struct {
 
 //// Functions prototypes
 
-BOOL AE_RegisterClassA(HINSTANCE hInstance, BOOL bRegisterRichEdit);
+BOOL AE_RegisterClassA(HINSTANCE hInstance, BOOL bRegRichEdit, BOOL bRegAkelEditW, BOOL bRegRichEditW);
 BOOL AE_RegisterClassW(HINSTANCE hInstance, BOOL bRegisterRichEdit);
 void AE_RegisterClassCommon(HINSTANCE hInstance);
 BOOL AE_UnregisterClassA(HINSTANCE hInstance);
@@ -823,6 +842,9 @@ void AE_StackUndoItemDelete(AKELEDIT *ae, AEUNDOITEM *lpItem);
 void AE_StackRedoDeleteAll(AKELEDIT *ae, AEUNDOITEM *lpItem);
 UINT_PTR AE_StackUndoSize(AKELEDIT *ae);
 int AE_StackIsRangeModified(AKELEDIT *ae, const CHARRANGE64 *lpcrRange);
+AEUNDOATTACH* AE_StackUndoDetach(AKELEDIT *ae);
+BOOL AE_StackUndoAttach(AKELEDIT *ae, AEUNDOATTACH *hUndoAttach);
+wchar_t* AE_GetAllTextForUndo(AKELEDIT *ae, UINT_PTR *lpdwUndoTextLen);
 void AE_StackUndoGroupStop(AKELEDIT *ae);
 AELINEDATA* AE_StackLineAdd(AKELEDIT *ae);
 AELINEDATA* AE_StackLineInsertBefore(AKELEDIT *ae, AELINEDATA *lpLine);
@@ -869,8 +891,8 @@ AEURLITEM* AE_UrlVisitGet(AKELEDIT *ae, const AECHARRANGE *crUrl);
 void AE_UrlVisitDelete(AKELEDIT *ae, AEURLITEM *lpUrlItem);
 void AE_UrlVisitFree(AKELEDIT *ae);
 DWORD AE_HighlightFindUrl(AKELEDIT *ae, const AECHARINDEX *ciChar, DWORD dwSearchType, int nLastLine, AECHARRANGE *crLink);
-int AE_HighlightFindMarkText(AKELEDIT *ae, const AECHARINDEX *ciChar, DWORD dwSearchType, AEMARKTEXTMATCH *mtm);
-AEMARKTEXTITEMW* AE_HighlightIsMarkText(AKELEDIT *ae, AEFINDTEXTW *ft, const AECHARINDEX *ciChar, AESTACKMARKTEXT *lpMarkTextStack);
+BOOL AE_HighlightFindMarkText(AKELEDIT *ae, const AECHARINDEX *ciChar, DWORD dwSearchType, AEMARKTEXTMATCH *mtm);
+AEMARKTEXTITEMW* AE_HighlightIsMarkText(AKELEDIT *ae, AEFINDTEXTW *ft, const AECHARINDEX *ciChar, AECHARINDEX *ciMaxRE, AESTACKMARKTEXT *lpMarkTextStack);
 INT_PTR AE_HighlightFindMarkRange(AKELEDIT *ae, INT_PTR nCharOffset, AEMARKRANGEMATCH *mrm);
 int AE_HighlightFindQuote(AKELEDIT *ae, const AECHARINDEX *ciChar, DWORD dwSearchType, AEQUOTEMATCH *qm);
 BOOL AE_HighlightFindQuoteRE(AKELEDIT *ae, const AECHARINDEX *ciChar, DWORD dwSearchType, AEQUOTEMATCH *qm);
@@ -892,10 +914,12 @@ void AE_HighlightDeleteWordAll(AKELEDIT *ae, AETHEMEITEMW *aeti);
 AEQUOTEITEMW* AE_HighlightAddQuote(AKELEDIT *ae, AETHEMEITEMW *lpTheme, const AEQUOTEITEMW *lpQuoteSrc, AEQUOTEITEMW *lpQuoteDst);
 AEQUOTEITEMW* AE_HighlightInsertQuote(AKELEDIT *ae, AETHEMEITEMW *aeti, int nIndex);
 AEQUOTESTART* AE_HighlightInsertQuoteStart(AKELEDIT *ae, AETHEMEITEMW *aeti, AEQUOTEITEMW *lpQuoteItem);
-void AE_HighlightDeleteQuote(AKELEDIT *ae, AETHEMEITEMW *aeti, AEQUOTEITEMW *aeqi);
 void AE_HighlightDeleteQuoteData(AEQUOTEITEMW *aeqi);
+void AE_HighlightDeleteQuote(AKELEDIT *ae, AETHEMEITEMW *aeti, AEQUOTEITEMW *aeqi);
 void AE_HighlightDeleteQuoteAll(AKELEDIT *ae, AETHEMEITEMW *aeti);
+AEMARKTEXTITEMW* AE_HighlightAddMarkText(AKELEDIT *ae, AETHEMEITEMW *lpTheme, const AEMARKTEXTITEMW *lpMarkTextSrc, AEMARKTEXTITEMW *lpMarkTextDst);
 AEMARKTEXTITEMW* AE_HighlightInsertMarkText(AKELEDIT *ae, AETHEMEITEMW *aeti, int nIndex);
+void AE_HighlightDeleteMarkTextData(AEMARKTEXTITEMW *aemti);
 void AE_HighlightDeleteMarkText(AKELEDIT *ae, AETHEMEITEMW *aeti, AEMARKTEXTITEMW *aemti);
 void AE_HighlightDeleteMarkTextAll(AKELEDIT *ae, AETHEMEITEMW *aeti);
 AEMARKRANGEITEM* AE_HighlightInsertMarkRange(AKELEDIT *ae, AETHEMEITEMW *aeti, int nIndex);
@@ -906,7 +930,7 @@ HBITMAP AE_LoadBitmapFromMemory(const BYTE *lpBmpFileData);
 BOOL AE_UpdateCaret(AKELEDIT *ae, BOOL bFocus);
 BOOL AE_SetCaretPos(AKELEDIT *ae, const POINT64 *ptCaret);
 void AE_SetCaretVis(AKELEDIT *ae, const POINT64 *ptCaret);
-void AE_ScrollToCaret(AKELEDIT *ae, const POINT64 *ptCaret, BOOL bVertCorrect);
+void AE_ScrollToCaret(AKELEDIT *ae, const POINT64 *ptCaret, DWORD dwSelFlags, DWORD dwSelType);
 DWORD AE_ScrollToPoint(AKELEDIT *ae, POINT64 *ptPosition);
 DWORD AE_ScrollToPointEx(AKELEDIT *ae, DWORD dwFlags, POINT64 *ptPosition, int nOffsetX, int nOffsetY);
 void AE_UpdateScrollBars(AKELEDIT *ae, int nBar);
@@ -939,6 +963,7 @@ BOOL AE_ColumnMarkerSet(AKELEDIT *ae, DWORD dwType, int nPos, BOOL bMouse);
 void AE_ColumnMarkerDraw(AKELEDIT *ae, HDC hDC, int nTop, int nBottom);
 void AE_ColumnMarkerErase(AKELEDIT *ae);
 void AE_RedrawLineRange(AKELEDIT *ae, int nFirstLine, int nLastLine, BOOL bErase);
+void AE_RedrawIndexRange(AKELEDIT *ae, const AECHARINDEX *ciFirstChar, const AECHARINDEX *ciLastChar, BOOL bErase);
 void AE_HideSelection(AKELEDIT *ae, BOOL bHide);
 int AE_GetFirstVisibleLine(AKELEDIT *ae);
 int AE_GetLastVisibleLine(AKELEDIT *ae);
@@ -982,6 +1007,7 @@ BOOL AE_FindTextAnsi(AKELEDIT *ae, int nCodePage, AEFINDTEXTA *ftA);
 BOOL AE_FindText(AKELEDIT *ae, AEFINDTEXTW *ft);
 UINT_PTR AE_IsMatchAnsi(AKELEDIT *ae, int nCodePage, AEFINDTEXTA *ftA, const AECHARINDEX *ciChar);
 UINT_PTR AE_IsMatch(AKELEDIT *ae, AEFINDTEXTW *ft, const AECHARINDEX *ciChar);
+UINT_PTR AE_IsMatchRE(void *lpREGroupStack, AECHARRANGE *crFound, const AECHARINDEX *ciChar, const AECHARINDEX *ciMaxRE);
 void AE_UpdateCompositionPos(AKELEDIT *ae, HIMC hImc);
 void AE_UpdateCandidatePos(AKELEDIT *ae, HIMC hImc);
 BOOL AE_GetModify(AKELEDIT *ae);
@@ -1041,7 +1067,7 @@ void AE_NotifyMarker(AKELEDIT *ae, BOOL bMouse);
 BOOL AE_NotifyMsgFilter(AKELEDIT *ae, UINT uMsg, WPARAM *wParam, LPARAM *lParam);
 void AE_SendEraseBackground(AKELEDIT *ae, HDC hDC);
 LRESULT AE_SendMessage(AKELEDIT *ae, HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
-void AE_ChangeTwoBytesOrder(unsigned char *lpBuffer, UINT_PTR dwBufferLen);
+void AE_ChangeTwoBytesOrder(unsigned char *pSrc, UINT_PTR dwSrcSize, unsigned char *pDst);
 wchar_t* AE_wcschr(const wchar_t *s, wchar_t c, BOOL bMatchCase);
 
 HRESULT WINAPI AEIDropTarget_QueryInterface(LPUNKNOWN lpTable, REFIID riid, void **ppvObj);

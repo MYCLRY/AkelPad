@@ -1,5 +1,31 @@
 
-AkelPad 4.8.7 ()
+AkelPad 4.8.8 ()
+----------------------------
+Changed: plugin architecture. Update plugins.
+Changed: in replace dialog, the last used button, becomes locally default button.
+Changed: when opening multiple files, message about create new or open binary file uses
+         "Yes/No/Cancel" buttons instead of "OK/Cancel". Allows answering "No" to
+          continue opening the remaining files.
+Changed: after answer "No" to the question of reopening the modified file, document
+         marked as changed.
+
+Added: print multiple copies with "Collate" option.
+Added: "Replace all" without message.
+Added: command 4195 and menu item - delete all whitespaces in selection.
+Added: possibility in file open/save dialog to specify NTFS file stream or path containing
+       backslashes.
+Added: manual parameter for "SingleOpenProgram" with a value of 2 - option "Don't
+       open a program twice" works only for the same exe file. Requires run as
+       administrator (UAC).
+Added: manual parameter "EditStyle" - defines some edit window creation flags.
+
+Fixed: option "Don't open a program twice" on Win7.
+Fixed: Left key didn't move caret on previous line with option "Caret after end of line".
+Fixed: saving parameters "CmdLineBegin" and "CmdLineEnd".
+Fixed: dialogs that contain AkelEdit control didn't open on Win9x.
+
+
+AkelPad 4.8.7 (Feb 02, 2014)
 ----------------------------
 Added: (?(condition)pattern-true|pattern-false) conditional patterns.
 Added: (?^pattern) negative pattern match.
@@ -8,6 +34,7 @@ Added: possibility to use backreferences in character set, for example, "([ab])[
 
 Fixed: read/write recent files additional information.
 Fixed: "Replace all" with options "Regular expressions" and "Whole word".
+Fixed: colored print of symbols background.
 Fixed: command line parsing without open frames (MDI).
 
 

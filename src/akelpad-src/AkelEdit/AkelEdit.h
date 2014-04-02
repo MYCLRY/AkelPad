@@ -12,12 +12,14 @@
 
 //// Defines
 
-#define AES_AKELEDITCLASSA       "AkelEditA"
-#define AES_AKELEDITCLASSW      L"AkelEditW"
+#define AES_AKELEDITA            "AkelEditA"
+#define AES_AKELEDITA_UNICODE   L"AkelEditA"
+#define AES_AKELEDITW_ANSI       "AkelEditW"
+#define AES_AKELEDITW           L"AkelEditW"
 #define AES_RICHEDIT20A          "RichEdit20A"
 #define AES_RICHEDIT20A_UNICODE L"RichEdit20A"
-#define AES_RICHEDIT20W         L"RichEdit20W"
 #define AES_RICHEDIT20W_ANSI     "RichEdit20W"
+#define AES_RICHEDIT20W         L"RichEdit20W"
 
 //AEM_CONTROLCLASS
 #define AECLASS_AKELEDIT        1
@@ -39,7 +41,9 @@
 #ifndef ES_DISABLENOSCROLL
   #define ES_DISABLENOSCROLL  0x00002000  //See AECO_DISABLENOSCROLL.
 #endif
-#define ES_HEAP_SERIALIZE     0x00008000  //Mutual exclusion will be used when the heap functions allocate and free memory from window heap. Serialization of heap access allows two or more threads to simultaneously allocate and free memory from the same heap.
+#define ES_GLOBALUNDO         0x00004000  //Use process heap for Undo/Redo instead of window heap. Required for AEM_DETACHUNDO and AEM_ATTACHUNDO.
+                                          //Compatibility: define same as ES_SUNKEN.
+#define ES_HEAPSERIALIZE      0x00008000  //Mutual exclusion will be used when the heap functions allocate and free memory from window heap. Serialization of heap access allows two or more threads to simultaneously allocate and free memory from the same heap.
                                           //Compatibility: define same as ES_SAVESEL.
 
 //Strings
@@ -106,6 +110,7 @@
 #define AETCT_KEYDELETE         0x00000800  //Pressing VK_DELETE.
 #define AETCT_DRAGDELETE        0x00001000  //Dragging text delete.
 #define AETCT_DROPINSERT        0x00002000  //Dropping text insert.
+#define AETCT_COLUMNGROUP       0x00004000  //Undo/Redo column text is grouped from one-line actions.
 
 //AEN_TEXTCHANGED types
 #define AETCT_NONE              0x00100000  //No text is changed.
@@ -217,8 +222,7 @@
 #define AECO_NOSCROLLSELECTALL        0x04000000  //Turn off scrolling to caret, when all text is selected.
 #define AECO_NOCOLUMNPASTEHOTKEY      0x08000000  //Turn off Alt+V for columnar paste.
 #define AECO_DISABLEBEEP              0x10000000  //Disables sound beep, when unallowable action occur.
-#define AECO_NODCBUFFER               0x20000000  //Don't use device context output buffering in AE_Paint.
-                                                  //Cause edit window flashing, but without this flag some video drivers can work very slow.
+#define AECO_NODCBUFFER               0x20000000  //Don't use device context output buffering in AE_Paint. Cause edit window flashing.
 #define AECO_PAINTGROUP               0x40000000  //Paint text by group of characters (default is character by character).
                                                   //With this flag some text recognition programs could start to work, printer could print faster, but highlighted symbols and combined unicode symbols can be drawn differently and editing of whose characters may become uncomfortable.
 #define AECO_NOPRINTCOLLAPSED         0x80000000  //Disables print collapsed lines. See AEM_COLLAPSEFOLD message.
@@ -300,6 +304,10 @@
 #define AEDLM_WRAP      0x00000020  //Wrap delimiter.
 #define AEDLM_URLLEFT   0x00000040  //URL left delimiter.
 #define AEDLM_URLRIGHT  0x00000080  //URL right delimiter.
+
+//AEM_COLUMNTOINDEX and AEM_INDEXTOCOLUMN flags
+#define AECTI_WRAPLINEBEGIN 0x0001  //If set, scan from first character of the unwrapped line. If not set, scan from first character of the wrapped line.
+#define AECTI_FIT           0x0002  //AEM_COLUMNTOINDEX: if set, character position must be equal or less than column boundary. If not set, character position must be equal or larger than column boundary.
 
 //AEM_SETSEL and AEM_UPDATESEL flags
 #define AESELT_COLUMNON            0x00000001  //Make column selection ON.
@@ -446,19 +454,22 @@
 #define AEHLF_QUOTEINCLUDE           0x00010000  //Quote include string is valid.
 #define AEHLF_QUOTEEXCLUDE           0x00020000  //Quote exclude string is valid.
                                                  //Regular exression:
-#define AEHLF_REGEXP                 0x10000000  //AEQUOTEITEM.pQuoteStart is a regular exression pattern,
-                                                 //AEQUOTEITEM.pQuoteEnd is a regular exression match map in format:
-                                                 //  "\BackRef1=(FontStyle,ColorText,ColorBk) \BackRef2=(FontStyle,ColorText,ColorBk) ..."
-                                                 //Notes:
-                                                 //  Color need to be in #RRGGBB format.
-                                                 //  If color equal to zero, then color ignored.
-                                                 //  Instead of color backreference can be used.
-                                                 //Example (highlight quoted string):
-                                                 //  AEQUOTEITEM.pQuoteStart  (")([^"\\]*(\\.[^"\\]*)*)(")
-                                                 //  AEQUOTEITEM.pQuoteEnd    \1=(0,#FF0000,0) \2=(0,#0000FF,0) \4=(0,#FF0000,0)
-                                                 //Example (highlight #RRGGBB word with its color):
-                                                 //  AEQUOTEITEM.pQuoteStart  #[A-F\d]{6}
-                                                 //  AEQUOTEITEM.pQuoteEnd    \0=(0,\0,0)
+#define AEHLF_REGEXP                 0x10000000  //Can be used in AEQUOTEITEM.dwFlags.
+                                                 //  AEQUOTEITEM.pQuoteStart is a regular exression pattern,
+                                                 //  AEQUOTEITEM.pQuoteEnd is a regular exression match map in format:
+                                                 //    "\BackRef1=(FontStyle,ColorText,ColorBk) \BackRef2=(FontStyle,ColorText,ColorBk) ..."
+                                                 //  Notes:
+                                                 //    Color need to be in #RRGGBB format.
+                                                 //    If color equal to zero, then color ignored.
+                                                 //    Instead of color backreference can be used.
+                                                 //  Example (highlight quoted string):
+                                                 //    AEQUOTEITEM.pQuoteStart  (")([^"\\]*(\\.[^"\\]*)*)(")
+                                                 //    AEQUOTEITEM.pQuoteEnd    \1=(0,#FF0000,0) \2=(0,#0000FF,0) \4=(0,#FF0000,0)
+                                                 //  Example (highlight #RRGGBB word with its color):
+                                                 //    AEQUOTEITEM.pQuoteStart  #[A-F\d]{6}
+                                                 //    AEQUOTEITEM.pQuoteEnd    \0=(0,\0,0)
+                                                 //Can be used in AEMARKTEXTITEM.dwFlags.
+                                                 //  AEMARKTEXTITEM.pMarkText is a regular exression pattern.
 
 //Highlight font style
 #define AEHLS_NONE                   0  //Current style.
@@ -550,7 +561,7 @@
 #define AEGF_URL             5  //URL style font handle.
 
 //AEM_GETCHARSIZE flags
-#define AECS_HEIGHT          0  //Current font character height. lParam not used.
+#define AECS_HEIGHT          0  //Current font character height including line gap. lParam not used.
 #define AECS_AVEWIDTH        1  //Current font character average width. lParam not used.
 #define AECS_INDEXWIDTH      2  //lParam is character index, which width is retrieving.
 #define AECS_POINTSIZE       3  //Current font point size. lParam not used.
@@ -840,6 +851,7 @@ typedef struct {
 typedef struct {
   AECHARRANGE crSel;  //Characters range.
   DWORD dwFlags;      //See AESELT_* defines.
+  DWORD dwType;       //See AESCT_* defines.
 } AESELECTION;
 
 typedef struct _AEPOINT {
@@ -1040,12 +1052,20 @@ typedef struct {
 } AEINDEXSUBTRACT;
 
 typedef struct {
-  DWORD dwFlags;  //[in]     See AESC_* defines.
-  POINT64 ptPos;  //[in,out] Point to scroll to, ignored if AESC_POINTCARET flag specified.
-                  //         If AESC_POINTOUT flag specified, then after AEM_SCROLLTOPOINT returns ptPos will contain new scroll position, otherwise unchanged.
-  int nOffsetX;   //[in]     Horizontal scroll offset.
-  int nOffsetY;   //[in]     Vertical scroll offset.
+  DWORD dwFlags;    //[in]     See AESC_* defines.
+  POINT64 ptPos;    //[in,out] Point to scroll to, ignored if AESC_POINTCARET flag specified.
+                    //         If AESC_POINTOUT flag specified, then after AEM_SCROLLTOPOINT returns ptPos will contain new scroll position, otherwise unchanged.
+  int nOffsetX;     //[in]     Horizontal scroll offset.
+  int nOffsetY;     //[in]     Vertical scroll offset.
 } AESCROLLTOPOINT;
+
+typedef struct {
+  DWORD dwFlags;    //See AESC_OFFSET* defines.
+  DWORD dwSelFlags; //See AESELT_* defines.
+  DWORD dwSelType;  //See AESCT_* defines.
+  int nOffsetX;     //Minimal number of characters to horizontal window edge.
+  int nOffsetY;     //Minimal number of lines to vertical window edge.
+} AESCROLLCARETOPTIONS;
 
 typedef struct {
   AEHDOC hDoc;     //Document handle. See AEM_CREATEDOCUMENT message.
@@ -1189,6 +1209,7 @@ typedef struct _AEMARKTEXTITEMW {
   DWORD dwFontStyle;         //See AEHLS_* defines.
   COLORREF crText;           //Mark text color. If -1, then don't set.
   COLORREF crBk;             //Mark background color. If -1, then don't set.
+  void *lpREGroupStack;      //Don't use it. For internal code only.
 } AEMARKTEXTITEMW;
 
 typedef struct _AEMARKRANGEITEM {
@@ -1332,24 +1353,26 @@ typedef struct {
 
 typedef struct {
   AENMHDR hdr;
-  AESELECTION aes;       //Current selection.
+  AECHARRANGE crSel;     //Current selection.
   AECHARINDEX ciCaret;   //Caret character index position.
   DWORD dwType;          //See AESCT_* defines.
+  BOOL bColumnSel;       //Column selection.
   CHARRANGE64 crRichSel; //Current selection (RichEdit offset).
 } AENSELCHANGE;
 
 typedef struct {
   AENMHDR hdr;
-  AESELECTION aes;       //Current selection.
+  AECHARRANGE crSel;     //Current selection.
   AECHARINDEX ciCaret;   //Caret character index position.
   DWORD dwType;          //See AETCT_* defines.
+  BOOL bColumnSel;       //Column selection.
   CHARRANGE64 crRichSel; //Current selection (RichEdit offset).
 } AENTEXTCHANGE;
 
 typedef struct {
   AENMHDR hdr;
-  AESELECTION aes;         //Current selection.
-  AECHARINDEX ciCaret;     //Caret character index position.
+  AECHARRANGE crSel;       //Reserved.
+  AECHARINDEX ciCaret;     //Reserved.
   DWORD dwType;            //See AETCT_* defines.
   const wchar_t *wpText;   //Text to insert.
   UINT_PTR dwTextLen;      //Text length.
@@ -1362,8 +1385,8 @@ typedef struct {
 
 typedef struct {
   AENMHDR hdr;
-  AESELECTION aes;         //Current selection.
-  AECHARINDEX ciCaret;     //Caret character index position.
+  AECHARRANGE crSel;       //Reserved.
+  AECHARINDEX ciCaret;     //Reserved.
   DWORD dwType;            //See AETCT_* defines.
   BOOL bColumnSel;         //Column selection.
   DWORD dwDeleteFlags;     //See AEDELT_* defines.
@@ -1512,6 +1535,8 @@ typedef struct {
 #define AEM_SETMODIFY             (WM_USER + 2063)
 #define AEM_UNDOBUFFERSIZE        (WM_USER + 2064)
 #define AEM_ISRANGEMODIFIED       (WM_USER + 2065)
+#define AEM_DETACHUNDO            (WM_USER + 2066)
+#define AEM_ATTACHUNDO            (WM_USER + 2067)
 
 //Text coordinates
 #define AEM_EXGETSEL              (WM_USER + 2099)
@@ -1611,6 +1636,7 @@ typedef struct {
 #define AEM_GETALTLINE            (WM_USER + 2240)
 #define AEM_SETALTLINE            (WM_USER + 2241)
 #define AEM_GETCHARCOLORS         (WM_USER + 2242)
+#define AEM_SCROLLCARETOPTIONS    (WM_USER + 2243)
 
 //Draw
 #define AEM_SHOWSCROLLBAR         (WM_USER + 2351)
@@ -2632,6 +2658,7 @@ Example:
  {
    aes.crSel=ft.crFound;
    aes.dwFlags=0;
+   aes.dwType=0;
    SendMessage(hWndEdit, AEM_SETSEL, (WPARAM)NULL, (LPARAM)&aes);
  }
 
@@ -2663,6 +2690,7 @@ Example:
  {
    aes.crSel=ft.crFound;
    aes.dwFlags=0;
+   aes.dwType=0;
    SendMessage(hWndEdit, AEM_SETSEL, (WPARAM)NULL, (LPARAM)&aes);
  }
 
@@ -2693,6 +2721,7 @@ Example:
  {
    aes.crSel=ft.crFound;
    aes.dwFlags=0;
+   aes.dwType=0;
    SendMessage(hWndEdit, AEM_SETSEL, (WPARAM)NULL, (LPARAM)&aes);
  }
 
@@ -2723,6 +2752,7 @@ Example:
  {
    aes.crSel=ft.crFound;
    aes.dwFlags=0;
+   aes.dwType=0;
    SendMessage(hWndEdit, AEM_SETSEL, (WPARAM)NULL, (LPARAM)&aes);
  }
 
@@ -2888,9 +2918,9 @@ ___________________
 
 Erase undo and redo history.
 
-(BOOL)wParam == TRUE   erase only redo history.
-                FALSE  erase undo and redo history.
-lParam       == not used.
+(BOOL)wParam   == TRUE   erase only redo history.
+                  FALSE  erase undo and redo history.
+(HANDLE)lParam == undo stack returned by AEM_DETACHUNDO. If not zero, then wParam is ignored.
 
 Return Value
  Zero.
@@ -3076,6 +3106,46 @@ Example (check is line has been modified):
  nLineModified=(int)SendMessage(hWndEdit, AEM_ISRANGEMODIFIED, 0, (LPARAM)&crLineRange);
 
 
+AEM_DETACHUNDO
+______________
+
+Detach undo stack.
+
+wParam == not used.
+lParam == not used.
+
+Return Value
+ Undo stack.
+
+Remarks
+ AEM_DETACHUNDO requires ES_GLOBALUNDO style.
+
+Example:
+ HANDLE hUndoStack;
+
+ hUndoStack=(HANDLE)SendMessage(hWndEdit1, AEM_DETACHUNDO, 0, 0);
+ SendMessage(hWndEdit2, AEM_ATTACHUNDO, 0, (LPARAM)hUndoStack);
+
+
+AEM_ATTACHUNDO
+______________
+
+Attach undo stack.
+
+wParam         == not used.
+(HANDLE)lParam == undo stack returned by AEM_DETACHUNDO. Current undo stack will be replaced with this one.
+
+Return Value
+ TRUE   success.
+ FALSE  failed.
+
+Remarks
+ AEM_ATTACHUNDO requires ES_GLOBALUNDO style.
+
+Example:
+ See AEM_DETACHUNDO example.
+
+
 AEM_EXGETSEL
 ____________
 
@@ -3154,6 +3224,7 @@ Example:
  SendMessage(hWndEdit, AEM_GETINDEX, AEGI_FIRSTCHAR, (LPARAM)&aes.crSel.ciMin);
  SendMessage(hWndEdit, AEM_GETINDEX, AEGI_LASTCHAR, (LPARAM)&aes.crSel.ciMax);
  aes.dwFlags=0;
+ aes.dwType=0;
  SendMessage(hWndEdit, AEM_SETSEL, (WPARAM)&aes.crSel.ciMax, (LPARAM)&aes);
 
 
@@ -3496,8 +3567,7 @@ Retrieve the column in line of the character index taking into account tab stop 
 (DWORD)wParam         == low-order word:
                           tab stop size in characters. Use current value if zero.
                          high-order word:
-                          TRUE   scan all wrapped lines.
-                          FALSE  scan to first char in line.
+                          see AECTI_* defines.
 (AECHARINDEX *)lParam == AkelEdit character index.
 
 Return Value
@@ -3507,7 +3577,7 @@ Example:
  AECHARINDEX ciCaret;
 
  SendMessage(hWndEdit, AEM_GETINDEX, AEGI_CARETCHAR, (LPARAM)&ciCaret);
- SendMessage(hWndEdit, AEM_INDEXTOCOLUMN, MAKELONG(0, TRUE), (LPARAM)&ciCaret);
+ SendMessage(hWndEdit, AEM_INDEXTOCOLUMN, MAKELONG(0, AECTI_WRAPLINEBEGIN), (LPARAM)&ciCaret);
 
 
 AEM_COLUMNTOINDEX
@@ -3518,8 +3588,7 @@ Retrieve the character index of the column in line taking into account tab stop 
 (DWORD)wParam         == low-order word:
                           tab stop size in characters. Use current value if zero.
                          high-order word:
-                          TRUE   scan all wrapped lines.
-                          FALSE  scan to first char in line.
+                          see AECTI_* defines.
 (AECHARINDEX *)lParam == Input:  AECHARINDEX.lpLine and AECHARINDEX.nLine members specifies line to scan from.
                                  AECHARINDEX.nCharInLine specifies zero based column in line.
                          Output: AECHARINDEX structure is filled with result character index.
@@ -3533,7 +3602,7 @@ Example:
 
  SendMessage(hWndEdit, AEM_GETINDEX, AEGI_CARETCHAR, (LPARAM)&ciCaret);
  ciCaret.nCharInLine=10;
- SendMessage(hWndEdit, AEM_COLUMNTOINDEX, MAKELONG(0, TRUE), (LPARAM)&ciCaret);
+ SendMessage(hWndEdit, AEM_COLUMNTOINDEX, MAKELONG(0, AECTI_WRAPLINEBEGIN), (LPARAM)&ciCaret);
 
 
 AEM_INDEXINURL
@@ -4807,6 +4876,29 @@ Example:
  SendMessage(hWndEdit, AEM_GETCHARCOLORS, (WPARAM)&ciCaret, (LPARAM)&aelc);
 
 
+AEM_SCROLLCARETOPTIONS
+______________________
+
+Retrieve or set scroll to caret options.
+
+(BOOL)wParam                   == TRUE   set caret operation.
+                                  FALSE  retrieve caret operation.
+(AESCROLLCARETOPTIONS *)lParam == pointer to a AESCROLLCARETOPTIONS structure.
+
+Return Value
+ zero
+
+Example:
+ AESCROLLCARETOPTIONS sco;
+
+ sco.dwFlags=AESC_OFFSETCHARX|AESC_OFFSETCHARY;
+ sco.dwSelFlags=0;
+ sco.dwSelType=AESCT_KEYBOARD;
+ sco.nOffsetX=10;
+ sco.nOffsetY=5;
+ SendMessage(hWndEdit, AEM_SCROLLCARETOPTIONS, TRUE, (LPARAM)&sco);
+
+
 AEM_SHOWSCROLLBAR
 _________________
 
@@ -5278,7 +5370,7 @@ Example:
  cs.x=CW_USEDEFAULT;
  cs.style=WS_CHILD|WS_VISIBLE|WS_HSCROLL|WS_VSCROLL|ES_DISABLENOSCROLL;
  cs.lpszName=NULL;
- cs.lpszClass=AES_AKELEDITCLASSA;
+ cs.lpszClass=AES_AKELEDITA;
  cs.dwExStyle=WS_EX_CLIENTEDGE;
 
  hDocNew=(AEHDOC)SendMessage(hWndEdit, AEM_CREATEDOCUMENT, 0, (LPARAM)&cs);
@@ -6172,7 +6264,7 @@ Example:
 //// UNICODE define
 
 #ifndef UNICODE
-  #define AES_AKELEDITCLASS AES_AKELEDITCLASSA
+  #define AES_AKELEDIT AES_AKELEDITA
   #define AES_RICHEDIT20 AES_RICHEDIT20A
 
   #define TEXTRANGE64 TEXTRANGE64A
@@ -6201,7 +6293,7 @@ Example:
   #define AEM_HLADDQUOTE AEM_HLADDQUOTEA
   #define AEM_HLADDMARKTEXT AEM_HLADDMARKTEXTA
 #else
-  #define AES_AKELEDITCLASS AES_AKELEDITCLASSW
+  #define AES_AKELEDIT AES_AKELEDITW
   #define AES_RICHEDIT20 AES_RICHEDIT20W
 
   #define TEXTRANGE64 TEXTRANGE64W
