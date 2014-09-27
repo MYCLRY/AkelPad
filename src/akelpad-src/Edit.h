@@ -5,9 +5,9 @@
 //// Defines
 
 #ifdef _WIN64
-  #define APP_ABOUT_VERSIONW        L"AkelPad 4.8.8 (x64)"
+  #define APP_ABOUT_VERSIONW        L"AkelPad 4.9.0 (x64)"
 #else
-  #define APP_ABOUT_VERSIONW        L"AkelPad 4.8.8 (x86)"
+  #define APP_ABOUT_VERSIONW        L"AkelPad 4.9.0 (x86)"
 #endif
 #ifdef AKELPAD_DLLBUILD
   #define APP_MAIN_CLASSA            "AkelPad4 Library"
@@ -113,11 +113,12 @@
 #define PCL_ONMESSAGE       2
 
 //Open file dialog
-#define IDC_OFN_LIST           1120
-#define IDC_OFN_COMBOBOX_LABEL 1089
-#define IDC_OFN_COMBOBOX       1136
-#define IDC_OFN_EDIT           1152
-#define IDC_OFN_PLACESBAR      1184
+#define IDC_OFN_LIST                   1120
+#define IDC_OFN_CODEPAGECOMBOBOX_LABEL 1089
+#define IDC_OFN_CODEPAGECOMBOBOX       1136
+#define IDC_OFN_FILECOMBOBOX           1148
+#define IDC_OFN_FILEEDIT               1152
+#define IDC_OFN_PLACESBAR              1184
 
 //Combobox edit ID
 #define IDC_COMBOBOXEDIT       1001
@@ -142,6 +143,9 @@
 #define FS_FONTBOLD        2
 #define FS_FONTITALIC      3
 #define FS_FONTBOLDITALIC  4
+
+//File dialog notifications
+#define AKDLG_SETSTREAM                (WM_USER + 100)
 
 //Print preview dialog notifications
 #define AKDLG_PREVIEWKEYDOWN           (WM_USER + 100) //lParam - WM_KEYDOWN's lParam, wParam - control handle.
@@ -277,12 +281,11 @@
 #define STRSEL_LEADSPACE  0x00000040  //Uses only with STRSEL_DELETE.
 #define STRSEL_ALLSPACES  0x00000080  //Uses only with STRSEL_DELETE.
 
-//Selection case
-#define UPPERCASE      1
-#define LOWERCASE      2
-#define SENTENCECASE   3
-#define TITLECASE      4
-#define INVERTCASE     5
+//DetectCase
+#define DC_UPPERCASE     0x1
+#define DC_LOWERCASE     0x2
+#define DC_SENTENCECASE  0x4
+#define DC_TITLECASE     0x8
 
 //Change font size
 #define FONTSIZE_INCREASE  1
@@ -732,7 +735,9 @@ void DoEditRecode();
 BOOL DoEditModifyStringInSelection(HWND hWnd, int nAction, const wchar_t *wpString);
 BOOL DoEditDeleteFirstCharW(HWND hWnd);
 BOOL DoEditDeleteTrailingWhitespacesW(HWND hWnd);
-BOOL DoEditChangeCaseW(HWND hWnd, int nCase);
+BOOL DoEditChangeCaseW(HWND hWnd, int nCase, BOOL bSelCurWord);
+void ConvertCase(wchar_t *wszText, INT_PTR nTextLen, int nCase);
+int DetectSelCase(HWND hWnd);
 void DoEditFind();
 INT_PTR DoEditFindNextDown(FRAMEDATA *lpFrame);
 INT_PTR DoEditFindNextUp(FRAMEDATA *lpFrame);
@@ -803,10 +808,11 @@ void FileStreamOut(FILESTREAMDATA *lpData);
 DWORD CALLBACK OutputStreamCallback(UINT_PTR dwCookie, wchar_t *wszBuf, DWORD dwBufBytesLen, DWORD *dwBufBytesDone);
 BOOL OpenDirectory(wchar_t *wpPath, BOOL bSubDir);
 void DropFiles(HDROP hDrop);
-void CheckModificationTime(FRAMEDATA *lpFrame);
+BOOL IsAllowWatchFile(FRAMEDATA *lpFrame);
 BOOL CALLBACK SaveAllAsDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
 unsigned int CALLBACK PrintPageSetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
+BOOL GetPrinter(HWND hWndOwner, PRINTINFO *prninfo, BOOL bSilent);
 BOOL GetPrinterA(HWND hWndOwner, PRINTINFO *prninfo, BOOL bSilent);
 BOOL GetPrinterW(HWND hWndOwner, PRINTINFO *prninfo, BOOL bSilent);
 DWORD GetMappedPrintWidth(HWND hWnd);
@@ -832,6 +838,7 @@ void StackPageFree(HSTACK *hStack);
 
 UINT_PTR CALLBACK FileDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
 LRESULT CALLBACK NewFilePreviewProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+LRESULT CALLBACK NewFileParentProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 void FillComboboxCodepage(HWND hWnd, int *lpCodepageList);
 void FillListBoxCodepage(HWND hWnd, int *lpCodepageList);
 void ClearCombobox(HWND hWnd);
@@ -877,7 +884,7 @@ INT_PTR EscapeStringToEscapeDataW(const wchar_t *wpInput, INT_PTR nInputLen, wch
 void EscapeDataToEscapeStringW(const wchar_t *wpInput, wchar_t *wszOutput);
 BOOL SetDefButtonStyle(HWND hWnd, HWND hWndNewDef);
 
-void GetSel(HWND hWnd, AECHARRANGE *crSel, BOOL *bColumnSel, AECHARINDEX *ciCaret);
+BOOL GetSel(HWND hWnd, AECHARRANGE *crSel, BOOL *bColumnSel, AECHARINDEX *ciCaret);
 void SetSel(HWND hWnd, AECHARRANGE *crSel, DWORD dwFlags, AECHARINDEX *ciCaret);
 void SetSelRE(HWND hWnd, INT_PTR nSelStart, INT_PTR nSelEnd);
 void ReplaceSelA(HWND hWnd, const char *pData, INT_PTR nDataLen, DWORD dwFlags, int nNewLine, AECHARINDEX *ciInsertStart, AECHARINDEX *ciInsertEnd);
@@ -895,6 +902,7 @@ INT_PTR ExGetRangeTextA(HWND hWnd, int nCodePage, const char *lpDefaultChar, BOO
 INT_PTR ExGetRangeTextW(HWND hWnd, AECHARINDEX *ciMin, AECHARINDEX *ciMax, BOOL bColumnSel, wchar_t **wpText, int nNewLine, BOOL bFillSpaces);
 BOOL FreeText(LPVOID pText);
 BOOL PasteInEditAsRichEdit(HWND hWnd, int nMaxLenght);
+int PasteCase(HWND hWnd, BOOL bAnsi);
 void ShowStandardViewMenu(HWND hWnd, HMENU hMenu, BOOL bMouse);
 
 BOOL CALLBACK GoToDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
@@ -1157,6 +1165,7 @@ int MoveTabItem(HWND hWnd, int nIndexOld, int nIndexNew);
 BOOL DeleteTabItem(HWND hWnd, int nIndex);
 void FreeMemorySearch();
 int BytesInString(const wchar_t *wpString);
+const wchar_t* FindArrayByIndex(const wchar_t *wpString, int nIndex);
 char* AKD_strchr(const char *s, int c);
 wchar_t* AKD_wcschr(const wchar_t *s, wchar_t c);
 

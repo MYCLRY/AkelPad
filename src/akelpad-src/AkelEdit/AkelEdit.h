@@ -232,6 +232,8 @@
 #define AECOE_LOCKSELECTION           0x00000002  //Prevent selection changing. Use it with AECO_READONLY flag.
 #define AECOE_OVERTYPE                0x00000004  //Turn on overtype mode instead of insert mode.
 #define AECOE_ALTDECINPUT             0x00000008  //Do Alt+NumPad decimal input with NumLock on (default is decimal input after two "Num 0").
+#define AECOE_INVERTHORZWHEEL         0x00000010  //Invert mouse horizontal wheel.
+#define AECOE_INVERTVERTWHEEL         0x00000020  //Invert mouse vertical wheel.
 
 #define AECOOP_SET              1  //Sets the options to those specified by lParam.
 #define AECOOP_OR               2  //Combines the specified options with the current options.
@@ -459,15 +461,15 @@
                                                  //  AEQUOTEITEM.pQuoteEnd is a regular exression match map in format:
                                                  //    "\BackRef1=(FontStyle,ColorText,ColorBk) \BackRef2=(FontStyle,ColorText,ColorBk) ..."
                                                  //  Notes:
-                                                 //    Color need to be in #RRGGBB format.
+                                                 //    Color need to be in RRGGBB or RGB format with # prefix or without.
                                                  //    If color equal to zero, then color ignored.
                                                  //    Instead of color backreference can be used.
                                                  //  Example (highlight quoted string):
                                                  //    AEQUOTEITEM.pQuoteStart  (")([^"\\]*(\\.[^"\\]*)*)(")
-                                                 //    AEQUOTEITEM.pQuoteEnd    \1=(0,#FF0000,0) \2=(0,#0000FF,0) \4=(0,#FF0000,0)
-                                                 //  Example (highlight #RRGGBB word with its color):
-                                                 //    AEQUOTEITEM.pQuoteStart  #[A-F\d]{6}
-                                                 //    AEQUOTEITEM.pQuoteEnd    \0=(0,\0,0)
+                                                 //    AEQUOTEITEM.pQuoteEnd    \1=(0,#FF0000,0) \2=(0,#00F,0) \4=(0,#FF0000,0)
+                                                 //  Example (highlight #RRGGBB or #RGB word with its color):
+                                                 //    AEQUOTEITEM.pQuoteStart  #([A-F\d]{6}|[A-F\d]{3})\b
+                                                 //    AEQUOTEITEM.pQuoteEnd    \0=(0,\1,0)
                                                  //Can be used in AEMARKTEXTITEM.dwFlags.
                                                  //  AEMARKTEXTITEM.pMarkText is a regular exression pattern.
 
@@ -1061,7 +1063,7 @@ typedef struct {
 
 typedef struct {
   DWORD dwFlags;    //See AESC_OFFSET* defines.
-  DWORD dwSelFlags; //See AESELT_* defines.
+  DWORD dwSelFlags; //See AESELT_* defines. Can be zero.
   DWORD dwSelType;  //See AESCT_* defines.
   int nOffsetX;     //Minimal number of characters to horizontal window edge.
   int nOffsetY;     //Minimal number of lines to vertical window edge.
@@ -1142,42 +1144,46 @@ typedef struct _AEWORDITEMW {
 typedef struct _AEQUOTEITEMA {
   struct _AEQUOTEITEMA *next;
   struct _AEQUOTEITEMA *prev;
-  int nIndex;                //Reserved. Quote start items are automatically grouped in standalone stack, if following members are equal: pQuoteStart, chEscape and dwFlags with AEHLF_QUOTESTART_ISDELIMITER, AEHLF_ATLINESTART, AEHLF_QUOTESTART_ISWORD.
-  const char *pQuoteStart;   //Quote start string.
-  int nQuoteStartLen;        //Quote start string length.
-  const char *pQuoteEnd;     //Quote end string. If NULL, line end used as quote end.
-  int nQuoteEndLen;          //Quote end string length.
-  char chEscape;             //Escape character. If it precedes quote string then quote ignored.
-  const char *pQuoteInclude; //Quote include string.
-  int nQuoteIncludeLen;      //Quote include string length.
-  const char *pQuoteExclude; //Quote exclude string.
-  int nQuoteExcludeLen;      //Quote exclude string length.
-  DWORD dwFlags;             //See AEHLF_* defines.
-  DWORD dwFontStyle;         //See AEHLS_* defines.
-  COLORREF crText;           //Quote text color. If -1, then don't set.
-  COLORREF crBk;             //Quote background color. If -1, then don't set.
-  void *lpQuoteStart;        //Don't use it. For internal code only.
-} AEQUOTEITEMA;
-
-typedef struct _AEQUOTEITEMW {
-  struct _AEQUOTEITEMW *next;
-  struct _AEQUOTEITEMW *prev;
   int nIndex;                   //Reserved. Quote start items are automatically grouped in standalone stack, if following members are equal: pQuoteStart, chEscape and dwFlags with AEHLF_QUOTESTART_ISDELIMITER, AEHLF_ATLINESTART, AEHLF_QUOTESTART_ISWORD.
-  const wchar_t *pQuoteStart;   //Quote start string.
+  const char *pQuoteStart;      //Quote start string.
   int nQuoteStartLen;           //Quote start string length.
-  const wchar_t *pQuoteEnd;     //Quote end string. If NULL, line end used as quote end.
+  const char *pQuoteEnd;        //Quote end string. If NULL, line end used as quote end.
   int nQuoteEndLen;             //Quote end string length.
-  wchar_t chEscape;             //Escape character. If it precedes quote string then quote ignored.
-  const wchar_t *pQuoteInclude; //Quote include string.
+  char chEscape;                //Escape character. If it precedes quote string then quote ignored.
+  const char *pQuoteInclude;    //Quote include string.
   int nQuoteIncludeLen;         //Quote include string length.
-  const wchar_t *pQuoteExclude; //Quote exclude string.
+  const char *pQuoteExclude;    //Quote exclude string.
   int nQuoteExcludeLen;         //Quote exclude string length.
   DWORD dwFlags;                //See AEHLF_* defines.
   DWORD dwFontStyle;            //See AEHLS_* defines.
   COLORREF crText;              //Quote text color. If -1, then don't set.
   COLORREF crBk;                //Quote background color. If -1, then don't set.
   void *lpQuoteStart;           //Don't use it. For internal code only.
-  void *lpREGroupStack;         //Don't use it. For internal code only.
+  INT_PTR nCompileErrorOffset;  //Contain pQuoteStart offset, if error occurred during compile regular exression pattern.
+} AEQUOTEITEMA;
+
+typedef struct _AEQUOTEITEMW {
+  struct _AEQUOTEITEMW *next;
+  struct _AEQUOTEITEMW *prev;
+  int nIndex;                    //Reserved. Quote start items are automatically grouped in standalone stack, if following members are equal: pQuoteStart, chEscape and dwFlags with AEHLF_QUOTESTART_ISDELIMITER, AEHLF_ATLINESTART, AEHLF_QUOTESTART_ISWORD.
+  const wchar_t *pQuoteStart;    //Quote start string.
+  int nQuoteStartLen;            //Quote start string length.
+  const wchar_t *pQuoteEnd;      //Quote end string. If NULL, line end used as quote end.
+  int nQuoteEndLen;              //Quote end string length.
+  wchar_t chEscape;              //Escape character. If it precedes quote string then quote ignored.
+  const wchar_t *pQuoteInclude;  //Quote include string.
+  int nQuoteIncludeLen;          //Quote include string length.
+  const wchar_t *pQuoteExclude;  //Quote exclude string.
+  int nQuoteExcludeLen;          //Quote exclude string length.
+  DWORD dwFlags;                 //See AEHLF_* defines.
+  DWORD dwFontStyle;             //See AEHLS_* defines.
+  COLORREF crText;               //Quote text color. If -1, then don't set.
+  COLORREF crBk;                 //Quote background color. If -1, then don't set.
+  void *lpQuoteStart;            //Don't use it. For internal code only.
+  union {
+    void *lpREGroupStack;        //Don't use it. For internal code only.
+    INT_PTR nCompileErrorOffset; //Contain pQuoteStart offset, if error occurred during compile regular exression pattern.
+  };
 } AEQUOTEITEMW;
 
 typedef struct {
@@ -1190,26 +1196,30 @@ typedef struct {
 typedef struct _AEMARKTEXTITEMA {
   struct _AEMARKTEXTITEMA *next;
   struct _AEMARKTEXTITEMA *prev;
-  int nIndex;                //Position of the element if positive inserts to begin of stack if negative to end.
-  const char *pMarkText;     //Mark text.
-  int nMarkTextLen;          //Mark text length.
-  DWORD dwFlags;             //See AEHLF_* defines.
-  DWORD dwFontStyle;         //See AEHLS_* defines.
-  COLORREF crText;           //Mark text color. If -1, then don't set.
-  COLORREF crBk;             //Mark background color. If -1, then don't set.
+  int nIndex;                  //Position of the element if positive inserts to begin of stack if negative to end.
+  const char *pMarkText;       //Mark text.
+  int nMarkTextLen;            //Mark text length.
+  DWORD dwFlags;               //See AEHLF_* defines.
+  DWORD dwFontStyle;           //See AEHLS_* defines.
+  COLORREF crText;             //Mark text color. If -1, then don't set.
+  COLORREF crBk;               //Mark background color. If -1, then don't set.
+  INT_PTR nCompileErrorOffset; //Contain pMarkText offset, if error occurred during compile regular exression pattern.
 } AEMARKTEXTITEMA;
 
 typedef struct _AEMARKTEXTITEMW {
   struct _AEMARKTEXTITEMW *next;
   struct _AEMARKTEXTITEMW *prev;
-  int nIndex;                //Position of the element if positive inserts to begin of stack if negative to end.
-  const wchar_t *pMarkText;  //Mark text.
-  int nMarkTextLen;          //Mark text length.
-  DWORD dwFlags;             //See AEHLF_* defines.
-  DWORD dwFontStyle;         //See AEHLS_* defines.
-  COLORREF crText;           //Mark text color. If -1, then don't set.
-  COLORREF crBk;             //Mark background color. If -1, then don't set.
-  void *lpREGroupStack;      //Don't use it. For internal code only.
+  int nIndex;                    //Position of the element if positive inserts to begin of stack if negative to end.
+  const wchar_t *pMarkText;      //Mark text.
+  int nMarkTextLen;              //Mark text length.
+  DWORD dwFlags;                 //See AEHLF_* defines.
+  DWORD dwFontStyle;             //See AEHLS_* defines.
+  COLORREF crText;               //Mark text color. If -1, then don't set.
+  COLORREF crBk;                 //Mark background color. If -1, then don't set.
+  union {
+    void *lpREGroupStack;        //Don't use it. For internal code only.
+    INT_PTR nCompileErrorOffset; //Contain pMarkText offset, if error occurred during compile regular exression pattern.
+  };
 } AEMARKTEXTITEMW;
 
 typedef struct _AEMARKRANGEITEM {
@@ -1353,7 +1363,7 @@ typedef struct {
 
 typedef struct {
   AENMHDR hdr;
-  AESELECTION aes;     //Current selection.
+  AECHARRANGE crSel;     //Current selection.
   AECHARINDEX ciCaret;   //Caret character index position.
   DWORD dwType;          //See AESCT_* defines.
   BOOL bColumnSel;       //Column selection.
@@ -1362,7 +1372,7 @@ typedef struct {
 
 typedef struct {
   AENMHDR hdr;
-  AESELECTION aes;     //Current selection.
+  AECHARRANGE crSel;     //Current selection.
   AECHARINDEX ciCaret;   //Caret character index position.
   DWORD dwType;          //See AETCT_* defines.
   BOOL bColumnSel;       //Column selection.
@@ -1371,7 +1381,7 @@ typedef struct {
 
 typedef struct {
   AENMHDR hdr;
-  AESELECTION aes;       //Reserved.
+  AECHARRANGE crSel;       //Reserved.
   AECHARINDEX ciCaret;     //Reserved.
   DWORD dwType;            //See AETCT_* defines.
   const wchar_t *wpText;   //Text to insert.
@@ -1385,7 +1395,7 @@ typedef struct {
 
 typedef struct {
   AENMHDR hdr;
-  AESELECTION aes;       //Reserved.
+  AECHARRANGE crSel;       //Reserved.
   AECHARINDEX ciCaret;     //Reserved.
   DWORD dwType;            //See AETCT_* defines.
   BOOL bColumnSel;         //Column selection.
@@ -3119,6 +3129,7 @@ Return Value
 
 Remarks
  AEM_DETACHUNDO requires ES_GLOBALUNDO style.
+ If undo stack not attached by AEM_ATTACHUNDO, then it must be released by AEM_EMPTYUNDOBUFFER.
 
 Example:
  HANDLE hUndoStack;
@@ -4883,7 +4894,7 @@ Retrieve or set scroll to caret options.
 
 (BOOL)wParam                   == TRUE   set caret operation.
                                   FALSE  retrieve caret operation.
-(AESCROLLCARETOPTIONS *)lParam == pointer to a AESCROLLCARETOPTIONS structure.
+(AESCROLLCARETOPTIONS *)lParam == pointer to a AESCROLLCARETOPTIONS structure. If this parameter is NULL and wParam is TRUE, the caret scroll options are set to its default values.
 
 Return Value
  zero

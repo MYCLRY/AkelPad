@@ -1,5 +1,42 @@
 
-AkelPad 4.8.8 ()
+AkelPad 4.9.0 ()
+----------------------------
+Changed: regular expression quantifiers now have classic greediness. To make it
+         possessive (old behaviour) use "+" after quantifier, like, "\d*+".
+
+Added: possibility in file open/save dialog to specify NTFS file stream on Win7.
+Added: flags for manual parameter "MouseOptions":
+       256 - invert mouse horizontal wheel;
+       512 - invert mouse vertical wheel.
+
+Fixed: pressing space as a part of the symbol input on special keyboard layouts.
+Fixed: saving NTFS file stream in protected file (UAC).
+Fixed: command 4198 could not update active column position.
+
+
+AkelPad 4.8.9 (Jun 20, 2014)
+----------------------------
+Added: command 4194 - paste text taking into account selection case.
+Added: optional parameter for change case commands 4175-4180:
+       1 - change case for current word if no selection.
+Added: (?options) possibility to set options for groups individually.
+Added: (?>pattern) atomic grouping.
+Added: possibility to use lookbehind search in conditional pattern, for example,
+       "(?(?<=a)b|c)".
+Added: now "AkelAdmin.exe" provides the ability to modify a file on disk root (UAC).
+Added: to directly open the *.lnk or *.url from file open dialog, need to click
+       on "Open" button while holding Ctrl (WinXP).
+
+Fixed: mixing caret and active column colors with background.
+Fixed: metacharacters \w and \W usage in character set [].
+Fixed: possibility in file open/save dialog to specify NTFS file stream or path containing
+       backslashes.
+Fixed: "Search finished" not displayed when cycle searching from the document beginning.
+Fixed: flag 4 of manual parameter "ShowModify" - modification displaying disappeared
+       when switching between tabs (PMDI).
+
+
+AkelPad 4.8.8 (Apr 12, 2014)
 ----------------------------
 Changed: plugin architecture. Update plugins.
 Changed: in replace dialog, the last used button, becomes locally default button.
@@ -8,6 +45,8 @@ Changed: when opening multiple files, message about create new or open binary fi
           continue opening the remaining files.
 Changed: after answer "No" to the question of reopening the modified file, document
          marked as changed.
+Changed: metacharacter \w - matches any word character (any character excluding delimiter).
+Changed: metacharacter \W - matches any non-word character (any delimiter).
 
 Added: print multiple copies with "Collate" option.
 Added: "Replace all" without message.

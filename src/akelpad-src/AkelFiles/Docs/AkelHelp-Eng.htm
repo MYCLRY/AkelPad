@@ -24,7 +24,7 @@
 </ol>
 
 <a name=ch0><h3>Compatibility</h3></a>
-  Program is intended to work under Windows 95/98/Me and Windows NT 4.0/2000/XP/2003/Vista/Seven.
+  Program is intended to work under Windows 95/98/Me and Windows NT 4.0/2000/XP/2003/Vista/Seven/8.
 
 <a name=ch1><h3>General remarks</h3></a>
   Notepad is a wonderful editor, being used to edit files in plain text format, thus it is irreplaceable for programming, designing of Web documents, and so on. However, the one comprised in Windows, is very inconvenient due to several limitations. This program claims to be able to fill up these drawbacks.
@@ -136,7 +136,7 @@
           <div style="margin-left:30px">/Show(2)</div>
             <div style="margin-left:60px">method shows main window in minimized style.</div>
 
-          <div style="margin-top:10px"><li><b>/OpenFile("file", [OpenCodepage], [OpenBOM])</b></div>
+          <div style="margin-top:10px"><li><b>/OpenFile("file"[, OpenCodepage][, OpenBOM])</b></div>
           <div style="margin-left:30px">"file"</div>
             <div style="margin-left:60px">File to open.</div>
           <div style="margin-left:30px">OpenCodepage</div>
@@ -146,7 +146,7 @@
           <div style="margin-left:30px">/OpenFile("C:\File.txt", 65001, -1)</div>
             <div style="margin-left:60px">method opens file in UTF-8 codepage.</div>
 
-          <div style="margin-top:10px"><li><b>/SaveFile("file", [SaveCodepage], [SaveBOM])</b></div>
+          <div style="margin-top:10px"><li><b>/SaveFile("file"[, SaveCodepage][, SaveBOM])</b></div>
           <div style="margin-left:30px">"file"</div>
             <div style="margin-left:60px">Save current document to a specified file name.</div>
           <div style="margin-left:30px">SaveCodepage</div>
@@ -156,15 +156,15 @@
           <div style="margin-left:30px">/SaveFile("C:\File.txt", 65001, 0)</div>
             <div style="margin-left:60px">method saves file in UTF-8 codepage without BOM.</div>
 
-          <div style="margin-top:10px"><li><b>/Command(InternalCommand, [Parameter])</b></div>
+          <div style="margin-top:10px"><li><b>/Command(InternalCommand[, Parameter])</b></div>
           <div style="margin-left:30px">/Command(4162)</div>
             <div style="margin-left:60px">method calls the <a href=#ch6>internal command</a> at number 4162.</div>
 
-          <div style="margin-top:10px"><li><b>/Call("Plugin::Function", [additional parameters])</b></div>
+          <div style="margin-top:10px"><li><b>/Call("Plugin::Function"[, additional parameters])</b></div>
           <div style="margin-left:30px">/Call("Scripts::Main")</div>
             <div style="margin-left:60px">method calls Scripts plugin and Main function.</div>
 
-          <div style="margin-top:10px"><li><b>/Exec("command line", ["working directory"], [Wait])</b></div>
+          <div style="margin-top:10px"><li><b>/Exec("command line"[, "working directory"][, Wait])</b></div>
           <div style="margin-left:30px">"command line"</div>
             <div style="margin-left:60px">Command line string.</div>
           <div style="margin-left:30px">"working directory"</div>
@@ -204,9 +204,9 @@
           <div style="margin-left:30px">/Recode(1252, 437)</div>
             <div style="margin-left:60px">method recodes the text from 1252 codepage to 437.</div>
 
-          <div style="margin-top:10px"><li><b>/Insert("text", [Esc-sequences])</b></div>
+          <div style="margin-top:10px"><li><b>/Insert("text"[, Esc-sequences])</b></div>
           <div style="margin-left:30px">"text"</div>
-            <div style="margin-left:60px">Inserted text.</div>
+            <div style="margin-left:60px">Text to insert.</div>
           <div style="margin-left:30px">Esc-sequences:</div>
             <div style="margin-left:60px">0 - "text" doesn't contain Esc-sequences (default).</div>
             <div style="margin-left:60px">1 - "text" contains Esc-sequences. A set of sequences similar to the find/replace dialog in the program, and also:</div>
@@ -304,6 +304,8 @@
           <br><li>32 - Disable font size change using Ctrl+<i>mouse scroll wheel</i>.
           <br><li>64 - Left margin line selection with mouse selects all wrapped line.
           <br><li>128 - No scrolling after middle mouse click.
+          <br><li>256 - Invert mouse horizontal wheel.
+          <br><li>512 - Invert mouse vertical wheel.
           <br>
           <br>By default: 1+2+4=7.
         </td>
@@ -436,7 +438,7 @@
             </tr>
             <tr>
               <td><li>%ob</td>
-              <td>Offset in symbols. Newline breaks: \r\r\n - three symbols, \r\n - two symbols, \r - one symbol, \n - one symbol.</td>
+              <td>Offset in symbols. Newline breaks: \r\r\n - three symbols, \r\n - two symbols, \r - one symbol, \n - one symbol. Use only if necessary because on large files can cause slowdown.</td>
             </tr>
             <tr>
               <td><li>%al</td>
@@ -1334,32 +1336,38 @@
 
     <tr>
       <td align=center><b>4175</b></td>
-      <td>Convert text to "UPPERCASE"</td>
+      <td>Convert text to "UPPERCASE".
+          <br>Optional parameter: 1 - change case for current word if no selection.</td>
     </tr>
 
     <tr>
       <td align=center><b>4176</b></td>
-      <td>Convert text to "lowercase"</td>
+      <td>Convert text to "lowercase".
+          <br>Optional parameter: 1 - change case for current word if no selection.</td>
     </tr>
 
     <tr>
       <td align=center><b>4177</b></td>
-      <td>Convert text to "Sentence case."</td>
+      <td>Convert text to "Sentence case.".
+          <br>Optional parameter: 1 - change case for current word if no selection.</td>
     </tr>
 
     <tr>
       <td align=center><b>4178</b></td>
-      <td>Convert text to "Title Case"</td>
+      <td>Convert text to "Title Case".
+          <br>Optional parameter: 1 - change case for current word if no selection.</td>
     </tr>
 
     <tr>
       <td align=center><b>4179</b></td>
-      <td>Convert text to "iNVERT cASE"</td>
+      <td>Convert text to "iNVERT cASE".
+          <br>Optional parameter: 1 - change case for current word if no selection.</td>
     </tr>
 
     <tr>
       <td align=center><b>4180</b></td>
-      <td>Cycle case</td>
+      <td>Cycle case.
+          <br>Optional parameter: 1 - change case for current word if no selection.</td>
     </tr>
 
     <tr>
@@ -1408,6 +1416,11 @@
     </tr>
 
     <tr>
+      <td align=center><b>4194</b></td>
+      <td>Paste text taking into account selection case</td>
+    </tr>
+
+    <tr>
       <td align=center><b>4195</b></td>
       <td>Delete all whitespaces in selection</td>
     </tr>
@@ -1420,7 +1433,8 @@
 
     <tr>
       <td align=center><b>4197</b></td>
-      <td>Delete current line</td>
+      <td>Delete current line.
+          <br>Optional parameter: 1 - delete all wrapped line.</td>
     </tr>
 
     <tr>
@@ -1847,10 +1861,57 @@
       <td>A subexpression that performs a negative lookbehind search, which matches the search string at any point where a string not matching <i>pattern</i> ends. For example, '(?&lt;!abc)z' matches an "z" only if it is not preceded by the expression "abc". This is a non-capturing match, that is, the match is not captured for possible later use. Pattern must be of fixed length.</td>
     </tr>
     <tr>
+      <td>(?&gt;<i>pattern</i>)</td>
+      <td>Atomic subexpression. Backtracking in this <i>pattern</i> is denied, if part of the <i>pattern</i> already found. For example, 'a(?&gt;bc|b)c' matches an "abcc", but not "abc". This is a non-capturing match, that is, the match is not captured for possible later use.</td>
+    </tr>
+    <tr>
       <td>(?(<i>condition</i>)<i>pattern-true</i>|<i>pattern-false</i>)
       <br><br>(?(<i>condition</i>)<i>pattern-true</i>)
       </td>
       <td>If the condition is satisfied, the pattern-true is used; otherwise the pattern-false (if present) is used. Condition can be pattern or a number of backreference, which will be checked for match success. For example, '(a)?b(?(1)c|d)' matches the "abc" in "abc" and "bd" in "zbd". Because, if "а" found, then trying to find "с" after "b", if "а" not found, then trying to find "d" after "b".</td>
+    </tr>
+    <tr>
+      <td>(?<i>options</i>)</td>
+      <td>
+        Options applies to the current group, if specified at the beginning of a special pattern, for example, 'a(?i:b)c' applies to "b" or to the next group, if specified separately, for example, 'a(?i)bc' applies to "bc".
+        <br>Possible to use several options at once, for example, 'a(?im-Us)bc'.
+        <br>
+        <br>
+        <table>
+          <tr>
+            <td>(?i)</td>
+            <td>case insensitive.</td>
+          </tr>
+          <tr>
+            <td>(?m)</td>
+            <td>multiline search (default).</td>
+          </tr>
+          <tr>
+            <td>(?s)</td>
+            <td>dot '.' matches any single character (default).</td>
+          </tr>
+          <tr>
+            <td>(?U)</td>
+            <td>invert greediness.</td>
+          </tr>
+          <tr>
+            <td>(?-i)</td>
+            <td>match case.</td>
+          </tr>
+          <tr>
+            <td>(?-m)</td>
+            <td>turn off multiline search. '^' matches document beginning and '$' matches document end.</td>
+          </tr>
+          <tr>
+            <td>(?-s)</td>
+            <td>dot '.' matches any single character, except newline character.</td>
+          </tr>
+          <tr>
+            <td>(?-U)</td>
+            <td>turn off greediness inversion.</td>
+          </tr>
+        </table>
+      </td>
     </tr>
     <tr>
       <td><i>x</i>|<i>y</i></td>
@@ -1934,11 +1995,11 @@
     </tr>
     <tr>
       <td>\w</td>
-      <td>Matches any word character including underscore. Equivalent to '[A-Za-z0-9_]'.</td>
+      <td>Matches any word character (any character excluding delimiter).</td>
     </tr>
     <tr>
       <td>\W</td>
-      <td>Matches any non-word character. Equivalent to '[^A-Za-z0-9_]'.</td>
+      <td>Matches any non-word character (any delimiter).</td>
     </tr>
     <tr>
       <td>\x<i>n</i></td>
@@ -1963,8 +2024,9 @@
   </table>
 
   <br><b>Notes:</b>
-  <br>- Regular expression quantifiers (*, +, {n,}) are greedy by default (except for single dot, like, ".*" or ".{5,10}"). To make it non-greedy (old behaviour) use "?" after quantifier, like, "\d*?".
-  <br>- AkelPad's regular expressions greediness works consequentially. For example, pattern "ab?b" in "abc" has no matches, because "ab?" matches "ab" and next "b" has no match. Correct pattern will be "abb?".
+  <br>- Regular expression quantifiers (*, +, {n,}) are greedy by default. To make it lazy use "?" after quantifier, like, "\d*?". To make it possessive use "+" after quantifier, like, "\d*+".
+  <br>- Using possessive quantifiers increases the speed of expression execution.
+  <br>
 
 <a name=ch8><h3>License</h3></a>
   This program is distributed under <i>"BSD license"</i> conditions. <i>BSD license</i> is open source license approved by OSI. It can be found on <a href=http://www.opensource.org/licenses/bsd-license.php>their site</a>.

@@ -21,13 +21,16 @@ if "%BIT%" == "32" (
 if "%VCDIR%" == "%VCDIR:2003=%" (
   if "%VCDIR%" == "%VCDIR:VC98=%" set CLFLAGS=%CLFLAGS% /GS-
 )
-rc /r /d_MAC /Fo"LibraryTest.res" "Resources\LibraryTest.rc"
-cl /O1 %CLFLAGS% LibraryTest.c LibraryTest.res /link kernel32.lib user32.lib gdi32.lib comctl32.lib /SUBSYSTEM:WINDOWS /OPT:NOWIN98 /MACHINE:%MACHINE% /NODEFAULTLIB /ENTRY:_WinMain
+if exist RegExpTest.exe del RegExpTest.exe
+cl /O1 %CLFLAGS% RegExpTest.c /link kernel32.lib user32.lib /SUBSYSTEM:WINDOWS /OPT:NOWIN98 /MACHINE:%MACHINE% /NODEFAULTLIB /ENTRY:_WinMain
 
 ::### Clean up ###::
-if exist LibraryTest.res del LibraryTest.res
-if exist LibraryTest.obj del LibraryTest.obj
+if exist RegExpTest.obj del RegExpTest.obj
 
 ::### End ###::
-if not "%1" == "/S" @PAUSE
-if defined EXITCODE exit %2 %EXITCODE%
+if exist RegExpTest.exe (
+  start RegExpTest.exe
+) else (
+  if not "%1" == "/S" @PAUSE
+  if defined EXITCODE exit %2 %EXITCODE%
+)

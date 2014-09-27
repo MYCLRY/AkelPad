@@ -1,7 +1,7 @@
 /*****************************************************************
- *              String functions header v5.5                     *
+ *              String functions header v5.7                     *
  *                                                               *
- * 2013 Shengalts Aleksander aka Instructor (Shengalts@mail.ru)  *
+ * 2014 Shengalts Aleksander aka Instructor (Shengalts@mail.ru)  *
  *                                                               *
  *                                                               *
  *Functions:                                                     *
@@ -103,6 +103,13 @@ UINT_PTR UTF16toUTF32(const unsigned short *pSource, UINT_PTR nSourceLen, UINT_P
 #undef WideCharLower
 __inline wchar_t WideCharLower(wchar_t c)
 {
+  #ifdef WideCharLower_LINGUISTICCASING
+    static WORD wLangID;
+
+    if (!wLangID)
+      wLangID=PRIMARYLANGID(GetUserDefaultLangID());
+  #endif
+
   //return (wchar_t)(UINT_PTR)CharLowerW((wchar_t *)(UINT_PTR)(WORD)c);
 
   if (c < 0x100)
@@ -112,8 +119,17 @@ __inline wchar_t WideCharLower(wchar_t c)
 
     if ((c >= 0x0041 && c <= 0x005a) ||
         (c >= 0x00c0 && c <= 0x00de))
+    {
+      #ifdef WideCharLower_LINGUISTICCASING
+        if (c == 0x0049)
+        {
+          if (wLangID == LANG_TURKISH ||
+              wLangID == LANG_AZERI)
+            return 0x0131;
+        }
+      #endif
       return (c + 0x20);
-
+    }
     return c;
   }
   else if (c < 0x300)
@@ -128,6 +144,15 @@ __inline wchar_t WideCharLower(wchar_t c)
         return (c + 1);
       return c;
     }
+
+    #ifdef WideCharLower_LINGUISTICCASING
+      if (c == 0x0130)
+      {
+        if (wLangID == LANG_TURKISH ||
+            wLangID == LANG_AZERI)
+          return 0x0069;
+      }
+    #endif
 
     if (c == 0x01dd || c == 0x01ef)
       return c;
@@ -436,6 +461,13 @@ __inline wchar_t WideCharLower(wchar_t c)
 #undef WideCharUpper
 __inline wchar_t WideCharUpper(wchar_t c)
 {
+  #ifdef WideCharUpper_LINGUISTICCASING
+    static WORD wLangID;
+
+    if (!wLangID)
+      wLangID=PRIMARYLANGID(GetUserDefaultLangID());
+  #endif
+
   //return (wchar_t)(UINT_PTR)CharUpperW((wchar_t *)(UINT_PTR)(WORD)c);
 
   if (c < 0x100)
@@ -445,7 +477,17 @@ __inline wchar_t WideCharUpper(wchar_t c)
 
     if ((c >= 0x0061 && c <= 0x007a) ||
         (c >= 0x00e0 && c <= 0x00fe))
+    {
+      #ifdef WideCharUpper_LINGUISTICCASING
+        if (c == 0x0069)
+        {
+          if (wLangID == LANG_TURKISH ||
+              wLangID == LANG_AZERI)
+            return 0x0130;
+        }
+      #endif
       return (c - 0x20);
+    }
 
     if (c == 0x00ff)
       return 0x0178;
@@ -464,6 +506,15 @@ __inline wchar_t WideCharUpper(wchar_t c)
         return (c - 1);
       return c;
     }
+
+    #ifdef WideCharUpper_LINGUISTICCASING
+      if (c == 0x0131)
+      {
+        if (wLangID == LANG_TURKISH ||
+            wLangID == LANG_AZERI)
+          return 0x0049;
+      }
+    #endif
 
     if ((c >= 0x013a && c <= 0x0148) ||
         (c >= 0x01ce && c <= 0x1dc))
@@ -1851,8 +1902,8 @@ __inline INT_PTR xatoiA(const char *pStr, const char **pNext)
  *
  *Converts unicode string to integer.
  *
- *[in]  const wchar_t *wpStr  Unicode string number.
- *[out] wchar_t **wpNext      Pointer to the first char after number, can be NULL.
+ *[in]  const wchar_t *wpStr    Unicode string number.
+ *[out] const wchar_t **wpNext  Pointer to the first char after number, can be NULL.
  *
  *Returns: integer.
  *
@@ -1939,8 +1990,8 @@ __inline __int64 xatoi64A(const char *pStr, const char **pNext)
  *
  *Converts unicode string to int64.
  *
- *[in]  const wchar_t *wpStr  Unicode string number.
- *[out] wchar_t **wpNext      Pointer to the first char after number, can be NULL.
+ *[in]  const wchar_t *wpStr    Unicode string number.
+ *[out] const wchar_t **wpNext  Pointer to the first char after number, can be NULL.
  *
  *Returns: 64-bit integer.
  *

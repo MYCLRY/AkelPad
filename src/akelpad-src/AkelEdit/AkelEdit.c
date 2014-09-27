@@ -1,5 +1,5 @@
 /***********************************************************************************
- *                      AkelEdit text control v1.8.8                               *
+ *                      AkelEdit text control v1.9.0                               *
  *                                                                                 *
  * Copyright 2007-2014 by Shengalts Aleksander aka Instructor (Shengalts@mail.ru)  *
  *                                                                                 *
@@ -62,6 +62,10 @@
 #include "StackFunc.h"
 
 //Include string functions
+#ifdef AKELEDIT_LINGUISTICCASING
+  #define WideCharLower_LINGUISTICCASING
+  #define WideCharUpper_LINGUISTICCASING
+#endif
 #define WideCharLower
 #define WideCharUpper
 #define xmemcpy
@@ -1399,8 +1403,8 @@ LRESULT CALLBACK AE_EditProc(AKELEDIT *ae, UINT uMsg, WPARAM wParam, LPARAM lPar
       {
         AEPENITEM *lpPenItem;
 
-        if (!(lpPenItem=AE_StackPenItemGet(&hAkelEditPensStack, ae->popt->aec.crActiveColumn)))
-          lpPenItem=AE_StackPenItemInsert(&hAkelEditPensStack, ae->popt->aec.crActiveColumn);
+        if (!(lpPenItem=AE_StackPenItemGet(&hAkelEditPensStack, ae->popt->aec.crActiveColumn, ae->popt->aec.crBasicBk)))
+          lpPenItem=AE_StackPenItemInsert(&hAkelEditPensStack, ae->popt->aec.crActiveColumn, ae->popt->aec.crBasicBk);
         ae->popt->hActiveColumnPen=lpPenItem->hPen;
 
         ae->ptActiveColumnDraw.x=-1;
@@ -1474,6 +1478,11 @@ LRESULT CALLBACK AE_EditProc(AKELEDIT *ae, UINT uMsg, WPARAM wParam, LPARAM lPar
       if (!(dwOptionsExOld & AECOE_OVERTYPE) != !(dwOptionsExNew & AECOE_OVERTYPE))
       {
         AE_UpdateCaret(ae, ae->bFocus);
+      }
+      if (!(dwOptionsExOld & AECOE_DETECTURL) != !(dwOptionsExNew & AECOE_DETECTURL))
+      {
+        InvalidateRect(ae->hWndEdit, &ae->rcDraw, TRUE);
+        AE_StackCloneUpdate(ae);
       }
       return ae->popt->dwOptionsEx;
     }
@@ -1671,8 +1680,8 @@ LRESULT CALLBACK AE_EditProc(AKELEDIT *ae, UINT uMsg, WPARAM wParam, LPARAM lPar
     {
       AEPENITEM *lpPenItem;
 
-      if (!(lpPenItem=AE_StackPenItemGet(&hAkelEditPensStack, ae->popt->aec.crColumnMarker)))
-        lpPenItem=AE_StackPenItemInsert(&hAkelEditPensStack, ae->popt->aec.crColumnMarker);
+      if (!(lpPenItem=AE_StackPenItemGet(&hAkelEditPensStack, ae->popt->aec.crColumnMarker, (COLORREF)-1)))
+        lpPenItem=AE_StackPenItemInsert(&hAkelEditPensStack, ae->popt->aec.crColumnMarker, (COLORREF)-1);
       ae->popt->hColumnMarkerPen=lpPenItem->hPen;
 
       return AE_ColumnMarkerSet(ae, (DWORD)wParam, (int)lParam, FALSE);
@@ -1764,11 +1773,22 @@ LRESULT CALLBACK AE_EditProc(AKELEDIT *ae, UINT uMsg, WPARAM wParam, LPARAM lPar
 
       if (wParam)
       {
-        ae->popt->dwCaretScrollFlags=sco->dwFlags;
-        ae->popt->dwCaretScrollSelFlags=sco->dwSelFlags;
-        ae->popt->dwCaretScrollSelType=sco->dwSelType;
-        ae->popt->nCaretScrollOffsetX=sco->nOffsetX;
-        ae->popt->nCaretScrollOffsetY=sco->nOffsetY;
+        if (!sco)
+        {
+          ae->popt->dwCaretScrollFlags=0;
+          ae->popt->dwCaretScrollSelFlags=0;
+          ae->popt->dwCaretScrollSelType=0;
+          ae->popt->nCaretScrollOffsetX=0;
+          ae->popt->nCaretScrollOffsetY=0;
+        }
+        else
+        {
+          ae->popt->dwCaretScrollFlags=sco->dwFlags;
+          ae->popt->dwCaretScrollSelFlags=sco->dwSelFlags;
+          ae->popt->dwCaretScrollSelType=sco->dwSelType;
+          ae->popt->nCaretScrollOffsetX=sco->nOffsetX;
+          ae->popt->nCaretScrollOffsetY=sco->nOffsetY;
+        }
       }
       else
       {
@@ -2536,6 +2556,7 @@ LRESULT CALLBACK AE_EditProc(AKELEDIT *ae, UINT uMsg, WPARAM wParam, LPARAM lPar
 
         if (!AE_HighlightAddQuote(ae, lpTheme, lpQuoteDst, lpQuoteDst))
         {
+          lpQuoteSrc->nCompileErrorOffset=lpQuoteDst->nCompileErrorOffset;
           AE_HighlightDeleteQuote(ae, lpTheme, lpQuoteDst);
           lpQuoteDst=NULL;
         }
@@ -2570,6 +2591,7 @@ LRESULT CALLBACK AE_EditProc(AKELEDIT *ae, UINT uMsg, WPARAM wParam, LPARAM lPar
 
         if (!AE_HighlightAddMarkText(ae, lpTheme, lpMarkTextDst, lpMarkTextDst))
         {
+          lpMarkTextSrc->nCompileErrorOffset=lpMarkTextDst->nCompileErrorOffset;
           AE_HighlightDeleteMarkText(ae, lpTheme, lpMarkTextDst);
           lpMarkTextDst=NULL;
         }
@@ -4565,7 +4587,7 @@ LRESULT CALLBACK AE_EditProc(AKELEDIT *ae, UINT uMsg, WPARAM wParam, LPARAM lPar
       SystemParametersInfoA(SPI_GETWHEELSCROLLLINES, 0, &dwLines, 0);
       if (!dwLines) dwLines=3;
 
-      if ((short)HIWORD(wParam) < 0)
+      if (!(ae->popt->dwOptionsEx & AECOE_INVERTVERTWHEEL) ? (short)HIWORD(wParam) < 0 : (short)HIWORD(wParam) >= 0)
       {
         if (dwLines == (DWORD)-1)
           AE_VScroll(ae, SB_PAGEDOWN, 0);
@@ -4588,7 +4610,7 @@ LRESULT CALLBACK AE_EditProc(AKELEDIT *ae, UINT uMsg, WPARAM wParam, LPARAM lPar
       SystemParametersInfoA(SPI_GETWHEELSCROLLCHARS, 0, &dwChars, 0);
       if (!dwChars) dwChars=3;
 
-      if ((short)HIWORD(wParam) < 0)
+      if (!(ae->popt->dwOptionsEx & AECOE_INVERTHORZWHEEL) ? (short)HIWORD(wParam) < 0 : (short)HIWORD(wParam) >= 0)
       {
         if (dwChars == (DWORD)-1)
           AE_HScroll(ae, SB_PAGELEFT, 0);
@@ -6038,12 +6060,21 @@ void AE_StackDcItemsFree(HSTACK *hStack)
   AE_HeapStackClear(NULL, (stack **)&hStack->first, (stack **)&hStack->last);
 }
 
-AEPENITEM* AE_StackPenItemInsert(HSTACK *hStack, COLORREF crPenColor)
+AEPENITEM* AE_StackPenItemInsert(HSTACK *hStack, COLORREF crPenColor, COLORREF crInvertColor)
 {
   AEPENITEM *lpElement=NULL;
 
   if (!AE_HeapStackInsertIndex(NULL, (stack **)&hStack->first, (stack **)&hStack->last, (stack **)&lpElement, -1, sizeof(AEPENITEM)))
   {
+    if (crInvertColor != (COLORREF)-1)
+    {
+      //Invert for R2_XORPEN
+      BYTE r=GetRValue(crInvertColor) ^ GetRValue(crPenColor);
+      BYTE g=GetGValue(crInvertColor) ^ GetGValue(crPenColor);
+      BYTE b=GetBValue(crInvertColor) ^ GetBValue(crPenColor);
+
+      crPenColor=RGB(r, g, b);
+    }
     lpElement->crPenColor=crPenColor;
     lpElement->hPen=CreatePen(PS_SOLID, 0, crPenColor);
 
@@ -6052,9 +6083,19 @@ AEPENITEM* AE_StackPenItemInsert(HSTACK *hStack, COLORREF crPenColor)
   return NULL;
 }
 
-AEPENITEM* AE_StackPenItemGet(HSTACK *hStack, COLORREF crPenColor)
+AEPENITEM* AE_StackPenItemGet(HSTACK *hStack, COLORREF crPenColor, COLORREF crInvertColor)
 {
   AEPENITEM *lpElement;
+
+  if (crInvertColor != (COLORREF)-1)
+  {
+    //Invert for R2_XORPEN
+    BYTE r=GetRValue(crInvertColor) ^ GetRValue(crPenColor);
+    BYTE g=GetGValue(crInvertColor) ^ GetGValue(crPenColor);
+    BYTE b=GetBValue(crInvertColor) ^ GetBValue(crPenColor);
+
+    crPenColor=RGB(r, g, b);
+  }
 
   for (lpElement=(AEPENITEM *)hStack->first; lpElement; lpElement=lpElement->next)
   {
@@ -7187,7 +7228,7 @@ wchar_t* AE_GetAllTextForUndo(AKELEDIT *ae, UINT_PTR *lpdwUndoTextLen)
 {
   AECHARINDEX ciRangeStart;
   AECHARINDEX ciRangeEnd;
-  wchar_t *wpUndoText;
+  wchar_t *wpUndoText=NULL;
   UINT_PTR dwUndoTextLen;
 
   AE_GetIndex(ae, AEGI_FIRSTCHAR, NULL, &ciRangeStart);
@@ -11352,10 +11393,9 @@ void AE_HighlightDeleteWordAll(AKELEDIT *ae, AETHEMEITEMW *aeti)
   xmemset(lpWordStack->lpWordLens, 0, MAX_PATH * sizeof(INT_PTR));
 }
 
-AEQUOTEITEMW* AE_HighlightAddQuote(AKELEDIT *ae, AETHEMEITEMW *lpTheme, const AEQUOTEITEMW *lpQuoteSrc, AEQUOTEITEMW *lpQuoteDst)
+AEQUOTEITEMW* AE_HighlightAddQuote(AKELEDIT *ae, AETHEMEITEMW *lpTheme, AEQUOTEITEMW *lpQuoteSrc, AEQUOTEITEMW *lpQuoteDst)
 {
   AESTACKQUOTE *lpQuoteStack=lpTheme?&lpTheme->hQuoteStack:&ae->ptxt->hQuoteStack;
-  STACKREGROUP *lpREGroupStack=NULL;
 
   if (!lpQuoteDst)
     lpQuoteDst=AE_HighlightInsertQuote(ae, lpTheme, lpQuoteSrc->nIndex);
@@ -11408,7 +11448,9 @@ AEQUOTEITEMW* AE_HighlightAddQuote(AKELEDIT *ae, AETHEMEITEMW *lpTheme, const AE
     if (lpQuoteDst->dwFlags & AEHLF_REGEXP)
     {
       AEREGROUPCOLOR *lpREGroupColor=NULL;
+      STACKREGROUP *lpREGroupStack=NULL;
       REGROUP *lpREGroupRef;
+      INT_PTR nCompileErrorOffset;
       int nIndex;
       const wchar_t *wpCount;
       const wchar_t *wpCountMax;
@@ -11429,9 +11471,10 @@ AEQUOTEITEMW* AE_HighlightAddQuote(AKELEDIT *ae, AETHEMEITEMW *lpTheme, const AE
           lpREGroupStack->dwOptions|=REO_MATCHCASE;
         lpREGroupStack->wpDelim=NULL;
         lpREGroupStack->wpMaxDelim=NULL;
-        if (PatCompile(lpREGroupStack, lpQuoteDst->pQuoteStart, lpQuoteDst->pQuoteStart + lpQuoteDst->nQuoteStartLen))
+        if (nCompileErrorOffset=PatCompile(lpREGroupStack, lpQuoteDst->pQuoteStart, lpQuoteDst->pQuoteStart + lpQuoteDst->nQuoteStartLen))
         {
           AE_HeapFree(NULL, 0, (LPVOID)lpREGroupStack);
+          lpQuoteSrc->nCompileErrorOffset=nCompileErrorOffset;
           goto FreeQuote;
         }
 
@@ -11442,7 +11485,7 @@ AEQUOTEITEMW* AE_HighlightAddQuote(AKELEDIT *ae, AETHEMEITEMW *lpTheme, const AE
           lpREGroupStack->wpMaxDelim=lpREGroupStack->wpDelim + ae->popt->nWordDelimitersLen;
         }
 
-        //REPE_ISMATCH
+        //RESE_ISMATCH
         lpREGroupStack->first->dwFlags&=~REGF_ROOTANY;
 
         //Parse pQuoteEnd: \BackRef1=(FontStyle,ColorText,ColorBk) \BackRef2=(FontStyle,ColorText,ColorBk)
@@ -11481,9 +11524,8 @@ AEQUOTEITEMW* AE_HighlightAddQuote(AKELEDIT *ae, AETHEMEITEMW *lpTheme, const AE
                       else if (*wpCount == L'#')
                       {
                         ++wpCount;
-                        if (wpCountMax - wpCount < 6) break;
-                        if ((crText=AE_GetColorFromStr(wpCount)) != (DWORD)-1)
-                          wpCount+=6;
+                        if (wpCountMax - wpCount < 3) break;
+                        crText=AE_GetColorFromStr(wpCount, &wpCount);
                       }
                       else break;
 
@@ -11503,9 +11545,8 @@ AEQUOTEITEMW* AE_HighlightAddQuote(AKELEDIT *ae, AETHEMEITEMW *lpTheme, const AE
                         else if (*wpCount == L'#')
                         {
                           ++wpCount;
-                          if (wpCountMax - wpCount < 6) break;
-                          if ((crBk=AE_GetColorFromStr(wpCount)) != (DWORD)-1)
-                            wpCount+=6;
+                          if (wpCountMax - wpCount < 3) break;
+                          crBk=AE_GetColorFromStr(wpCount, &wpCount);
                         }
                         else break;
 
@@ -11678,9 +11719,10 @@ void AE_HighlightDeleteQuoteAll(AKELEDIT *ae, AETHEMEITEMW *aeti)
   AE_HeapStackClear(NULL, (stack **)&lpQuoteStack->first, (stack **)&lpQuoteStack->last);
 }
 
-AEMARKTEXTITEMW* AE_HighlightAddMarkText(AKELEDIT *ae, AETHEMEITEMW *lpTheme, const AEMARKTEXTITEMW *lpMarkTextSrc, AEMARKTEXTITEMW *lpMarkTextDst)
+AEMARKTEXTITEMW* AE_HighlightAddMarkText(AKELEDIT *ae, AETHEMEITEMW *lpTheme, AEMARKTEXTITEMW *lpMarkTextSrc, AEMARKTEXTITEMW *lpMarkTextDst)
 {
   STACKREGROUP *lpREGroupStack=NULL;
+  INT_PTR nCompileErrorOffset;
 
   if (!lpMarkTextDst)
     lpMarkTextDst=AE_HighlightInsertMarkText(ae, lpTheme, lpMarkTextSrc->nIndex);
@@ -11714,9 +11756,10 @@ AEMARKTEXTITEMW* AE_HighlightAddMarkText(AKELEDIT *ae, AETHEMEITEMW *lpTheme, co
         lpREGroupStack->dwOptions|=REO_MATCHCASE;
       lpREGroupStack->wpDelim=NULL;
       lpREGroupStack->wpMaxDelim=NULL;
-      if (PatCompile(lpREGroupStack, lpMarkTextDst->pMarkText, lpMarkTextDst->pMarkText + lpMarkTextDst->nMarkTextLen))
+      if (nCompileErrorOffset=PatCompile(lpREGroupStack, lpMarkTextDst->pMarkText, lpMarkTextDst->pMarkText + lpMarkTextDst->nMarkTextLen))
       {
         AE_HeapFree(NULL, 0, (LPVOID)lpREGroupStack);
+        lpMarkTextSrc->nCompileErrorOffset=nCompileErrorOffset;
         goto FreeMarkText;
       }
 
@@ -11727,7 +11770,7 @@ AEMARKTEXTITEMW* AE_HighlightAddMarkText(AKELEDIT *ae, AETHEMEITEMW *lpTheme, co
         lpREGroupStack->wpMaxDelim=lpREGroupStack->wpDelim + ae->popt->nWordDelimitersLen;
       }
 
-      //REPE_ISMATCH
+      //RESE_ISMATCH
       lpREGroupStack->first->dwFlags&=~REGF_ROOTANY;
 
       lpMarkTextDst->lpREGroupStack=(void *)lpREGroupStack;
@@ -11861,9 +11904,9 @@ HBITMAP AE_CreateBitmap(int nWidth, int nHeight, COLORREF crBasic, COLORREF crIn
       //Fill line
       for (b=0; b < lpBmpInfoHeader->biWidth * 3; b+=3)
       {
-        lpBitmapBits[a + 0]=mod(GetBValue(crInvert) - GetBValue(crBasic));
-        lpBitmapBits[a + 1]=mod(GetGValue(crInvert) - GetGValue(crBasic));
-        lpBitmapBits[a + 2]=mod(GetRValue(crInvert) - GetRValue(crBasic));
+        lpBitmapBits[a + 0]=GetBValue(crInvert) ^ GetBValue(crBasic);
+        lpBitmapBits[a + 1]=GetGValue(crInvert) ^ GetGValue(crBasic);
+        lpBitmapBits[a + 2]=GetRValue(crInvert) ^ GetRValue(crBasic);
         a+=3;
       }
       while (a % 4) lpBitmapBits[a++]=0x00;
@@ -12019,7 +12062,9 @@ void AE_ScrollToCaret(AKELEDIT *ae, const POINT64 *ptCaret, DWORD dwSelFlags, DW
   int nOffsetPixelX=0;
   int nOffsetPixelY=0;
 
-  if ((dwSelFlags & ae->popt->dwCaretScrollSelFlags) && (dwSelType & ae->popt->dwCaretScrollSelType))
+  if (ae->popt->dwCaretScrollFlags &&
+      (dwSelType & ae->popt->dwCaretScrollSelType) &&
+      (!ae->popt->dwCaretScrollSelFlags || (dwSelFlags & ae->popt->dwCaretScrollSelFlags)))
   {
     if (ae->popt->dwCaretScrollFlags & AESC_OFFSETPIXELX)
       nOffsetPixelX=ae->popt->nCaretScrollOffsetX;
@@ -14117,8 +14162,8 @@ void AE_PaintCheckHighlightOpenItem(AKELEDIT *ae, AETEXTOUT *to, AEHLPAINT *hlp,
                         ++wpColor;
                         --nColorLen;
                       }
-                      if (nColorLen == 6)
-                        dwActiveText=AE_GetColorFromStr(wpColor);
+                      if (nColorLen == 6 || nColorLen == 3)
+                        dwActiveText=AE_GetColorFromStr(wpColor, NULL);
                     }
                   }
                   else dwActiveText=lpREGroupColor->crText;
@@ -14135,8 +14180,8 @@ void AE_PaintCheckHighlightOpenItem(AKELEDIT *ae, AETEXTOUT *to, AEHLPAINT *hlp,
                         ++wpColor;
                         --nColorLen;
                       }
-                      if (nColorLen == 6)
-                        dwActiveBk=AE_GetColorFromStr(wpColor);
+                      if (nColorLen == 6 || nColorLen == 3)
+                        dwActiveBk=AE_GetColorFromStr(wpColor, NULL);
                     }
                   }
                   else dwActiveBk=lpREGroupColor->crBk;
@@ -14768,7 +14813,7 @@ void AE_ActiveColumnDraw(AKELEDIT *ae, HDC hDC, int nTop, int nBottom)
     if (hDC || (hDC=GetDC(ae->hWndEdit)))
     {
       hPenOld=(HPEN)SelectObject(hDC, ae->popt->hActiveColumnPen);
-      nModeOld=SetROP2(hDC, R2_NOTXORPEN);
+      nModeOld=SetROP2(hDC, R2_XORPEN);
 
       nTop=max(ae->rcDraw.top, nTop);
       nBottom=min(ae->rcDraw.bottom, nBottom);
@@ -15487,7 +15532,10 @@ int AE_GetNextBreak(AKELEDIT *ae, const AECHARINDEX *ciChar, AECHARINDEX *ciNext
   bNewLineInList=AE_IsInDelimiterList(ae->popt->wszWordDelimiters, L'\n', TRUE);
 
   if (dwFlags & AEWB_MINMOVE)
-    AEC_PrevCharEx(&ciCount, &ciCount);
+  {
+    if (!AEC_PrevCharEx(&ciCount, &ciCount))
+      return 0;
+  }
 
   if (ciCount.nCharInLine == ciCount.lpLine->nLineLen)
   {
@@ -15631,7 +15679,10 @@ int AE_GetPrevBreak(AKELEDIT *ae, const AECHARINDEX *ciChar, AECHARINDEX *ciPrev
   bNewLineInList=AE_IsInDelimiterList(ae->popt->wszWordDelimiters, L'\n', TRUE);
 
   if (dwFlags & AEWB_MINMOVE)
-    AEC_NextCharEx(&ciCount, &ciCount);
+  {
+    if (!AEC_NextCharEx(&ciCount, &ciCount))
+      return 0;
+  }
 
   if (ciCount.nCharInLine <= 0)
   {
@@ -19014,6 +19065,7 @@ BOOL AE_FindText(AKELEDIT *ae, AEFINDTEXTW *ft)
 
         if (AEC_IndexCompare(&ciCount, &ciCountEnd) > 0)
           break;
+        //AE_PatReset(&hREGroupStack);
       }
       PatFree(&hREGroupStack);
     }
@@ -20751,8 +20803,8 @@ void AE_SetColors(AKELEDIT *ae, const AECOLORS *aec, BOOL bUpdate)
       {
         AEPENITEM *lpPenItem;
 
-        if (!(lpPenItem=AE_StackPenItemGet(&hAkelEditPensStack, ae->popt->aec.crActiveColumn)))
-          lpPenItem=AE_StackPenItemInsert(&hAkelEditPensStack, ae->popt->aec.crActiveColumn);
+        if (!(lpPenItem=AE_StackPenItemGet(&hAkelEditPensStack, ae->popt->aec.crActiveColumn, ae->popt->aec.crBasicBk)))
+          lpPenItem=AE_StackPenItemInsert(&hAkelEditPensStack, ae->popt->aec.crActiveColumn, ae->popt->aec.crBasicBk);
         ae->popt->hActiveColumnPen=lpPenItem->hPen;
       }
     }
@@ -20764,8 +20816,8 @@ void AE_SetColors(AKELEDIT *ae, const AECOLORS *aec, BOOL bUpdate)
       {
         AEPENITEM *lpPenItem;
 
-        if (!(lpPenItem=AE_StackPenItemGet(&hAkelEditPensStack, ae->popt->aec.crColumnMarker)))
-          lpPenItem=AE_StackPenItemInsert(&hAkelEditPensStack, ae->popt->aec.crColumnMarker);
+        if (!(lpPenItem=AE_StackPenItemGet(&hAkelEditPensStack, ae->popt->aec.crColumnMarker, (COLORREF)-1)))
+          lpPenItem=AE_StackPenItemInsert(&hAkelEditPensStack, ae->popt->aec.crColumnMarker, (COLORREF)-1);
         ae->popt->hColumnMarkerPen=lpPenItem->hPen;
       }
     }
@@ -20893,13 +20945,39 @@ COLORREF AE_ColorSmooth(COLORREF crColor, int nPercent)
     return AE_ColorBrightness(crColor, +nPercent * 8);
 }
 
-COLORREF AE_GetColorFromStr(const wchar_t *wpColor)
+COLORREF AE_GetColorFromStr(const wchar_t *wpColor, const wchar_t **wpNext)
 {
   COLORREF crColor;
 
   if ((crColor=(COLORREF)hex2decW(wpColor, 6)) != (DWORD)-1)
-    return RGB(GetBValue(crColor), GetGValue(crColor), GetRValue(crColor));
-  return (DWORD)-1;
+  {
+    //RRGGBB
+    if (wpNext) *wpNext=wpColor + 6;
+    crColor=RGB(GetBValue(crColor), GetGValue(crColor), GetRValue(crColor));
+  }
+  else
+  {
+    //RGB->RRGGBB
+    wchar_t wszRBG[6];
+    wchar_t *wpRBG=wszRBG;
+    wchar_t *wpMaxRBG=wszRBG + 6;
+
+    while (wpRBG < wpMaxRBG)
+    {
+      if ((*wpColor >= '0' && *wpColor <= '9') ||
+          (*wpColor >= 'a' && *wpColor <= 'f') ||
+          (*wpColor >= 'A' && *wpColor <= 'F'))
+      {
+        *wpRBG++=*wpColor;
+        *wpRBG++=*wpColor++;
+      }
+      else return (COLORREF)-1;
+    }
+    if (wpNext) *wpNext=wpColor;
+    if ((crColor=(COLORREF)hex2decW(wszRBG, 6)) != (COLORREF)-1)
+      crColor=RGB(GetBValue(crColor), GetGValue(crColor), GetRValue(crColor));
+  }
+  return crColor;
 }
 
 BOOL AE_GetBasicCharColors(AKELEDIT *ae, const AECHARINDEX *ciChar, AECHARCOLORS *aecc)
@@ -21244,8 +21322,8 @@ void AE_NotifySelChanging(AKELEDIT *ae, DWORD dwType)
     sc.hdr.idFrom=ae->nEditCtrlID;
     sc.hdr.code=AEN_SELCHANGING;
     sc.hdr.docFrom=(AEHDOC)ae;
-    sc.aes.crSel.ciMin=ae->ciSelStartIndex;
-    sc.aes.crSel.ciMax=ae->ciSelEndIndex;
+    sc.crSel.ciMin=ae->ciSelStartIndex;
+    sc.crSel.ciMax=ae->ciSelEndIndex;
     sc.ciCaret=ae->ciCaretIndex;
     sc.dwType=dwType;
     sc.bColumnSel=ae->bColumnSel;
@@ -21266,8 +21344,8 @@ void AE_NotifySelChanged(AKELEDIT *ae)
     sc.hdr.idFrom=ae->nEditCtrlID;
     sc.hdr.code=AEN_SELCHANGED;
     sc.hdr.docFrom=(AEHDOC)ae;
-    sc.aes.crSel.ciMin=ae->ciSelStartIndex;
-    sc.aes.crSel.ciMax=ae->ciSelEndIndex;
+    sc.crSel.ciMin=ae->ciSelStartIndex;
+    sc.crSel.ciMax=ae->ciSelEndIndex;
     sc.ciCaret=ae->ciCaretIndex;
     sc.dwType=ae->dwNotifySelChange;
     sc.bColumnSel=ae->bColumnSel;
@@ -21318,8 +21396,8 @@ void AE_NotifyTextChanging(AKELEDIT *ae, DWORD dwType)
     tc.hdr.idFrom=ae->nEditCtrlID;
     tc.hdr.code=AEN_TEXTCHANGING;
     tc.hdr.docFrom=(AEHDOC)ae;
-    tc.aes.crSel.ciMin=ae->ciSelStartIndex;
-    tc.aes.crSel.ciMax=ae->ciSelEndIndex;
+    tc.crSel.ciMin=ae->ciSelStartIndex;
+    tc.crSel.ciMax=ae->ciSelEndIndex;
     tc.ciCaret=ae->ciCaretIndex;
     tc.dwType=ae->dwNotifyTextChange;
     tc.bColumnSel=ae->bColumnSel;
@@ -21342,8 +21420,8 @@ void AE_NotifyTextChanged(AKELEDIT *ae)
     tc.hdr.idFrom=ae->nEditCtrlID;
     tc.hdr.code=AEN_TEXTCHANGED;
     tc.hdr.docFrom=(AEHDOC)ae;
-    tc.aes.crSel.ciMin=ae->ciSelStartIndex;
-    tc.aes.crSel.ciMax=ae->ciSelEndIndex;
+    tc.crSel.ciMin=ae->ciSelStartIndex;
+    tc.crSel.ciMax=ae->ciSelEndIndex;
     tc.ciCaret=ae->ciCaretIndex;
     tc.dwType=ae->dwNotifyTextChange;
     tc.bColumnSel=ae->bColumnSel;

@@ -6,8 +6,6 @@
 
 #include <shlobj.h>
 #include <imm.h>
-
-//Include AEC functions
 #include "AkelEdit.h"
 
 
@@ -712,7 +710,7 @@ typedef struct _AKELEDIT {
   struct _AKELEDIT *aeUndo;
 } AKELEDIT;
 
-typedef struct _AESTACKEDIT {
+typedef struct {
   AKELEDIT *first;
   AKELEDIT *last;
 } AESTACKEDIT;
@@ -817,8 +815,8 @@ AEDCITEM* AE_StackDcItemInsert(HSTACK *hStack, HBITMAP hBitmap);
 AEDCITEM* AE_StackDcItemGet(HSTACK *hStack, HBITMAP hBitmap);
 void AE_StackDcItemDelete(HSTACK *hStack, AEDCITEM *lpElement);
 void AE_StackDcItemsFree(HSTACK *hStack);
-AEPENITEM* AE_StackPenItemInsert(HSTACK *hStack, COLORREF crPenColor);
-AEPENITEM* AE_StackPenItemGet(HSTACK *hStack, COLORREF crPenColor);
+AEPENITEM* AE_StackPenItemInsert(HSTACK *hStack, COLORREF crPenColor, COLORREF crInvertColor);
+AEPENITEM* AE_StackPenItemGet(HSTACK *hStack, COLORREF crPenColor, COLORREF crInvertColor);
 void AE_StackPenItemsFree(HSTACK *hStack);
 AEFOLD* AE_StackFoldInsert(AKELEDIT *ae, const AEFOLD *lpFold);
 void AE_StackFindFold(AKELEDIT *ae, DWORD dwFlags, UINT_PTR dwFindIt, AEFOLD *lpForce, AEFOLD **lpParentOut, AEFOLD **lpPrevSublingOut);
@@ -911,13 +909,13 @@ void AE_HighlightDeleteDelimiterAll(AKELEDIT *ae, AETHEMEITEMW *aeti);
 AEWORDITEMW* AE_HighlightInsertWord(AKELEDIT *ae, AETHEMEITEMW *aeti, int nWordLen);
 void AE_HighlightDeleteWord(AKELEDIT *ae, AETHEMEITEMW *aeti, AEWORDITEMW *aewi);
 void AE_HighlightDeleteWordAll(AKELEDIT *ae, AETHEMEITEMW *aeti);
-AEQUOTEITEMW* AE_HighlightAddQuote(AKELEDIT *ae, AETHEMEITEMW *lpTheme, const AEQUOTEITEMW *lpQuoteSrc, AEQUOTEITEMW *lpQuoteDst);
+AEQUOTEITEMW* AE_HighlightAddQuote(AKELEDIT *ae, AETHEMEITEMW *lpTheme, AEQUOTEITEMW *lpQuoteSrc, AEQUOTEITEMW *lpQuoteDst);
 AEQUOTEITEMW* AE_HighlightInsertQuote(AKELEDIT *ae, AETHEMEITEMW *aeti, int nIndex);
 AEQUOTESTART* AE_HighlightInsertQuoteStart(AKELEDIT *ae, AETHEMEITEMW *aeti, AEQUOTEITEMW *lpQuoteItem);
 void AE_HighlightDeleteQuoteData(AEQUOTEITEMW *aeqi);
 void AE_HighlightDeleteQuote(AKELEDIT *ae, AETHEMEITEMW *aeti, AEQUOTEITEMW *aeqi);
 void AE_HighlightDeleteQuoteAll(AKELEDIT *ae, AETHEMEITEMW *aeti);
-AEMARKTEXTITEMW* AE_HighlightAddMarkText(AKELEDIT *ae, AETHEMEITEMW *lpTheme, const AEMARKTEXTITEMW *lpMarkTextSrc, AEMARKTEXTITEMW *lpMarkTextDst);
+AEMARKTEXTITEMW* AE_HighlightAddMarkText(AKELEDIT *ae, AETHEMEITEMW *lpTheme, AEMARKTEXTITEMW *lpMarkTextSrc, AEMARKTEXTITEMW *lpMarkTextDst);
 AEMARKTEXTITEMW* AE_HighlightInsertMarkText(AKELEDIT *ae, AETHEMEITEMW *aeti, int nIndex);
 void AE_HighlightDeleteMarkTextData(AEMARKTEXTITEMW *aemti);
 void AE_HighlightDeleteMarkText(AKELEDIT *ae, AETHEMEITEMW *aeti, AEMARKTEXTITEMW *aemti);
@@ -1038,7 +1036,7 @@ void AE_SetColors(AKELEDIT *ae, const AECOLORS *aec, BOOL bUpdate);
 COLORREF AE_ColorCombine(COLORREF crColor1Cur, COLORREF crColor2NewBase, COLORREF crColor3CurBase);
 COLORREF AE_ColorBrightness(COLORREF crColor, int nPercent);
 COLORREF AE_ColorSmooth(COLORREF crColor, int nPercent);
-COLORREF AE_GetColorFromStr(const wchar_t *wpColor);
+COLORREF AE_GetColorFromStr(const wchar_t *wpColor, const wchar_t **wpNext);
 BOOL AE_GetBasicCharColors(AKELEDIT *ae, const AECHARINDEX *ciChar, AECHARCOLORS *aecc);
 BOOL AE_GetHighLightCharColors(AKELEDIT *ae, const AECHARINDEX *ciChar, AECHARCOLORS *aecc);
 DWORD CALLBACK AE_GetHighLightCharColorCallback(UINT_PTR dwCookie, AECHARRANGE *crAkelRange, CHARRANGE64 *crRichRange, AEHLPAINT *hlp);
