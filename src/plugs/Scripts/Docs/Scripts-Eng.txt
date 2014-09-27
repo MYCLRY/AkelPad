@@ -1,5 +1,5 @@
 *****************************************************************
-***                 Scripts AkelPad plugin v14.3              ***
+***                 Scripts AkelPad plugin v15.7              ***
 *****************************************************************
 
 2014 Shengalts Aleksander aka Instructor (Shengalts@mail.ru)
@@ -116,6 +116,7 @@ AkelPad.Include
 AkelPad.IsInclude
 AkelPad.OpenFile
 AkelPad.ReadFile
+AkelPad.WriteFile
 AkelPad.SaveFile
 AkelPad.SystemFunction                       +ActiveX
 AkelPad.SystemFunction().AddParameter        +ActiveX
@@ -314,7 +315,7 @@ Argumets
 Return Value
   0  //ISAEW_NONE     RichEdit control used (AkelPad v3.x.x).
   1  //ISAEW_PROGRAM  AkelEdit control used (AkelPad v4.x.x or higher)
-                      or, if handle specified, then this handle is the program AkelEdit window.
+     //               or, if handle specified, then this handle is the program AkelEdit window.
   2  //ISAEW_PLUGIN   if handle specified, then this handle is the plugin AkelEdit window (AkelPad v4.x.x or higher).
 
 Example:
@@ -1136,7 +1137,7 @@ Arguments
     0x010  //OD_ADT_NOMESSAGES       No messages, if errors in autodetect.
     0x100  //OD_REOPEN               Don't create new MDI window, use the exited one.
     0x200  //OD_NOSCROLL             Don't restore scroll position.
-         //Default is 0xD          (OD_ADT_BINARY_ERROR|OD_ADT_DETECT_CODEPAGE|OD_ADT_DETECT_BOM).
+           //Default is 0xD          (OD_ADT_BINARY_ERROR|OD_ADT_DETECT_CODEPAGE|OD_ADT_DETECT_BOM).
   nCodePage
     File code page, ignored if (nFlags & OD_ADT_DETECT_CODEPAGE)
   bBOM
@@ -1172,13 +1173,14 @@ Arguments
   pFile
     File to read.
   nFlags
-    0x1  //OD_ADT_BINARY_ERROR     Check if file is binary.
-    0x2  //OD_ADT_REG_CODEPAGE     If last open code page found in registry, then it will be
-         //                        used with OD_ADT_DETECT_BOM flag, if not found, then next flags
-         //                        will be used OD_ADT_DETECT_CODEPAGE|OD_ADT_DETECT_BOM.
-    0x4  //OD_ADT_DETECT_CODEPAGE  Detect code page.
-    0x8  //OD_ADT_DETECT_BOM       Detect BOM mark.
-         //Default is 0xD          (OD_ADT_BINARY_ERROR|OD_ADT_DETECT_CODEPAGE|OD_ADT_DETECT_BOM).
+    0x01  //OD_ADT_BINARY_ERROR     Check if file is binary.
+    0x02  //OD_ADT_REG_CODEPAGE     If last open code page found in registry, then it will be
+          //                        used with OD_ADT_DETECT_BOM flag, if not found, then next flags
+          //                        will be used OD_ADT_DETECT_CODEPAGE|OD_ADT_DETECT_BOM.
+    0x04  //OD_ADT_DETECT_CODEPAGE  Detect code page.
+    0x08  //OD_ADT_DETECT_BOM       Detect BOM mark.
+    0x10  //OD_ADT_NOMESSAGES       No messages, if errors in autodetect.
+          //Default is 0xD          (OD_ADT_BINARY_ERROR|OD_ADT_DETECT_CODEPAGE|OD_ADT_DETECT_BOM).
   nCodePage
     File code page, ignored if (nFlags & OD_ADT_DETECT_CODEPAGE).
   bBOM
@@ -1191,6 +1193,39 @@ Return Value
 
 Example:
   var pText=AkelPad.ReadFile("C:\\MyFile.txt");
+
+
+AkelPad.WriteFile
+_________________
+
+Write file content.
+
+  WriteFile(vFile, pContent, nContentLen, nCodePage, bBOM[, nFlags]);
+
+Arguments
+  vFile
+    File to write as string or as file handle.
+  pContent
+    Content to write.
+  nContentLen
+    Content length. If -1, length is calculated automatically.
+  nCodePage
+    Write codepage.
+  bBOM
+    File byte order mark.
+  nFlags
+    0x1  //WFF_WRITEREADONLY  Ignore read-only attribute. Only if vFile specified as string.
+    0x2  //WFF_APPENDFILE     Write content to the end of the file. Only if vFile specified as string.
+         //Default is 0x0.
+
+Return Value
+   0  //ESD_SUCCESS         Success.
+  -1  //ESD_OPEN            Can't open file for write.
+  -2  //ESD_WRITE           Can't write to file.
+  -3  //ESD_READONLY        File has read-only attribute.
+
+Example:
+  AkelPad.WriteFile("C:\\MyFile.txt", "Text", -1, 65001, true);
 
 
 AkelPad.SaveFile
@@ -1314,19 +1349,15 @@ _________________________________________
 
 Register callback function.
 
-  RegisterCallback(pFunction[, lpCallback][, nArgCount]);
+  RegisterCallback(lpCallback[, nArgCount]);
 
 Arguments
-  pFunction
-    String of function name.
   lpCallback
-    Callback function. See Remarks section.
+    Callback function.
   nArgCount
-    Argument count in callback function. See Remarks section.
+    Argument count in callback function. Can be omitted in JScript, but must be specified in VBScript.
 
 Remarks
-  If lpCallback and nArgCount arguments specified, pFunction is ignored.
-  Using lpCallback and nArgCount arguments is the only way to make RegisterCallback work in VBScript and ActiveX.
   The maximum number of working callback functions at the same time is 30.
 
 Return Value
@@ -1337,7 +1368,7 @@ Example (callback under JScript):
   var lpEnumWindowsCallback;
   var nStopAfter=3;
 
-  if (lpEnumWindowsCallback=oSys.RegisterCallback("EnumWindowsProc"))
+  if (lpEnumWindowsCallback=oSys.RegisterCallback(EnumWindowsProc))
   {
     oSys.Call("user32::EnumWindows", lpEnumWindowsCallback, 0);
     oSys.UnregisterCallback(lpEnumWindowsCallback);
@@ -1362,7 +1393,7 @@ Example (callback under VBScript):
   set oSys=AkelPad.SystemFunction()
   nStopAfter=3
 
-  set lpEnumWindowsCallback = oSys.RegisterCallback ("", GetRef("EnumWindowsProc"), 2)
+  set lpEnumWindowsCallback = oSys.RegisterCallback (GetRef("EnumWindowsProc"), 2)
   oSys.Call "user32::EnumWindows", lpEnumWindowsCallback, 0
   oSys.UnregisterCallback lpEnumWindowsCallback
 
@@ -1380,33 +1411,6 @@ Example (callback under VBScript):
       EnumWindowsProc = 1
     end if
   End Function
-
-Example (callback under ActiveX):
-  var AkelPad=new ActiveXObject("AkelPad.Document");
-  var oSys=AkelPad.SystemFunction();
-  var lpEnumWindowsCallback;
-  var nStopAfter=3;
-
-  if (lpEnumWindowsCallback=oSys.RegisterCallback("", EnumWindowsProc, 2))
-  {
-    oSys.Call("user32::EnumWindows", lpEnumWindowsCallback, 0);
-    oSys.UnregisterCallback(lpEnumWindowsCallback);
-  }
-
-  function EnumWindowsProc(hWnd, lParam)
-  {
-    //Convert hWnd to hex
-    if (hWnd < 0) hWnd=(0xFFFFFFFF + 1) + hWnd;
-    hWnd="0x" + hWnd.toString(16).toUpperCase();
-
-    //Show parameters
-    WScript.Echo("hWnd=" + hWnd + "; lParam=" + lParam);
-
-    if (--nStopAfter <= 0)
-      return false;
-    else
-      return true;
-  }
 
 
 AkelPad.SystemFunction().UnregisterCallback
@@ -1760,9 +1764,10 @@ Arguments
   pScriptBaseName
     Script name without extension.
   nFlags
-    0x1  //POB_READ   Begins read options.
-    0x2  //POB_SAVE   Begins save options.
-    0x4  //POB_CLEAR  Begins new save options (POB_SAVE|POB_CLEAR).
+    0x1  //POB_READ      Begins read options.
+    0x2  //POB_SAVE      Begins save options.
+    0x4  //POB_CLEAR     Begins new save options (POB_SAVE|POB_CLEAR).
+    0x20 //POB_NOSCRIPTS Plugin settings, pScriptBaseName - plugin name without extension.
 
 Return Value
   Number. Settings handle.
@@ -2171,7 +2176,8 @@ Arguments
   nFlags
     0x1  //WGM_ENABLE    Set in any case.
     0x2  //WGM_NOKEYSEND Don't send key messages to dialog from children windows
-                         (WM_KEYUP, WM_CHAR, WM_DEADCHAR, WM_SYSKEYDOWN, WM_SYSKEYUP, WM_SYSCHAR, WM_SYSDEADCHAR, WM_UNICHAR).
+         //              (WM_KEYUP, WM_CHAR, WM_DEADCHAR, WM_SYSKEYDOWN, WM_SYSKEYUP, WM_SYSCHAR, WM_SYSDEADCHAR, WM_UNICHAR).
+         //Default is 0x0.
 
 Return Value
   Zero.
@@ -2435,6 +2441,9 @@ Arguments
     16  //SH_GETLOCKPROGRAMTHREAD  Lock main thread from waiting this script (when script is called with external call with code 2).
         //  vData: script handle. If zero then current script handle is used.
         //  Return value: true - on, false - off.
+    17  //SH_GETSERVICEWINDOW  Retrieve script service window handle. Automatically created when using WindowSubClass, ThreadHook and RegisterCallback methods.
+        //  vData: script handle. If zero then current script handle is used.
+        //  Return value: script service window handle.
     21  //SH_GETNAME  Retrieve script name.
         //  vData: script handle. If zero then current script handle is used.
         //  Return value: script name.

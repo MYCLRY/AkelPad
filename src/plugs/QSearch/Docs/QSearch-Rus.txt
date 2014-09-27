@@ -351,10 +351,13 @@ SelFindNext или SelFindPrev. В результате выделение переходит к
 --------
 История:
 --------
+v.5.8 (Апрель 2014)
+ * AkelPad 4.8.8+
+
 v.5.7 (Март 2014)
  - исправлено: установка галочки "Подсветить все" всегда инициировала
    продолжение поиска для регулярных выражений
- - исправлено: SelFindNext/Prev всегда работали как srch_selfind_pickup = 1
+ - исправлено: SelFindNext/Prev всегда работали как srch_selfind_pickup=1
  + добавлено: srch_pickup_selection=10
  * изменено: теперь Alt+Enter ищет с начала файла, а Ctrl+Enter 
    подхватывает выделенный текст
@@ -564,5 +567,5 @@ Instructor за текстовый редактор AkelPad  ;-)
 The original icon by Yusuke Kamiyamane, http://p.yusukekamiyamane.com/
 The icon has been modified by DV.
 ---------------------------------------------------------------------------
-(C) Sep 2007 - Mar 2014, Vitaliy Dovgan aka DV
+(C) Sep 2007 - Apr 2014, Vitaliy Dovgan aka DV
           dvv81 <at> ukr <dot> net

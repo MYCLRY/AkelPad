@@ -6,10 +6,7 @@
 #include "x64Func.h"
 #include "WideFunc.h"
 #include "RegExpFunc.h"
-
-//Include AEC functions
 #include "AkelEdit.h"
-
 #include "AkelDLL.h"
 #include "Resources\Resource.h"
 
@@ -58,6 +55,7 @@
 #define GetLongPathNameWide
 #define GetWindowLongPtrWide
 #define GetWindowTextWide
+#define PropertySheetWide
 #define SetCurrentDirectoryWide
 #define SetDlgItemTextWide
 #define SetWindowLongPtrWide
@@ -129,6 +127,7 @@
 #define DLLA_LOGOUTPUT_GETEXECINFO  3
 #define DLLA_LOGOUTPUT_SETTEXTA     4
 #define DLLA_LOGOUTPUT_SETTEXTW     5
+#define DLLA_LOGOUTPUT_CLOSEPANEL   6
 
 #ifndef CP_UNICODE_UTF16LE
   #define CP_UNICODE_UTF16LE 1200
@@ -156,6 +155,7 @@
 #define DKT_NOUNLOAD       0x1
 #define DKT_ONMAINFINISH   0x2
 #define DKT_KEEPAUTOLOAD   0x4
+#define DKT_WAITTHREAD     0x8
 
 //dwWatchScrollEnd
 #define WSE_NO     0
@@ -170,12 +170,14 @@
 #define OES_PROCESS  0x4
 
 //Output flags
-#define OUTF_HIDEPANEL       0x00000001
+#define OUTF_NOPANEL         0x00000001
 #define OUTF_HIDEINPUT       0x00000002
 #define OUTF_SAVEALL         0x00000004
 #define OUTF_APPENDNEXT      0x00000008
 #define OUTF_NOSCROLL        0x00000010
 #define OUTF_WRAP            0x00000020
+#define OUTF_HIDEPANEL       0x00000040
+#define OUTF_CLOSENOERROR    0x00000080
 //Input source. Default is no input.
 #define OUTF_SOURCESELDOC    0x00001000
 #define OUTF_SOURCEONLYDOC   0x00002000
@@ -188,9 +190,9 @@
 
 //Patterns
 #define PAT_MICROSOFTGCC    L"^\\s*(.*)([(:](\\d+)[,:](\\d+)[):]|[(:](\\d+)[):])"
-#define PAT_MICROSOFTGCCTAG L"/FILE=$1 /GOTOLINE=$3:$4"
+#define PAT_MICROSOFTGCCTAG L"/FILE=\\1 /GOTOLINE=\\3:\\4"
 #define PAT_BORLAND         L"^(\\[.*\\] )?(.*)\\((\\d+)(,(\\d+))?\\)"
-#define PAT_BORLANDTAG      L"/FILE=$2 /GOTOLINE=$3:$5"
+#define PAT_BORLANDTAG      L"/FILE=\\2 /GOTOLINE=\\3:\\5"
 
 //Find document type
 #define FDT_BYFILENAME   1
@@ -201,17 +203,15 @@
 #define STR_UNICODE_UTF7W  L"65000 (UTF-7)"
 
 //Property sheet
-#define PAGE_WATCH      0
-#define PAGE_OUTPUT     1
+#define PAGE_WATCH  0
+#define PAGE_OUTPUT 1
+#define PAGE_MAX    2
 
 #ifndef IDI_ICON_MAIN
   #define IDI_ICON_MAIN 1001
 #endif
-#ifndef PROPSHEETHEADERA_V1_SIZE
-  #define PROPSHEETHEADERA_V1_SIZE CCSIZEOF_STRUCT(PROPSHEETHEADERA, pfnCallback)
-#endif
-#ifndef PROPSHEETHEADERW_V1_SIZE
-  #define PROPSHEETHEADERW_V1_SIZE CCSIZEOF_STRUCT(PROPSHEETHEADERW, pfnCallback)
+#ifndef PSCB_BUTTONPRESSED
+  #define PSCB_BUTTONPRESSED 3
 #endif
 
 typedef struct {
@@ -231,6 +231,7 @@ typedef struct {
   HANDLE hInitMutex;
   HANDLE hProcess;
   DWORD dwProcessId;
+  DWORD dwExitCode;
   DWORD dwTimeOut;
   DWORD dwExecState;
   int nPrevFirstVisLine;
@@ -279,7 +280,7 @@ typedef struct {
 } DLLEXTCODERGETALIAS;
 
 //Functions prototypes
-void CreateOutput(PLUGINDATA *pd);
+void CreateOutput(PLUGINDATA *pd, BOOL bShow);
 void CreateDock(HWND *hWndDock, DOCK **dkDock, BOOL bShow);
 void DestroyDock(HWND hWndDock, DWORD dwType);
 void SetCoderAlias();
@@ -417,21 +418,18 @@ WNDPROCDATA *NewMainProcData=NULL;
 WNDPROCDATA *NewFrameProcData=NULL;
 
 //Options dialog
-PROPSHEETHEADERA pshA={0};
-PROPSHEETHEADERW pshW={0};
-PROPSHEETPAGEA pspA[2]={0};
-PROPSHEETPAGEW pspW[2]={0};
+PROPSHEETHEADERW psh={0};
+PROPSHEETPAGEW psp[PAGE_MAX]={0};
 HWND hWndPropSheet=NULL;
 HIMAGELIST hImageList;
 HHOOK hHookOptions;
-int nPropMaxVisitPage;
 
 //Identification
 void __declspec(dllexport) DllAkelPadID(PLUGINVERSION *pv)
 {
   pv->dwAkelDllVersion=AKELDLL;
   pv->dwExeMinVersion3x=MAKE_IDENTIFIER(-1, -1, -1, -1);
-  pv->dwExeMinVersion4x=MAKE_IDENTIFIER(4, 8, 7, 0);
+  pv->dwExeMinVersion4x=MAKE_IDENTIFIER(4, 8, 8, 0);
   pv->pPluginName="Log";
 }
 
@@ -572,7 +570,7 @@ void __declspec(dllexport) Output(PLUGINDATA *pd)
             xstrcpynW(oe.wszCoderAlias, (wchar_t *)pCoderAlias, MAX_PATH);
         }
 
-        if (oe.dwOutputFlags & OUTF_HIDEPANEL)
+        if (oe.dwOutputFlags & OUTF_NOPANEL)
         {
           if (!hExecThread && *oe.wszCmdLine)
             OutputExec(&oe);
@@ -581,7 +579,7 @@ void __declspec(dllexport) Output(PLUGINDATA *pd)
         {
           if (!nInitOutput)
           {
-            CreateOutput(pd);
+            CreateOutput(pd, !(oe.dwOutputFlags & OUTF_HIDEPANEL));
             SetCoderAlias();
 
             //Stay in memory, and show as active
@@ -669,7 +667,7 @@ void __declspec(dllexport) Output(PLUGINDATA *pd)
         if (!nInitOutput)
         {
           oe.dwOutputFlags|=OUTF_HIDEINPUT;
-          CreateOutput(pd);
+          CreateOutput(pd, TRUE);
         }
         //else if (!(oe.dwOutputFlags & OUTF_HIDEINPUT) && oe.dwExecState == OES_IDLE)
         //{
@@ -716,6 +714,10 @@ void __declspec(dllexport) Output(PLUGINDATA *pd)
         return;
       }
     }
+    else if (nAction == DLLA_LOGOUTPUT_CLOSEPANEL)
+    {
+      DestroyDock(hWndDockDlg, DKT_KEEPAUTOLOAD);
+    }
 
     //If plugin already loaded, stay in memory and don't change active status
     if (pd->bInMemory) pd->nUnload=UD_NONUNLOAD_UNCHANGE;
@@ -731,7 +733,8 @@ void __declspec(dllexport) Output(PLUGINDATA *pd)
   }
   else
   {
-    CreateOutput(pd);
+    bOutputDockWaitResize=pd->bOnStart;
+    CreateOutput(pd, !bOutputDockWaitResize);
     SetCoderAlias();
 
     //Stay in memory, and show as active
@@ -770,13 +773,12 @@ void __declspec(dllexport) Settings(PLUGINDATA *pd)
   if (pd->bInMemory) pd->nUnload=UD_NONUNLOAD_NONACTIVE;
 }
 
-void CreateOutput(PLUGINDATA *pd)
+void CreateOutput(PLUGINDATA *pd, BOOL bShow)
 {
   InitMain();
   InitOutput();
 
-  bOutputDockWaitResize=pd->bOnStart;
-  CreateDock(&hWndDockDlg, &dkOutputDlg, !bOutputDockWaitResize);
+  CreateDock(&hWndDockDlg, &dkOutputDlg, bShow);
 }
 
 void CreateDock(HWND *hWndDock, DOCK **dkDock, BOOL bShow)
@@ -1134,6 +1136,12 @@ BOOL CALLBACK DockDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     else if (LOWORD(wParam) == IDC_CLOSE ||
              LOWORD(wParam) == IDCANCEL)
     {
+      if (lParam & DKT_WAITTHREAD)
+      {
+        if (hExecThread)
+          WaitForSingleObject(hExecThread, INFINITE);
+      }
+
       if (!(lParam & DKT_ONMAINFINISH))
         RemoveCoderAlias();
 
@@ -1365,6 +1373,7 @@ LRESULT CALLBACK NewOutputProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPara
       aes.crSel.ciMin=tr.cr.ciMin;
       aes.crSel.ciMax=tr.cr.ciMax;
       aes.dwFlags=AESELT_LOCKSCROLL;
+      aes.dwType=0;
       SendMessage(hWnd, AEM_SETSEL, (WPARAM)&aes.crSel.ciMin, (LPARAM)&aes);
       SetFocus(hMainWnd);
       return TRUE;
@@ -1421,69 +1430,33 @@ void SettingsSheet(int nStartPage)
   }
 
   //Show property sheet
-  if (bOldWindows)
-  {
-    char szPluginTitle[MAX_PATH];
+  psp[PAGE_WATCH].dwSize       =sizeof(PROPSHEETPAGEW);
+  psp[PAGE_WATCH].dwFlags      =PSP_DEFAULT|PSP_USEHICON;
+  psp[PAGE_WATCH].hInstance    =hInstanceDLL;
+  psp[PAGE_WATCH].pszTemplate  =MAKEINTRESOURCEW(IDD_WATCH_SETUP);
+  psp[PAGE_WATCH].hIcon        =hIconWatch;
+  psp[PAGE_WATCH].pfnDlgProc   =(DLGPROC)WatchSetupDlgProc;
 
-    WideCharToMultiByte(CP_ACP, 0, wszPluginTitle, -1, szPluginTitle, MAX_PATH, NULL, NULL);
+  psp[PAGE_OUTPUT].dwSize      =sizeof(PROPSHEETPAGEW);
+  psp[PAGE_OUTPUT].dwFlags     =PSP_DEFAULT|PSP_USEHICON;
+  psp[PAGE_OUTPUT].hInstance   =hInstanceDLL;
+  psp[PAGE_OUTPUT].pszTemplate =MAKEINTRESOURCEW(IDD_OUTPUT_SETUP);
+  psp[PAGE_OUTPUT].hIcon       =hIconOutput;
+  psp[PAGE_OUTPUT].pfnDlgProc  =(DLGPROC)OutputSetupDlgProc;
 
-    pspA[PAGE_WATCH].dwSize       =sizeof(PROPSHEETPAGEA);
-    pspA[PAGE_WATCH].dwFlags      =PSP_DEFAULT|PSP_USEHICON;
-    pspA[PAGE_WATCH].hInstance    =hInstanceDLL;
-    pspA[PAGE_WATCH].pszTemplate  =MAKEINTRESOURCEA(IDD_WATCH_SETUP);
-    pspA[PAGE_WATCH].hIcon        =hIconWatch;
-    pspA[PAGE_WATCH].pfnDlgProc   =(DLGPROC)WatchSetupDlgProc;
-    pspA[PAGE_OUTPUT].dwSize      =sizeof(PROPSHEETPAGEA);
-    pspA[PAGE_OUTPUT].dwFlags     =PSP_DEFAULT|PSP_USEHICON;
-    pspA[PAGE_OUTPUT].hInstance   =hInstanceDLL;
-    pspA[PAGE_OUTPUT].pszTemplate =MAKEINTRESOURCEA(IDD_OUTPUT_SETUP);
-    pspA[PAGE_OUTPUT].hIcon       =hIconOutput;
-    pspA[PAGE_OUTPUT].pfnDlgProc  =(DLGPROC)OutputSetupDlgProc;
+  psh.dwSize      =sizeof(PROPSHEETHEADERW);
+  psh.dwFlags     =PSH_PROPSHEETPAGE|PSH_USEICONID|PSH_USECALLBACK|PSH_NOAPPLYNOW;
+  psh.hwndParent  =hMainWnd;
+  psh.hInstance   =hInstanceEXE;
+  psh.pszIcon     =MAKEINTRESOURCEW(IDI_ICON_MAIN);
+  psh.pszCaption  =wszPluginTitle;
+  psh.nPages      =PAGE_MAX;
+  psh.nStartPage  =nStartPage;
+  psh.ppsp        =&psp[0];
+  psh.pfnCallback =PropSheetProc;
 
-    pshA.dwSize      =(bOldComctl32)?(PROPSHEETHEADERA_V1_SIZE):(sizeof(PROPSHEETHEADERA));
-    pshA.dwFlags     =PSH_PROPSHEETPAGE|PSH_USEICONID|PSH_USECALLBACK;
-    pshA.hwndParent  =hMainWnd;
-    pshA.hInstance   =hInstanceEXE;
-    pshA.pszIcon     =MAKEINTRESOURCEA(IDI_ICON_MAIN);
-    pshA.pszCaption  =szPluginTitle;
-    pshA.nPages      =sizeof(pspA) / sizeof(PROPSHEETPAGEA);
-    pshA.nStartPage  =nStartPage;
-    pshA.ppsp        =&pspA[0];
-    pshA.pfnCallback =PropSheetProc;
-
-    hHookOptions=SetWindowsHookEx(WH_CBT, CBTProc, NULL, GetCurrentThreadId());
-    PropertySheetA(&pshA);
-  }
-  else
-  {
-    pspW[PAGE_WATCH].dwSize       =sizeof(PROPSHEETPAGEW);
-    pspW[PAGE_WATCH].dwFlags      =PSP_DEFAULT|PSP_USEHICON;
-    pspW[PAGE_WATCH].hInstance    =hInstanceDLL;
-    pspW[PAGE_WATCH].pszTemplate  =MAKEINTRESOURCEW(IDD_WATCH_SETUP);
-    pspW[PAGE_WATCH].hIcon        =hIconWatch;
-    pspW[PAGE_WATCH].pfnDlgProc   =(DLGPROC)WatchSetupDlgProc;
-    pspW[PAGE_OUTPUT].dwSize      =sizeof(PROPSHEETPAGEW);
-    pspW[PAGE_OUTPUT].dwFlags     =PSP_DEFAULT|PSP_USEHICON;
-    pspW[PAGE_OUTPUT].hInstance   =hInstanceDLL;
-    pspW[PAGE_OUTPUT].pszTemplate =MAKEINTRESOURCEW(IDD_OUTPUT_SETUP);
-    pspW[PAGE_OUTPUT].hIcon       =hIconOutput;
-    pspW[PAGE_OUTPUT].pfnDlgProc  =(DLGPROC)OutputSetupDlgProc;
-
-    pshW.dwSize      =sizeof(PROPSHEETHEADERW);
-    pshW.dwFlags     =PSH_PROPSHEETPAGE|PSH_USEICONID|PSH_USECALLBACK|PSH_NOAPPLYNOW;
-    pshW.hwndParent  =hMainWnd;
-    pshW.hInstance   =hInstanceEXE;
-    pshW.pszIcon     =MAKEINTRESOURCEW(IDI_ICON_MAIN);
-    pshW.pszCaption  =wszPluginTitle;
-    pshW.nPages      =sizeof(pspW) / sizeof(PROPSHEETPAGEW);
-    pshW.nStartPage  =nStartPage;
-    pshW.ppsp        =&pspW[0];
-    pshW.pfnCallback =PropSheetProc;
-
-    hHookOptions=SetWindowsHookEx(WH_CBT, CBTProc, NULL, GetCurrentThreadId());
-    nPropMaxVisitPage=nStartPage;
-    PropertySheetW(&pshW);
-  }
+  hHookOptions=SetWindowsHookEx(WH_CBT, CBTProc, NULL, GetCurrentThreadId());
+  PropertySheetWide(&psh);
 
   if (dwSaveFlags)
   {
@@ -1510,10 +1483,8 @@ void SettingsSheet(int nStartPage)
   //Destroy image list
   if (hImageList)
   {
-    ImageList_Destroy(hImageList);
-    //DestroyIcon(hIconHighLight);
-    //DestroyIcon(hIconCodeFold);
-    //DestroyIcon(hIconOutput);
+    if (ImageList_Destroy(hImageList))
+      hImageList=NULL;
   }
 }
 
@@ -1544,23 +1515,34 @@ LRESULT CALLBACK CBTProc(int iCode, WPARAM wParam, LPARAM lParam)
 
 int CALLBACK PropSheetProc(HWND hDlg, UINT uMsg, LPARAM lParam)
 {
-  //Remove "?"
+  static HWND hWndPropTab;
+
   if (uMsg == PSCB_PRECREATE)
   {
+    //Remove "?"
     ((DLGTEMPLATE *)lParam)->style&=~DS_CONTEXTHELP;
   }
   else if (uMsg == PSCB_INITIALIZED)
   {
     HIMAGELIST hImageListOld;
-    HWND hWndPropTab;
 
     hWndPropSheet=hDlg;
 
+    //Set 32-bit hImageList
     if (hWndPropTab=(HWND)SendMessage(hDlg, PSM_GETTABCONTROL, 0, 0))
     {
-      hImageListOld=(HIMAGELIST)SendMessage(hWndPropTab, TCM_GETIMAGELIST, 0, 0);
-      SendMessage(hWndPropTab, TCM_SETIMAGELIST, 0, (LPARAM)hImageList);
+      hImageListOld=(HIMAGELIST)SendMessage(hWndPropTab, TCM_SETIMAGELIST, 0, (LPARAM)hImageList);
       if (hImageListOld) ImageList_Destroy(hImageListOld);
+    }
+  }
+  else if (uMsg == PSCB_BUTTONPRESSED)
+  {
+    if (lParam == PSBTN_OK ||
+        lParam == PSBTN_CANCEL ||
+        lParam == PSBTN_FINISH)
+    {
+      //Detach hImageList otherwise ImageList_Destroy failed
+      SendMessage(hWndPropTab, TCM_SETIMAGELIST, 0, (LPARAM)NULL);
     }
   }
   return TRUE;
@@ -1584,7 +1566,6 @@ BOOL CALLBACK WatchSetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
     hWndScrollEndNoCheck=GetDlgItem(hDlg, IDC_WATCH_SETUP_SCROLLENDNO_CHECK);
     hWndWatchCompleteReopenCheck=GetDlgItem(hDlg, IDC_WATCH_SETUP_COMPLETEREOPEN_CHECK);
 
-    SetWindowTextWide(hDlg, wszPluginTitle);
     SetDlgItemTextWide(hDlg, IDC_WATCH_SETUP_UPDATEINTERVAL_GROUP, GetLangStringW(wLangModule, STRID_UPDATEINTERVAL));
     SetDlgItemTextWide(hDlg, IDC_WATCH_SETUP_MS_LABEL, GetLangStringW(wLangModule, STRID_MS));
     SetDlgItemTextWide(hDlg, IDC_WATCH_SETUP_SCROLL_GROUP, GetLangStringW(wLangModule, STRID_SCROLL));
@@ -1593,8 +1574,6 @@ BOOL CALLBACK WatchSetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPar
     SetDlgItemTextWide(hDlg, IDC_WATCH_SETUP_SCROLLENDVERT_CHECK, GetLangStringW(wLangModule, STRID_SCROLLENDVERT));
     SetDlgItemTextWide(hDlg, IDC_WATCH_SETUP_SCROLLENDNO_CHECK, GetLangStringW(wLangModule, STRID_SCROLLENDNO));
     SetDlgItemTextWide(hDlg, IDC_WATCH_SETUP_COMPLETEREOPEN_CHECK, GetLangStringW(wLangModule, STRID_COMPLETEREOPEN));
-    SetDlgItemTextWide(hDlg, IDOK, GetLangStringW(wLangModule, STRID_OK));
-    SetDlgItemTextWide(hDlg, IDCANCEL, GetLangStringW(wLangModule, STRID_CANCEL));
 
     SendMessage(hWndWatchUpdateInterval, EM_LIMITTEXT, 6, 0);
     SetDlgItemInt(hDlg, IDC_WATCH_SETUP_UPDATEINTERVAL, dwWatchUpdateInterval, FALSE);
@@ -1686,7 +1665,6 @@ BOOL CALLBACK OutputSetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
       FillComboboxCodepage(hWndCodePageList, lpCodepageList);
       SelectComboboxCodepage(hWndCodePageList, nForceCodePage);
     }
-    SetWindowTextWide(hDlg, wszPluginTitle);
     SetDlgItemTextWide(hDlg, IDC_OUTPUT_SETUP_CODEPAGE_GROUP, GetLangStringW(wLangModule, STRID_CODEPAGE));
     SetDlgItemTextWide(hDlg, IDC_OUTPUT_SETUP_AUTOCODEPAGE_RADIO, GetLangStringW(wLangModule, STRID_AUTODETECT));
     SetDlgItemTextWide(hDlg, IDC_OUTPUT_SETUP_PATTERN_LABEL, GetLangStringW(wLangModule, STRID_PATTERN));
@@ -1702,8 +1680,6 @@ BOOL CALLBACK OutputSetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
     SetDlgItemTextWide(hDlg, IDC_OUTPUT_SETUP_RUNCMD_LABEL, GetLangStringW(wLangModule, STRID_RUNCMD));
     SetDlgItemTextWide(hDlg, IDC_OUTPUT_SETUP_RUNCMDDLG_LABEL, GetLangStringW(wLangModule, STRID_RUNCMDDLG));
     SetDlgItemTextWide(hDlg, IDC_OUTPUT_SETUP_CODERALIAS_LABEL, GetLangStringW(wLangModule, STRID_CODERALIAS));
-    SetDlgItemTextWide(hDlg, IDOK, GetLangStringW(wLangModule, STRID_OK));
-    SetDlgItemTextWide(hDlg, IDCANCEL, GetLangStringW(wLangModule, STRID_CANCEL));
 
     //Set icons
     {
@@ -1800,13 +1776,13 @@ BOOL CALLBACK OutputSetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
       if (nCmd=TrackPopupMenu(hMenuPatTags, TPM_NONOTIFY|TPM_RETURNCMD|TPM_LEFTBUTTON|TPM_RIGHTBUTTON, rcButton.left, rcButton.top + (rcButton.bottom - rcButton.top), 0, hDlg, NULL))
       {
         if (nCmd == IDM_OUTPUT_TAGFILE)
-          SendMessageA(hWndPatTagsEdit, EM_REPLACESEL, TRUE, (LPARAM)"/FILE=$1");
+          SendMessageA(hWndPatTagsEdit, EM_REPLACESEL, TRUE, (LPARAM)"/FILE=\\1");
         else if (nCmd == IDM_OUTPUT_TAGGOTOLINE)
-          SendMessageA(hWndPatTagsEdit, EM_REPLACESEL, TRUE, (LPARAM)"/GOTOLINE=$2:$3");
+          SendMessageA(hWndPatTagsEdit, EM_REPLACESEL, TRUE, (LPARAM)"/GOTOLINE=\\2:\\3");
         else if (nCmd == IDM_OUTPUT_TAGGOTOBYTE)
-          SendMessageA(hWndPatTagsEdit, EM_REPLACESEL, TRUE, (LPARAM)"/GOTOBYTE=$2");
+          SendMessageA(hWndPatTagsEdit, EM_REPLACESEL, TRUE, (LPARAM)"/GOTOBYTE=\\2");
         else if (nCmd == IDM_OUTPUT_TAGGOTOCHAR)
-          SendMessageA(hWndPatTagsEdit, EM_REPLACESEL, TRUE, (LPARAM)"/GOTOCHAR=$2");
+          SendMessageA(hWndPatTagsEdit, EM_REPLACESEL, TRUE, (LPARAM)"/GOTOCHAR=\\2");
         SetFocus(hWndPatTagsEdit);
       }
     }
@@ -2120,6 +2096,7 @@ BOOL CALLBACK NextMatchProc(void *lpParameter, LPARAM lParam, DWORD dwSupport)
       aes.crSel.ciMin=tr.cr.ciMin;
       aes.crSel.ciMax=tr.cr.ciMax;
       aes.dwFlags=AESELT_LOCKSCROLL;
+      aes.dwType=0;
       SendMessage(hWndOutputView, AEM_SETSEL, (WPARAM)&aes.crSel.ciMin, (LPARAM)&aes);
       ScrollCaret(hWndOutputView);
       SetFocus(hMainWnd);
@@ -2147,6 +2124,7 @@ BOOL CALLBACK PrevMatchProc(void *lpParameter, LPARAM lParam, DWORD dwSupport)
       aes.crSel.ciMin=tr.cr.ciMin;
       aes.crSel.ciMax=tr.cr.ciMax;
       aes.dwFlags=AESELT_LOCKSCROLL;
+      aes.dwType=0;
       SendMessage(hWndOutputView, AEM_SETSEL, (WPARAM)&aes.crSel.ciMin, (LPARAM)&aes);
       ScrollCaret(hWndOutputView);
       SetFocus(hMainWnd);
@@ -2213,7 +2191,7 @@ DWORD WINAPI ExecThreadProc(LPVOID lpParameter)
   ExecuteToWindow(oe);
   oe->dwExecState=OES_IDLE;
 
-  if (oe->dwOutputFlags & OUTF_HIDEPANEL)
+  if (oe->dwOutputFlags & OUTF_NOPANEL)
   {
     if (nInitMain)
     {
@@ -2226,7 +2204,14 @@ DWORD WINAPI ExecThreadProc(LPVOID lpParameter)
   {
     //Send notification
     if (hWndDockDlg)
-      PostMessage(hWndDockDlg, AKDLL_EXECSTOP, 0, 0);
+    {
+      if ((oe->dwOutputFlags & OUTF_CLOSENOERROR) && oe->dwExitCode == 0)
+      {
+        //DestroyDock
+        PostMessage(hWndDockDlg, WM_COMMAND, IDCANCEL, DKT_KEEPAUTOLOAD|DKT_WAITTHREAD);
+      }
+      else PostMessage(hWndDockDlg, AKDLL_EXECSTOP, 0, 0);
+    }
   }
 
   if (hExecThread)
@@ -2543,6 +2528,8 @@ BOOL ExecuteToWindow(OUTPUTEXEC *oe)
         //Stop execution
         bResult=OutputStop(pi.hProcess, TRUE);
 
+        oe->dwExitCode=0;
+        GetExitCodeProcess(pi.hProcess, &oe->dwExitCode);
         CloseHandle(pi.hProcess);
         oe->hProcess=NULL;
         oe->dwProcessId=0;
@@ -2740,7 +2727,7 @@ BOOL GetPatOptions(const wchar_t *wpPatTags, OUTPUTEXEC *oe)
   oe->wszPatTagFile[0]=L'\0';
   oe->wszPatTagLine[0]=L'\0';
 
-  //Parse tag options: `/FILE=$1 /FRAME=$1 /GOTOLINE=$2:$3 /GOTOBYTE=$2 /GOTOCHAR=$2`
+  //Parse tag options: `/FILE=\\1 /FRAME=\\1 /GOTOLINE=\\2:\\3 /GOTOBYTE=\\2 /GOTOCHAR=\\2`
   if (*wpPatTags)
   {
     while (*wpArgCount)
@@ -2833,7 +2820,7 @@ BOOL PatOpenLine(HWND hWnd, const OUTPUTEXEC *oe, const AECHARINDEX *ciChar, AET
     pe.wpMaxText=pe.wpMaxStr;
     pe.wpPat=oe->wszPattern;
     pe.wpMaxPat=oe->wszPattern + xstrlenW(oe->wszPattern);
-    pe.dwOptions=REPE_MATCHCASE;
+    pe.dwOptions=RESE_MATCHCASE;
     pe.wpDelim=NULL;
     pe.wpMaxDelim=NULL;
     pe.lpCallback=NULL;
@@ -2851,7 +2838,7 @@ BOOL PatOpenLine(HWND hWnd, const OUTPUTEXEC *oe, const AECHARINDEX *ciChar, AET
       {
         pgs.lpREGroupStack=pe.lpREGroupStack;
         pgs.wpStr=oe->wszPatTagFile;
-        pgs.wpMaxStr=pgs.wpStr + lstrlenW(pgs.wpStr);
+        pgs.wpMaxStr=pgs.wpStr + xstrlenW(pgs.wpStr);
         pgs.wszResult=NULL;
         if (nSize=SendMessage(hMainWnd, AKD_PATGROUPSTR, 0, (LPARAM)&pgs))
         {
@@ -2867,7 +2854,7 @@ BOOL PatOpenLine(HWND hWnd, const OUTPUTEXEC *oe, const AECHARINDEX *ciChar, AET
       {
         pgs.lpREGroupStack=pe.lpREGroupStack;
         pgs.wpStr=oe->wszPatTagLine;
-        pgs.wpMaxStr=pgs.wpStr + lstrlenW(pgs.wpStr);
+        pgs.wpMaxStr=pgs.wpStr + xstrlenW(pgs.wpStr);
         pgs.wszResult=NULL;
         if (nSize=SendMessage(hMainWnd, AKD_PATGROUPSTR, 0, (LPARAM)&pgs))
         {

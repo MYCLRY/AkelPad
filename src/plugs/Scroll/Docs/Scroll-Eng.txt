@@ -1,5 +1,5 @@
 *****************************************************************
-***                Scroll AkelPad plugin v2.7                 ***
+***                Scroll AkelPad plugin v2.9                 ***
 *****************************************************************
 
 2014 Shengalts Aleksander aka Instructor (Shengalts@mail.ru)
@@ -8,8 +8,10 @@
 *** Features ***
 
 - Text autoscrolling.
-- Set no scroll operation.
 - Horizontal/vertical synchronization of split or MDI windows.
+- Set no scroll operation, like, "Select all".
+- Caret alignment.
+- Mouse wheel scrolling without focus set.
 
 
 *** Functions ***
@@ -17,25 +19,35 @@
 Scroll::AutoScroll
 On/off text autoscrolling.
 
-Scroll::AutoFocus
-On/off object management over which mouse wheel is scrolling. 
-Supported controls:
-AkelEdit, RichEdit20, Edit, SysTreeView32, SysListView32, ListBox, ComboBox, SysTabControl32.
-
-Scroll::NoScroll
-On/off no scroll operation processing.
-
 Scroll::SyncHorz
 On/off horizontal synchronization.
 
 Scroll::SyncVert
 On/off vertical synchronization.
 
+Scroll::NoScroll
+On/off no scroll operation processing.
+
+Scroll::AlignCaret
+On/off caret alignment.
+  Manual parameters:
+    AlignCaretFlags
+      See description of AESCROLLCARETOPTIONS.dwFlags in AkelEdit.h.
+    AlignCaretSelFlags
+      See description of AESCROLLCARETOPTIONS.dwSelFlags in AkelEdit.h.
+    AlignCaretSelType
+      See description of AESCROLLCARETOPTIONS.dwSelType in AkelEdit.h.
+
+Scroll::AutoFocus
+On/off object management over which mouse wheel is scrolling.
+  Supported controls:
+    AkelEdit, RichEdit20, Edit, SysTreeView32, SysListView32, ListBox, ComboBox, SysTabControl32.
+
 Scroll::Settings
 Settings dialog.
 
 
-*** External call (4.x.x only) ***
+*** External call ***
 
 Call("Scroll::Settings", 1, TYPE)
   Parameters:
@@ -69,8 +81,7 @@ Call("Scroll::Settings", 3, VALUE, MOVECARET)
       The number of characters to scroll horizontally. Positive - right, negative - left.
     MOVECARET (one of the following):
       0  don't move caret.
-      1  move caret, when it is inside of the window.
-      2  move caret, when it is outside of the window.
+      1  move caret.
 
 Call("Scroll::Settings", 4, VALUE, MOVECARET)
   Parameters:
@@ -80,8 +91,7 @@ Call("Scroll::Settings", 4, VALUE, MOVECARET)
       The number of lines to scroll vertically. Positive - down, negative - up.
     MOVECARET (one of the following):
       0  don't move caret.
-      1  move caret, when it is inside of the window.
-      2  move caret, when it is outside of the window.
+      1  move caret.
 
 Call("Scroll::Settings", 5)
   Parameters:

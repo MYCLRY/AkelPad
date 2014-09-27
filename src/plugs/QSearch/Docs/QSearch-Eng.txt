@@ -334,9 +334,12 @@ Additional options (QSearch panel's popup menu or file
 --------
 History:
 --------
+v.5.8 (April 2014)
+ * AkelPad 4.8.8+
+
 v.5.7 (March 2014)
  - fixed: "Highlight all" always initiated Find Next for RegExps
- - fixed: SelFindNext/Prev always worked as srch_selfind_pickup = 1
+ - fixed: SelFindNext/Prev always worked as srch_selfind_pickup=1
  + added: srch_pickup_selection=10
  * changed: now Alt+Enter searches from the file's beginning, 
    Ctrl+Enter picks up the selected text
@@ -545,5 +548,5 @@ aka Instructor for the AkelPad text editor  ;-)
 The original icon by Yusuke Kamiyamane, http://p.yusukekamiyamane.com/
 The icon has been modified by DV.
 ---------------------------------------------------------------------------
-(C) Sep 2007 - Mar 2014, Vitaliy Dovgan aka DV
+(C) Sep 2007 - Apr 2014, Vitaliy Dovgan aka DV
           dvv81 <at> ukr <dot> net

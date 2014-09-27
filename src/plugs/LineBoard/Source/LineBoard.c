@@ -72,7 +72,6 @@
 #define DLLA_LINEBOARD_ADDWINDOW        50
 #define DLLA_LINEBOARD_DELWINDOW        51
 #define DLLA_LINEBOARD_GETWINDOW        52
-#define DLLA_LINEBOARDBOOKMARKLIST_SHOW 1
 
 #define STRID_SHOW                    1
 #define STRID_PANEL                   2
@@ -244,7 +243,7 @@ HWND GetCurEdit();
 HWND GetFocusEdit();
 void GetBoardColors(HWND hWnd);
 VARINFO* StackGetVarByName(STACKVAR *hStackGlobal, STACKVAR *hStackActive, const wchar_t *wpVarName, int nVarNameLen);
-COLORREF GetColorValueFromStrW(wchar_t *wpColor);
+COLORREF GetColorFromStr(wchar_t *wpColor);
 int GetMaxNumberWidth(HDC hDC, int *nNumberAverageWidth);
 void GetPosFromChar(HWND hWnd, INT_PTR nCharIndex, POINT *pt);
 int GetCurrentLine(HWND hWnd);
@@ -322,6 +321,7 @@ VARINFO *lpVarInfoFastCheck;
 BOOL bLineUnsavedEnable=TRUE;
 BOOL bLineSavedEnable=TRUE;
 int nLineModificationWidth=3;
+BOOL bRulerEnable=TRUE;
 int nRulerHeight=17;
 int nRulerCaretWidth=1;
 DWORD dwSetBookmark=3117;    //"Alt+Ins"
@@ -346,7 +346,7 @@ void __declspec(dllexport) DllAkelPadID(PLUGINVERSION *pv)
 {
   pv->dwAkelDllVersion=AKELDLL;
   pv->dwExeMinVersion3x=MAKE_IDENTIFIER(-1, -1, -1, -1);
-  pv->dwExeMinVersion4x=MAKE_IDENTIFIER(4, 8, 4, 0);
+  pv->dwExeMinVersion4x=MAKE_IDENTIFIER(4, 8, 8, 0);
   pv->pPluginName="LineBoard";
 }
 
@@ -375,19 +375,25 @@ void __declspec(dllexport) Main(PLUGINDATA *pd)
       {
         if (nAction == DLLA_LINEBOARD_GETRULERHEIGHT)
         {
-          int *lpRulerHeight=NULL;
+          int *lpnRulerHeight=NULL;
+          BOOL *lpbRulerEnable=NULL;
 
           if (IsExtCallParamValid(pd->lParam, 2))
-            lpRulerHeight=(int *)GetExtCallParam(pd->lParam, 2);
+            lpnRulerHeight=(int *)GetExtCallParam(pd->lParam, 2);
+          if (IsExtCallParamValid(pd->lParam, 3))
+            lpbRulerEnable=(BOOL *)GetExtCallParam(pd->lParam, 3);
 
-          if (lpRulerHeight)
+          if (lpnRulerHeight)
           {
-            *lpRulerHeight=nRulerHeight;
+            *lpnRulerHeight=nRulerHeight;
+            if (lpbRulerEnable)
+              *lpbRulerEnable=bRulerEnable;
           }
         }
         else if (nAction == DLLA_LINEBOARD_SETRULERHEIGHT)
         {
           int nNewRulerHeight=-1;
+          BOOL bUpdate=FALSE;
 
           if (IsExtCallParamValid(pd->lParam, 2))
             nNewRulerHeight=(int)GetExtCallParam(pd->lParam, 2);
@@ -400,19 +406,26 @@ void __declspec(dllexport) Main(PLUGINDATA *pd)
               {
                 //Turn off
                 nRulerHeight=0;
-
-                dwSaveFlags|=OF_SETTINGS;
-                UpdateEditAll(UE_FIRSTPIXEL);
+                bUpdate=TRUE;
               }
             }
             else
             {
               //Turn on
               nRulerHeight=nNewRulerHeight;
-
-              dwSaveFlags|=OF_SETTINGS;
-              UpdateEditAll(UE_FIRSTPIXEL);
+              bUpdate=TRUE;
             }
+          }
+          else if (nNewRulerHeight == -1)
+          {
+            bRulerEnable=!bRulerEnable;
+            bUpdate=TRUE;
+          }
+
+          if (bUpdate)
+          {
+            dwSaveFlags|=OF_SETTINGS;
+            UpdateEditAll(UE_FIRSTPIXEL);
           }
         }
         else if (nAction == DLLA_LINEBOARD_SHOWBOARD)
@@ -489,6 +502,7 @@ void __declspec(dllexport) Main(PLUGINDATA *pd)
         else if (nAction == DLLA_LINEBOARD_SETBOOKMARKS)
         {
           WINDOWBOARD *lpBoard;
+          FRAMEDATA *lpFrame;
           HWND hWndEdit=NULL;
           AEHDOC hDocEdit=NULL;
           unsigned char *pBookmarks=NULL;
@@ -512,7 +526,10 @@ void __declspec(dllexport) Main(PLUGINDATA *pd)
 
               if (SetBookmarksString(lpBoard, wpBookmarks))
               {
+                if (lpFrame=(FRAMEDATA *)SendMessage(hMainWnd, AKD_FRAMEFINDW, FWF_BYEDITDOCUMENT, (LPARAM)hDocEdit))
+                  xstrcpynW(lpBoard->wszFile, lpFrame->wszFile, MAX_PATH);
                 SaveRecentFile(lpBoard);
+
                 if (bShowBoard) UpdateEdit(hWndEdit, UE_FIRSTPIXEL);
               }
               if (pd->dwSupport & PDS_STRANSI)
@@ -689,7 +706,7 @@ BOOL CALLBACK SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
   static HWND hWndRulerScaleColorLabel;
   static HWND hWndRulerCaretColorButton;
   static HWND hWndRulerCaretColorLabel;
-  static HWND hWndRulerHeightLabel;
+  static HWND hWndRulerEnable;
   static HWND hWndRulerHeightEdit;
   static HWND hWndRulerHeightSpin;
   static HWND hWndRulerCaretWidthLabel;
@@ -717,6 +734,7 @@ BOOL CALLBACK SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
   static BOOL bLineUnsavedEnableDlg;
   static BOOL bLineSavedEnableDlg;
   static int nLineModificationWidthDlg;
+  static BOOL bRulerEnableDlg;
   static int nRulerHeightDlg;
   static int nRulerCaretWidthDlg;
   static BOOL bShowBoardDlg;
@@ -753,7 +771,7 @@ BOOL CALLBACK SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     hWndRulerScaleColorLabel=GetDlgItem(hDlg, IDC_RULERSCALECOLOR_LABEL);
     hWndRulerCaretColorButton=GetDlgItem(hDlg, IDC_RULERCARETCOLOR_BUTTON);
     hWndRulerCaretColorLabel=GetDlgItem(hDlg, IDC_RULERCARETCOLOR_LABEL);
-    hWndRulerHeightLabel=GetDlgItem(hDlg, IDC_RULERHEIGHT_LABEL);
+    hWndRulerEnable=GetDlgItem(hDlg, IDC_RULERENABLE);
     hWndRulerHeightEdit=GetDlgItem(hDlg, IDC_RULERHEIGHT_EDIT);
     hWndRulerHeightSpin=GetDlgItem(hDlg, IDC_RULERHEIGHT_SPIN);
     hWndRulerCaretWidthLabel=GetDlgItem(hDlg, IDC_RULERCARETWIDTH_LABEL);
@@ -783,7 +801,7 @@ BOOL CALLBACK SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     SetDlgItemTextWide(hDlg, IDC_LINEMODIFICATIONWIDTH_LABEL, GetLangStringW(wLangModule, STRID_WIDTH));
     SetDlgItemTextWide(hDlg, IDC_RULERSCALECOLOR_LABEL, GetLangStringW(wLangModule, STRID_RULERSCALECOLOR));
     SetDlgItemTextWide(hDlg, IDC_RULERCARETCOLOR_LABEL, GetLangStringW(wLangModule, STRID_RULERCARETCOLOR));
-    SetDlgItemTextWide(hDlg, IDC_RULERHEIGHT_LABEL, GetLangStringW(wLangModule, STRID_RULERHEIGHT));
+    SetDlgItemTextWide(hDlg, IDC_RULERENABLE, GetLangStringW(wLangModule, STRID_RULERHEIGHT));
     SetDlgItemTextWide(hDlg, IDC_RULERCARETWIDTH_LABEL, GetLangStringW(wLangModule, STRID_CARETWIDTH));
     SetDlgItemTextWide(hDlg, IDC_BOOKMARK_GROUP, GetLangStringW(wLangModule, STRID_BOOKMARKS));
     SetDlgItemTextWide(hDlg, IDC_SETBOOKMARK_LABEL, GetLangStringW(wLangModule, STRID_SETBOOKMARK));
@@ -811,6 +829,7 @@ BOOL CALLBACK SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     if (bShowBoard) SendMessage(hWndShowBoard, BM_SETCHECK, BST_CHECKED, 0);
     if (bLineUnsavedEnable) SendMessage(hWndLineUnsavedColorCheck, BM_SETCHECK, BST_CHECKED, 0);
     if (bLineSavedEnable) SendMessage(hWndLineSavedColorCheck, BM_SETCHECK, BST_CHECKED, 0);
+    if (bRulerEnable) SendMessage(hWndRulerEnable, BM_SETCHECK, BST_CHECKED, 0);
     if (bRememberBookmarks) SendMessage(hWndRememberBookmark, BM_SETCHECK, BST_CHECKED, 0);
     if (bBookmarkCharHeight) SendMessage(hWndBookmarkCharHeight, BM_SETCHECK, BST_CHECKED, 0);
     if (bCoderTheme) SendMessage(hWndCoderTheme, BM_SETCHECK, BST_CHECKED, 0);
@@ -845,6 +864,7 @@ BOOL CALLBACK SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     bLineUnsavedEnableDlg=bLineUnsavedEnable;
     bLineSavedEnableDlg=bLineSavedEnable;
     nLineModificationWidthDlg=nLineModificationWidth;
+    bRulerEnableDlg=bRulerEnable;
     nRulerHeightDlg=nRulerHeight;
     nRulerCaretWidthDlg=nRulerCaretWidth;
 
@@ -898,12 +918,12 @@ BOOL CALLBACK SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     }
     else if (wParam == IDC_RULERSCALECOLOR_BUTTON)
     {
-      if (bShowBoardDlg && nRulerHeightDlg)
+      if (bShowBoardDlg && bRulerEnableDlg && nRulerHeightDlg)
         dwColor=crBoardRulerScaleDlg;
     }
     else if (wParam == IDC_RULERCARETCOLOR_BUTTON)
     {
-      if (bShowBoardDlg && nRulerHeightDlg && nRulerCaretWidthDlg)
+      if (bShowBoardDlg && bRulerEnableDlg && nRulerHeightDlg && nRulerCaretWidthDlg)
         dwColor=crBoardRulerCaretDlg;
     }
 
@@ -942,16 +962,16 @@ BOOL CALLBACK SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
       EnableWindow(hWndLineModificationWidthLabel, bShowBoardDlg);
       EnableWindow(hWndLineModificationWidthEdit, bShowBoardDlg);
       EnableWindow(hWndLineModificationWidthSpin, bShowBoardDlg);
-      EnableWindow(hWndRulerScaleColorButton, (bShowBoardDlg && nRulerHeightDlg));
-      EnableWindow(hWndRulerScaleColorLabel, (bShowBoardDlg && nRulerHeightDlg));
-      EnableWindow(hWndRulerCaretColorButton, (bShowBoardDlg && nRulerHeightDlg && nRulerCaretWidthDlg));
-      EnableWindow(hWndRulerCaretColorLabel, (bShowBoardDlg && nRulerHeightDlg && nRulerCaretWidthDlg));
-      EnableWindow(hWndRulerHeightLabel, bShowBoardDlg);
-      EnableWindow(hWndRulerHeightEdit, bShowBoardDlg);
-      EnableWindow(hWndRulerHeightSpin, bShowBoardDlg);
-      EnableWindow(hWndRulerCaretWidthLabel, bShowBoardDlg && nRulerHeightDlg);
-      EnableWindow(hWndRulerCaretWidthEdit, bShowBoardDlg && nRulerHeightDlg);
-      EnableWindow(hWndRulerCaretWidthSpin, bShowBoardDlg && nRulerHeightDlg);
+      EnableWindow(hWndRulerScaleColorButton, (bShowBoardDlg && bRulerEnableDlg && nRulerHeightDlg));
+      EnableWindow(hWndRulerScaleColorLabel, (bShowBoardDlg && bRulerEnableDlg && nRulerHeightDlg));
+      EnableWindow(hWndRulerCaretColorButton, (bShowBoardDlg && bRulerEnableDlg && nRulerHeightDlg && nRulerCaretWidthDlg));
+      EnableWindow(hWndRulerCaretColorLabel, (bShowBoardDlg && bRulerEnableDlg && nRulerHeightDlg && nRulerCaretWidthDlg));
+      EnableWindow(hWndRulerEnable, bShowBoardDlg);
+      EnableWindow(hWndRulerHeightEdit, bShowBoardDlg && bRulerEnableDlg);
+      EnableWindow(hWndRulerHeightSpin, bShowBoardDlg && bRulerEnableDlg);
+      EnableWindow(hWndRulerCaretWidthLabel, bShowBoardDlg && bRulerEnableDlg && nRulerHeightDlg);
+      EnableWindow(hWndRulerCaretWidthEdit, bShowBoardDlg && bRulerEnableDlg && nRulerHeightDlg);
+      EnableWindow(hWndRulerCaretWidthSpin, bShowBoardDlg && bRulerEnableDlg && nRulerHeightDlg);
       InvalidateRect(hDlg, NULL, FALSE);
     }
     else if (LOWORD(wParam) == IDC_LINEUNSAVEDCOLOR_CHECK)
@@ -971,6 +991,11 @@ BOOL CALLBACK SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
         nLineModificationWidthDlg=GetDlgItemInt(hDlg, IDC_LINEMODIFICATIONWIDTH_EDIT, NULL, FALSE);
         PostMessage(hDlg, WM_COMMAND, IDC_SHOWBOARD, 0);
       }
+    }
+    else if (LOWORD(wParam) == IDC_RULERENABLE)
+    {
+      bRulerEnableDlg=(BOOL)SendMessage(hWndRulerEnable, BM_GETCHECK, 0, 0);
+      PostMessage(hDlg, WM_COMMAND, IDC_SHOWBOARD, 0);
     }
     else if (LOWORD(wParam) == IDC_RULERHEIGHT_EDIT)
     {
@@ -1104,6 +1129,7 @@ BOOL CALLBACK SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
       bLineUnsavedEnable=bLineUnsavedEnableDlg;
       bLineSavedEnable=bLineSavedEnableDlg;
       nLineModificationWidth=nLineModificationWidthDlg;
+      bRulerEnable=bRulerEnableDlg;
       nRulerHeight=nRulerHeightDlg;
       nRulerCaretWidth=nRulerCaretWidthDlg;
 
@@ -1295,10 +1321,10 @@ BOOL CALLBACK ParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam,
             bMobileBookmarksSave=TRUE;
             bUndoRedo=TRUE;
           }
-          else if (!(aentc->aes.dwFlags & AESELT_COLUMNON) && (aentc->dwType & AETCT_REPLACESEL) && aentc->aes.crSel.ciMin.nLine < aentc->aes.crSel.ciMax.nLine)
+          else if (!aentc->bColumnSel && (aentc->dwType & AETCT_REPLACESEL) && aentc->crSel.ciMin.nLine < aentc->crSel.ciMax.nLine)
           {
-            nMobileBookmarksStartLine=aentc->aes.crSel.ciMin.nLine;
-            nMobileBookmarksEndLine=aentc->aes.crSel.ciMax.nLine;
+            nMobileBookmarksStartLine=aentc->crSel.ciMin.nLine;
+            nMobileBookmarksEndLine=aentc->crSel.ciMax.nLine;
             bMobileBookmarksSave=TRUE;
           }
 
@@ -1374,7 +1400,7 @@ BOOL CALLBACK ParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam,
               if (lpBoard->bUpdateBookmarks)
               {
                 lpBoard->bUpdateBookmarks=FALSE;
-                StackRestoreMobileBookmarks(lpBoard, nMobileBookmarksStartLine, nMobileBookmarksEndLine, aentc->aes.crSel.ciMax.nLine);
+                StackRestoreMobileBookmarks(lpBoard, nMobileBookmarksStartLine, nMobileBookmarksEndLine, aentc->crSel.ciMax.nLine);
               }
             }
           }
@@ -1483,12 +1509,12 @@ BOOL CALLBACK EditMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, L
           nMaxNumberWidth=GetMaxNumberWidth(hDC, &nNumberAverageWidth);
 
           if (nLineNumberLen * nMaxNumberWidth + nNumberAverageWidth != lpBoard->nBoardWidth ||
-              nRulerHeight != lpBoard->nBoardHeight)
+              (bRulerEnable?nRulerHeight:0) != lpBoard->nBoardHeight)
           {
             nOldBoardWidth=lpBoard->nBoardWidth;
             lpBoard->nBoardWidth=nLineNumberLen * nMaxNumberWidth + nNumberAverageWidth;
             nOldBoardHeight=lpBoard->nBoardHeight;
-            lpBoard->nBoardHeight=nRulerHeight;
+            lpBoard->nBoardHeight=(bRulerEnable?nRulerHeight:0);
             SetEditRect(NULL, hWnd, lpBoard->nBoardWidth, nOldBoardWidth, lpBoard->nBoardHeight, nOldBoardHeight);
             UpdateWindow(hWnd);
             bRedrawBoard=FALSE;
@@ -1564,9 +1590,9 @@ BOOL CALLBACK EditMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, L
             hPenModifiedUnsaved=CreatePen(PS_SOLID, 0, crDrawBoardLineUnsaved);
           if (bLineSavedEnable && nLineModificationWidth)
             hPenModifiedSaved=CreatePen(PS_SOLID, 0, crDrawBoardLineSaved);
-          if (nRulerHeight)
+          if (bRulerEnable && nRulerHeight)
             hPenRulerScale=CreatePen(PS_SOLID, 0, crDrawBoardRulerScale);
-          if (nRulerHeight)
+          if (bRulerEnable && nRulerHeight)
             hPenRulerCaret=CreatePen(PS_SOLID, 0, crDrawBoardRulerCaret);
           SetBkColor(hBufferDC, crDrawBoardBk);
 
@@ -1760,7 +1786,7 @@ BOOL CALLBACK EditMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, L
           if (hFontOld) SelectObject(hBufferDC, hFontOld);
 
           //Draw ruler
-          if (nRulerHeight && lpBoard->nBoardHeight)
+          if (bRulerEnable && nRulerHeight && lpBoard->nBoardHeight)
           {
             LOGFONTA lfFont;
             int nPosX;
@@ -2569,7 +2595,7 @@ int GetBookmarksString(WINDOWBOARD *wb, wchar_t *wszString)
 
   for (lpBookmark=wb->hBookmarkStack.first; lpBookmark; lpBookmark=lpBookmark->next)
   {
-    nUnwrappedLine=(int)SendMessage(wb->hWndEdit, AEM_GETUNWRAPLINE, lpBookmark->lpPoint->ciPoint.nLine, 0);
+    nUnwrappedLine=(int)SendToDoc(wb->hDocEdit, wb->hWndEdit, AEM_GETUNWRAPLINE, lpBookmark->lpPoint->ciPoint.nLine, 0);
     if (wszString)
       nSize+=xitoaW(nUnwrappedLine, wszString + nSize);
     else
@@ -2596,13 +2622,13 @@ int SetBookmarksString(WINDOWBOARD *wb, const wchar_t *wpString)
 
   while (*wpCount >= L'0' && *wpCount <= L'9')
   {
-    nWrappedLine=(int)SendMessage(wb->hWndEdit, AEM_GETWRAPLINE, xatoiW(wpCount, &wpCount), (LPARAM)NULL);
+    nWrappedLine=(int)SendToDoc(wb->hDocEdit, wb->hWndEdit, AEM_GETWRAPLINE, xatoiW(wpCount, &wpCount), (LPARAM)NULL);
     StackInsertBookmark(wb, nWrappedLine);
+    ++nCount;
     if (*wpCount == L',')
       ++wpCount;
     else
       break;
-    ++nCount;
   }
   return nCount;
 }
@@ -2924,7 +2950,7 @@ void GetBoardColors(HWND hWnd)
           if (lpVarInfo=StackGetVarByName(hStackGlobal, hStackActive, cti[i].wpVar, -1))
           {
             if (*lpVarInfo->wpVarValue == L'#')
-              *cti[i].lpcrValue=GetColorValueFromStrW(lpVarInfo->wpVarValue + 1);
+              *cti[i].lpcrValue=GetColorFromStr(lpVarInfo->wpVarValue + 1);
             lpVarInfoFastCheck=lpVarInfo->next;
           }
           else break;
@@ -2971,12 +2997,12 @@ VARINFO* StackGetVarByName(STACKVAR *hStackGlobal, STACKVAR *hStackActive, const
   return NULL;
 }
 
-COLORREF GetColorValueFromStrW(wchar_t *wpColor)
+COLORREF GetColorFromStr(wchar_t *wpColor)
 {
   COLORREF crColor;
 
-  crColor=(COLORREF)hex2decW(wpColor, -1);
-  crColor=RGB(GetBValue(crColor), GetGValue(crColor), GetRValue(crColor));
+  if ((crColor=(COLORREF)hex2decW(wpColor, 6)) != (COLORREF)-1)
+    crColor=RGB(GetBValue(crColor), GetGValue(crColor), GetRValue(crColor));
   return crColor;
 }
 
@@ -3037,6 +3063,7 @@ void SetCurrentLine(HWND hWnd, int nLine)
   {
     aes.crSel.ciMax=aes.crSel.ciMin;
     aes.dwFlags=AESELT_LOCKSCROLL;
+    aes.dwType=0;
     SendMessage(hWnd, AEM_SETSEL, (WPARAM)NULL, (LPARAM)&aes);
 
     ScrollCaret(hWnd);
@@ -3112,6 +3139,7 @@ void ReadOptions(DWORD dwFlags)
     WideOption(hOptions, L"LineModificationWidth", PO_DWORD, (LPBYTE)&nLineModificationWidth, sizeof(DWORD));
     WideOption(hOptions, L"RulerScaleColor", PO_DWORD, (LPBYTE)&crBoardRulerScale, sizeof(DWORD));
     WideOption(hOptions, L"RulerCaretColor", PO_DWORD, (LPBYTE)&crBoardRulerCaret, sizeof(DWORD));
+    WideOption(hOptions, L"RulerEnable", PO_DWORD, (LPBYTE)&bRulerEnable, sizeof(DWORD));
     WideOption(hOptions, L"RulerHeight", PO_DWORD, (LPBYTE)&nRulerHeight, sizeof(DWORD));
     WideOption(hOptions, L"RulerCaretWidth", PO_DWORD, (LPBYTE)&nRulerCaretWidth, sizeof(DWORD));
     WideOption(hOptions, L"SetBookmark", PO_DWORD, (LPBYTE)&dwSetBookmark, sizeof(DWORD));
@@ -3150,6 +3178,7 @@ void SaveOptions(DWORD dwFlags)
       WideOption(hOptions, L"LineModificationWidth", PO_DWORD, (LPBYTE)&nLineModificationWidth, sizeof(DWORD));
       WideOption(hOptions, L"RulerScaleColor", PO_DWORD, (LPBYTE)&crBoardRulerScale, sizeof(DWORD));
       WideOption(hOptions, L"RulerCaretColor", PO_DWORD, (LPBYTE)&crBoardRulerCaret, sizeof(DWORD));
+      WideOption(hOptions, L"RulerEnable", PO_DWORD, (LPBYTE)&bRulerEnable, sizeof(DWORD));
       WideOption(hOptions, L"RulerHeight", PO_DWORD, (LPBYTE)&nRulerHeight, sizeof(DWORD));
       WideOption(hOptions, L"RulerCaretWidth", PO_DWORD, (LPBYTE)&nRulerCaretWidth, sizeof(DWORD));
       WideOption(hOptions, L"SetBookmark", PO_DWORD, (LPBYTE)&dwSetBookmark, sizeof(DWORD));

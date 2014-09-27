@@ -413,8 +413,19 @@ typedef struct {
   BOOL *lpbSelColorEnable;
 } DLLEXTSPECIALCHAR;
 
-#define DLLA_SPECIALCHAR_SET 1
-#define DLLA_SPECIALCHAR_GET 2
+#define DLLA_SPECIALCHAR_OLDSET 1
+#define DLLA_SPECIALCHAR_OLDGET 2
+
+//LineBoard external call
+typedef struct {
+  UINT_PTR dwStructSize;
+  INT_PTR nAction;
+  int *lpnRulerHeight;
+  BOOL *lpbRulerEnable;
+} DLLEXTLINEBOARD;
+
+#define DLLA_LINEBOARD_GETRULERHEIGHT   2
+#define DLLA_LINEBOARD_SETRULERHEIGHT   3
 
 //Functions prototypes
 DWORD WINAPI ThreadProc(LPVOID lpParameter);
@@ -590,7 +601,7 @@ void __declspec(dllexport) DllAkelPadID(PLUGINVERSION *pv)
 {
   pv->dwAkelDllVersion=AKELDLL;
   pv->dwExeMinVersion3x=MAKE_IDENTIFIER(-1, -1, -1, -1);
-  pv->dwExeMinVersion4x=MAKE_IDENTIFIER(4, 8, 4, 0);
+  pv->dwExeMinVersion4x=MAKE_IDENTIFIER(4, 8, 8, 0);
   pv->pPluginName="ContextMenu";
 }
 
@@ -899,6 +910,11 @@ DWORD WINAPI ThreadProc(LPVOID lpParameter)
         DispatchMessageWide(&msg);
       }
     }
+  }
+  if (hThread)
+  {
+    CloseHandle(hThread);
+    hThread=NULL;
   }
   return 0;
 }
@@ -2992,7 +3008,7 @@ BOOL CreateContextMenu(POPUPMENU *hMenuStack, const wchar_t *wpText, int nType)
 
     for (lpShowSubmenuItem=hMenuStack->hShowSubmenuStack.first; lpShowSubmenuItem; lpShowSubmenuItem=lpShowSubmenuItem->next)
     {
-      if (hManualMenu=FindRootSubMenuByName(&hMenuManualStack, lpShowSubmenuItem->wpShowMenuName))
+      if (hManualMenu=FindRootSubMenuByName(hMenuStack, lpShowSubmenuItem->wpShowMenuName))
       {
         ModifyMenuCommon(hMenuStack->hIconMenu, hMenuStack->hImageList, lpShowSubmenuItem->lpMenuItem->nImageListIconIndex, sizeIcon.cx, sizeIcon.cy, lpShowSubmenuItem->lpMenuItem->hSubMenu, lpShowSubmenuItem->lpMenuItem->nSubMenuIndex, MF_BYPOSITION|MF_POPUP, (UINT_PTR)hManualMenu, lpShowSubmenuItem->wszMenuItem);
       }
@@ -3265,7 +3281,7 @@ void UpdateContextMenu(POPUPMENU *hMenuStack, int nType, HMENU hSubMenu)
             //SpecialChar special processing
             else if (!xstrcmpiW(L"SpecialChar::Settings", wpFunction))
             {
-              if (nDllAction == DLLA_SPECIALCHAR_SET)
+              if (nDllAction == DLLA_SPECIALCHAR_OLDSET)
               {
                 dwFlags=MF_UNCHECKED;
                 if (pf=(PLUGINFUNCTION *)SendMessage(hMainWnd, AKD_DLLFINDW, (WPARAM)L"SpecialChar::Main", 0))
@@ -3286,7 +3302,7 @@ void UpdateContextMenu(POPUPMENU *hMenuStack, int nType, HMENU hSubMenu)
                   if (wpSpecialChar)
                   {
                     desc.dwStructSize=sizeof(DLLEXTSPECIALCHAR);
-                    desc.nAction=DLLA_SPECIALCHAR_GET;
+                    desc.nAction=DLLA_SPECIALCHAR_OLDGET;
                     desc.pSpecialChar=(unsigned char *)wpSpecialChar;
                     desc.lpcrColor=NULL;
                     desc.lpcrSelColor=NULL;
@@ -3299,6 +3315,39 @@ void UpdateContextMenu(POPUPMENU *hMenuStack, int nType, HMENU hSubMenu)
                     SendMessage(hMainWnd, AKD_DLLCALLW, 0, (LPARAM)&pcs);
                   }
                   if (bColorEnable || bSelColorEnable)
+                    dwFlags=MF_CHECKED;
+                  else
+                    dwFlags=MF_UNCHECKED;
+                }
+              }
+            }
+            //LineBoard special processing
+            else if (!xstrcmpiW(L"LineBoard::Main", wpFunction))
+            {
+              if (nDllAction == DLLA_LINEBOARD_SETRULERHEIGHT)
+              {
+                dwFlags=MF_UNCHECKED;
+                if (pf=(PLUGINFUNCTION *)SendMessage(hMainWnd, AKD_DLLFINDW, (WPARAM)L"LineBoard::Main", 0))
+                  if (pf->bRunning) dwFlags=MF_CHECKED;
+
+                if (dwFlags == MF_CHECKED)
+                {
+                  PLUGINCALLSENDW pcs;
+                  DLLEXTLINEBOARD delb;
+                  BOOL bRulerEnable=FALSE;
+                  int nRulerHeight=FALSE;
+
+                  delb.dwStructSize=sizeof(DLLEXTLINEBOARD);
+                  delb.nAction=DLLA_LINEBOARD_GETRULERHEIGHT;
+                  delb.lpnRulerHeight=&nRulerHeight;
+                  delb.lpbRulerEnable=&bRulerEnable;
+
+                  pcs.pFunction=wpFunction;
+                  pcs.lParam=(LPARAM)&delb;
+                  pcs.dwSupport=PDS_STRWIDE;
+                  SendMessage(hMainWnd, AKD_DLLCALLW, 0, (LPARAM)&pcs);
+
+                  if (bRulerEnable && nRulerHeight)
                     dwFlags=MF_CHECKED;
                   else
                     dwFlags=MF_UNCHECKED;
@@ -5445,6 +5494,8 @@ const wchar_t* GetLangStringW(LANGID wLangID, int nStringID)
     \"\x0421\x0432\x043E\x0440\x0430\x0447\x0438\x0432\x0430\x043D\x0438\x0435\x0020\x0431\x043B\x043E\x043A\x043E\x0432\" +Call(\"Coder::CodeFold\") Icon(\"%a\\AkelFiles\\Plugs\\Coder.dll\", 1)\r\
     \"\x0410\x0432\x0442\x043E\x0434\x043E\x043F\x043E\x043B\x043D\x0435\x043D\x0438\x0435\" +Call(\"Coder::AutoComplete\") Icon(\"%a\\AkelFiles\\Plugs\\Coder.dll\", 2)\r\
     SEPARATOR1\r\
+    \"\x041E\x0431\x043D\x043E\x0432\x0438\x0442\x044C\x0020\x043A\x044D\x0448\" Call(\"Coder::Settings\", 2)\r\
+    SEPARATOR1\r\
     \"\x041D\x0430\x0441\x0442\x0440\x043E\x0438\x0442\x044C...\" Call(\"Coder::Settings\")\r\
 }\r\
 " L"\
@@ -5461,6 +5512,7 @@ const wchar_t* GetLangStringW(LANGID wLangID, int nStringID)
 " L"\
 \"SYNTAXTHEME\"\r\
 {\r\
+    \"1\x0441\" Call(\"Coder::Settings\", 1, \"1s\")\r\
     \"Assembler\" Call(\"Coder::Settings\", 1, \"asm\")\r\
     \"AutoIt\" Call(\"Coder::Settings\", 1, \"au3\")\r\
     \"Bat\" Call(\"Coder::Settings\", 1, \"bat\")\r\
@@ -5471,6 +5523,7 @@ const wchar_t* GetLangStringW(LANGID wLangID, int nStringID)
     \"Ini\" Call(\"Coder::Settings\", 1, \"ini\")\r\
     \"Inno\" Call(\"Coder::Settings\", 1, \"iss\")\r\
     \"JScript\" Call(\"Coder::Settings\", 1, \"js\")\r\
+" L"\
     \"Lua\" Call(\"Coder::Settings\", 1, \"lua\")\r\
     \"NSIS\" Call(\"Coder::Settings\", 1, \"nsi\")\r\
     \"Pascal\" Call(\"Coder::Settings\", 1, \"dpr\")\r\
@@ -5533,11 +5586,13 @@ const wchar_t* GetLangStringW(LANGID wLangID, int nStringID)
 {\r\
     \"\x0412\x043A\x043B\x044E\x0447\x0438\x0442\x044C\" +Call(\"SpecialChar::Main\")\r\
     SEPARATOR1\r\
-    \"\x041F\x0440\x043E\x0431\x0435\x043B\x0020\x0438\x0020\x0422\x0430\x0431\x0443\x043B\x044F\x0446\x0438\x044F\" Call(\"SpecialChar::Settings\", 1, \"1,2\", \"0\", \"0\", -1, -1)\r\
     \"\x041B\x0438\x043D\x0438\x044F\x0020\x043E\x0442\x0441\x0442\x0443\x043F\x0430\" Call(\"SpecialChar::Settings\", 1, \"8\", \"0\", \"0\", -1, -1)\r\
-    \"\x041D\x043E\x0432\x0430\x044F\x0020\x0441\x0442\x0440\x043E\x043A\x0430\x0020\x0438\x0020\x041A\x043E\x043D\x0435\x0446\x0020\x0444\x0430\x0439\x043B\x0430\" Call(\"SpecialChar::Settings\", 1, \"3,9\", \"0\", \"0\", -1, -1)\r\
+    \"\x0412\x0441\x0435\x0020\x0441\x0438\x043C\x0432\x043E\x043B\x044B\" Call(\"SpecialChar::Settings\", 1, \"1,2,3,9,7,4,5,6\", \"0\", \"0\", -3, -3)\r\
+    SEPARATOR1\r\
+    \"\x041F\x0440\x043E\x0431\x0435\x043B\x0020\x0438\x0020\x0422\x0430\x0431\x0443\x043B\x044F\x0446\x0438\x044F\" Call(\"SpecialChar::Settings\", 1, \"1,2\", \"0\", \"0\", -3, -3)\r\
+    \"\x041D\x043E\x0432\x0430\x044F\x0020\x0441\x0442\x0440\x043E\x043A\x0430\x0020\x0438\x0020\x041A\x043E\x043D\x0435\x0446\x0020\x0444\x0430\x0439\x043B\x0430\" Call(\"SpecialChar::Settings\", 1, \"3,9\", \"0\", \"0\", -3, -3)\r\
     \"\x041F\x0435\x0440\x0435\x043D\x043E\x0441\x0020\x0441\x0442\x0440\x043E\x043A\x0438\" Call(\"SpecialChar::Settings\", 1, \"7\", \"0\", \"0\", -1, -1)\r\
-    \"\x0412\x0435\x0440\x0442\x0422\x0430\x0431\x002C\x0020\x041F\x0440\x043E\x0433\x043E\x043D\x0020\x043B\x0438\x0441\x0442\x0430\x002C\x0020\x004E\x0075\x006C\x006C\" Call(\"SpecialChar::Settings\", 1, \"4,5,6\", \"0\", \"0\", -1, -1)\r\
+    \"\x0412\x0435\x0440\x0442\x0422\x0430\x0431\x002C\x0020\x041F\x0440\x043E\x0433\x043E\x043D\x0020\x043B\x0438\x0441\x0442\x0430\x002C\x0020\x004E\x0075\x006C\x006C\" Call(\"SpecialChar::Settings\", 1, \"4,5,6\", \"0\", \"0\", -3, -3)\r\
     SEPARATOR1\r\
     \"\x041D\x0430\x0441\x0442\x0440\x043E\x0438\x0442\x044C...\" Call(\"SpecialChar::Settings\")\r\
 }\r\
@@ -5545,6 +5600,7 @@ const wchar_t* GetLangStringW(LANGID wLangID, int nStringID)
 \"LINEBOARD\"\r\
 {\r\
     \"\x0412\x043A\x043B\x044E\x0447\x0438\x0442\x044C\" +Call(\"LineBoard::Main\")\r\
+    \"\x041B\x0438\x043D\x0435\x0439\x043A\x0430\" Call(\"LineBoard::Main\", 3, -1)\r\
     SEPARATOR1\r\
     -\"\x041C\x0435\x043D\x044E\x0020\x0437\x0430\x043A\x043B\x0430\x0434\x043E\x043A\" Call(\"LineBoard::Main\", 17)\r\
     -\"\x041F\x0435\x0440\x0435\x0439\x0442\x0438\x0020\x043A\x0020\x0441\x043B\x0435\x0434\x0443\x044E\x0449\x0435\x0439\x0020\x0437\x0430\x043A\x043B\x0430\x0434\x043A\x0435\" Call(\"LineBoard::Main\", 18)\r\
@@ -5637,6 +5693,36 @@ const wchar_t* GetLangStringW(LANGID wLangID, int nStringID)
     \"\x041E\x0442\x043A\x0440\x044B\x0442\x044C...\" Call(\"Templates::Open\")\r\
 }\r\
 " L"\
+\"EXIT\"\r\
+{\r\
+    \"\x0412\x043A\x043B\x044E\x0447\x0438\x0442\x044C\" +Call(\"Exit::Main\")\r\
+    SEPARATOR1\r\
+    \"\x041D\x0430\x0441\x0442\x0440\x043E\x0438\x0442\x044C...\" Call(\"Exit::Settings\")\r\
+}\r\
+" L"\
+\"SMARTSEL\"\r\
+{\r\
+  \"\x0423\x043C\x043D\x0430\x044F\x0020\x043A\x043B\x0430\x0432\x0438\x0448\x0430 Home\" +Call(\"SmartSel::SmartHome\")\r\
+  \"\x041E\x043F\x0446\x0438\x044F\x003A\x0020\x0438\x043D\x0432\x0435\x0440\x0442\x0438\x0440\x043E\x0432\x0430\x0442\x044C\" +Call(\"SmartSel::altSmartHome\")\r\
+  SEPARATOR1\r\
+  \"\x0423\x043C\x043D\x0430\x044F\x0020\x043A\x043B\x0430\x0432\x0438\x0448\x0430 End\" +Call(\"SmartSel::SmartEnd\")\r\
+  \"\x041E\x043F\x0446\x0438\x044F\x003A\x0020\x0438\x043D\x0432\x0435\x0440\x0442\x0438\x0440\x043E\x0432\x0430\x0442\x044C\" +Call(\"SmartSel::altSmartEnd\")\r\
+  SEPARATOR1\r\
+  \"\x0423\x043C\x043D\x044B\x0435\x0020\x043A\x043B\x0430\x0432\x0438\x0448\x0438 Up/Down\" +Call(\"SmartSel::SmartUpDown\")\r\
+  \"\x041E\x043F\x0446\x0438\x044F: +PageUp/PageDown\" +Call(\"SmartSel::altSmartUpDown\")\r\
+  SEPARATOR1\r\
+  \"\x0418\x0441\x043A\x043B\x044E\x0447\x0438\x0442\x044C\x0020\x0045\x004F\x004C\x0020\x0438\x0437\x0020\x0432\x044B\x0434\x0435\x043B\x0435\x043D\x0438\x044F\" +Call(\"SmartSel::NoSelEOL\")\r\
+  \"\x041E\x043F\x0446\x0438\x044F\x003A\x0020\x0442\x043E\x043B\x044C\x043A\x043E\x0020\x043E\x0434\x043D\x0430\x0020\x0441\x0442\x0440\x043E\x043A\x0430\" +Call(\"SmartSel::altNoSelEOL\")\r\
+  SEPARATOR1\r\
+  \"\x0423\x043C\x043D\x0430\x044F\x0020\x043A\x043B\x0430\x0432\x0438\x0448\x0430 Backspace\" +Call(\"SmartSel::SmartBackspace\")\r\
+}\r\
+" L"\
+\"HOTKEYS\"\r\
+{\r\
+    \"\x041A\x043B\x0430\x0432\x0438\x0448\x0430 Escape\" Menu(\"EXIT\") Icon(\"%a\\AkelFiles\\Plugs\\Exit.dll\", 0)\r\
+    \"\x041D\x0430\x0432\x0438\x0433\x0430\x0446\x0438\x044F\" Menu(\"SMARTSEL\")\r\
+}\r\
+" L"\
 \"FORMAT\"\r\
 {\r\
     \"\x0421\x043E\x0440\x0442\x0438\x0440\x043E\x0432\x0430\x0442\x044C\x0020\x0441\x0442\x0440\x043E\x043A\x0438\x0020\x043F\x043E\x0020\x0432\x043E\x0437\x0440\x0430\x0441\x0442\x0430\x043D\x0438\x044E\" Call(\"Format::LineSortStrAsc\") Icon(\"%a\\AkelFiles\\Plugs\\Format.dll\", 0)\r\
@@ -5663,24 +5749,12 @@ const wchar_t* GetLangStringW(LANGID wLangID, int nStringID)
     \"\x0412\x0435\x0440\x0442\x0438\x043A\x0430\x043B\x044C\x043D\x0430\x044F\x0020\x0441\x0438\x043D\x0445\x0440\x043E\x043D\x0438\x0437\x0430\x0446\x0438\x044F\" Call(\"Scroll::SyncVert\") Icon(\"%a\\AkelFiles\\Plugs\\Scroll.dll\", 1)\r\
     \"\x0413\x043E\x0440\x0438\x0437\x043E\x043D\x0442\x0430\x043B\x044C\x043D\x0430\x044F\x0020\x0441\x0438\x043D\x0445\x0440\x043E\x043D\x0438\x0437\x0430\x0446\x0438\x044F\" Call(\"Scroll::SyncHorz\") Icon(\"%a\\AkelFiles\\Plugs\\Scroll.dll\", 0)\r\
     SEPARATOR1\r\
-    \"\x0410\x0432\x0442\x043E\x043C\x0430\x0442\x0438\x0447\x0435\x0441\x043A\x0430\x044F\x0020\x043F\x0440\x043E\x043A\x0440\x0443\x0442\x043A\x0430\x0020\x0442\x0435\x043A\x0441\x0442\x0430\" +Call(\"Scroll::AutoScroll\")\r\
-    \"\x0410\x0432\x0442\x043E\x043C\x0430\x0442\x0438\x0447\x0435\x0441\x043A\x0430\x044F\x0020\x043F\x0435\x0440\x0435\x0434\x0430\x0447\x0430\x0020\x0444\x043E\x043A\x0443\x0441\x0430\" +Call(\"Scroll::AutoFocus\")\r\
-    \"\x041E\x0431\x0440\x0430\x0431\x043E\x0442\x043A\x0430\x0020\x043D\x0435\x043F\x0440\x043E\x043A\x0440\x0443\x0447\x0438\x0432\x0430\x0435\x043C\x044B\x0445\x0020\x043E\x043F\x0435\x0440\x0430\x0446\x0438\x0439\" +Call(\"Scroll::NoScroll\")\r\
+    \"\x0410\x0432\x0442\x043E\x043C\x0430\x0442\x0438\x0447\x0435\x0441\x043A\x0430\x044F\x0020\x043F\x0440\x043E\x043A\x0440\x0443\x0442\x043A\x0430\x0020\x0442\x0435\x043A\x0441\x0442\x0430\" +Call(\"Scroll::AutoScroll\") Icon(\"%a\\AkelFiles\\Plugs\\Scroll.dll\", 2)\r\
+    \"\x041E\x0431\x0440\x0430\x0431\x043E\x0442\x043A\x0430\x0020\x043D\x0435\x043F\x0440\x043E\x043A\x0440\x0443\x0447\x0438\x0432\x0430\x0435\x043C\x044B\x0445\x0020\x043E\x043F\x0435\x0440\x0430\x0446\x0438\x0439\" +Call(\"Scroll::NoScroll\") Icon(\"%a\\AkelFiles\\Plugs\\Scroll.dll\", 3)\r\
+    \"\x0412\x044B\x0440\x0430\x0432\x043D\x0438\x0432\x0430\x043D\x0438\x0435\x0020\x043A\x0430\x0440\x0435\x0442\x043A\x0438\" +Call(\"Scroll::AlignCaret\") Icon(\"%a\\AkelFiles\\Plugs\\Scroll.dll\", 4)\r\
+    \"\x0410\x0432\x0442\x043E\x043C\x0430\x0442\x0438\x0447\x0435\x0441\x043A\x0430\x044F\x0020\x043F\x0435\x0440\x0435\x0434\x0430\x0447\x0430\x0020\x0444\x043E\x043A\x0443\x0441\x0430\" +Call(\"Scroll::AutoFocus\") Icon(\"%a\\AkelFiles\\Plugs\\Scroll.dll\", 5)\r\
     SEPARATOR1\r\
     \"\x041D\x0430\x0441\x0442\x0440\x043E\x0438\x0442\x044C...\" Call(\"Scroll::Settings\")\r\
-}\r\
-" L"\
-\"HOTKEYS\"\r\
-{\r\
-    \"\x0423\x043C\x043D\x0430\x044F\x0020\x043A\x043B\x0430\x0432\x0438\x0448\x0430 Home\" +Call(\"SmartSel::SmartHome\")\r\
-    \"\x0423\x043C\x043D\x0430\x044F\x0020\x043A\x043B\x0430\x0432\x0438\x0448\x0430 End\" +Call(\"SmartSel::SmartEnd\")\r\
-    SEPARATOR1\r\
-    \"\x041A\x043B\x0430\x0432\x0438\x0448\x0430\x0020\x0045\x0073\x0063\x0061\x0070\x0065\" Icon(\"%a\\AkelFiles\\Plugs\\Exit.dll\", 0)\r\
-    {\r\
-        \"\x0412\x043A\x043B\x044E\x0447\x0438\x0442\x044C\" +Call(\"Exit::Main\")\r\
-        SEPARATOR1\r\
-        \"\x041D\x0430\x0441\x0442\x0440\x043E\x0438\x0442\x044C...\" Call(\"Exit::Settings\")\r\
-    }\r\
 }\r\
 " L"\
 \"MINIMIZETOTRAY\"\r\
@@ -5783,16 +5857,11 @@ const wchar_t* GetLangStringW(LANGID wLangID, int nStringID)
         -\"\x0413\x043E\x0440\x044F\x0447\x0438\x0435\x0020\x043A\x043B\x0430\x0432\x0438\x0448\x0438...\" +Call(\"Hotkeys::Main\") Icon(\"%a\\AkelFiles\\Plugs\\Hotkeys.dll\", 0)\r\
     UNSET(32)\r\
     SET(32, \"%a\\AkelFiles\\Plugs\\Exit.dll\")\r\
-        \"\x041A\x043B\x0430\x0432\x0438\x0448\x0430\x0020\x0045\x0073\x0063\x0061\x0070\x0065\" Icon(\"%a\\AkelFiles\\Plugs\\Exit.dll\", 0)\r\
-        {\r\
-            \"\x0412\x043A\x043B\x044E\x0447\x0438\x0442\x044C\" +Call(\"Exit::Main\")\r\
-            SEPARATOR1\r\
-            \"\x041D\x0430\x0441\x0442\x0440\x043E\x0438\x0442\x044C...\" Call(\"Exit::Settings\")\r\
-        }\r\
+        \"\x041A\x043B\x0430\x0432\x0438\x0448\x0430 Escape\" Menu(\"EXIT\") Icon(\"%a\\AkelFiles\\Plugs\\Exit.dll\", 0)\r\
     UNSET(32)\r\
+" L"\
     SET(32, \"%a\\AkelFiles\\Plugs\\SmartSel.dll\")\r\
-        \"\x0423\x043C\x043D\x0430\x044F\x0020\x043A\x043B\x0430\x0432\x0438\x0448\x0430\x0020\x0048\x006F\x006D\x0065\" +Call(\"SmartSel::SmartHome\")\r\
-        \"\x0423\x043C\x043D\x0430\x044F\x0020\x043A\x043B\x0430\x0432\x0438\x0448\x0430\x0020\x0045\x006E\x0064\" +Call(\"SmartSel::SmartEnd\")\r\
+        \"\x041D\x0430\x0432\x0438\x0433\x0430\x0446\x0438\x044F\" Menu(\"SMARTSEL\")\r\
     UNSET(32)\r\
     SEPARATOR1\r\
 " L"\
@@ -5993,6 +6062,8 @@ EXPLORER\r";
     \"Code folding\" +Call(\"Coder::CodeFold\") Icon(\"%a\\AkelFiles\\Plugs\\Coder.dll\", 1)\r\
     \"Autocompletion\" +Call(\"Coder::AutoComplete\") Icon(\"%a\\AkelFiles\\Plugs\\Coder.dll\", 2)\r\
     SEPARATOR1\r\
+    \"Update cache\" Call(\"Coder::Settings\", 2)\r\
+    SEPARATOR1\r\
     \"Settings...\" Call(\"Coder::Settings\")\r\
 }\r\
 " L"\
@@ -6009,6 +6080,7 @@ EXPLORER\r";
 " L"\
 \"SYNTAXTHEME\"\r\
 {\r\
+    \"1s\" Call(\"Coder::Settings\", 1, \"1s\")\r\
     \"Assembler\" Call(\"Coder::Settings\", 1, \"asm\")\r\
     \"AutoIt\" Call(\"Coder::Settings\", 1, \"au3\")\r\
     \"Bat\" Call(\"Coder::Settings\", 1, \"bat\")\r\
@@ -6019,6 +6091,7 @@ EXPLORER\r";
     \"Ini\" Call(\"Coder::Settings\", 1, \"ini\")\r\
     \"Inno\" Call(\"Coder::Settings\", 1, \"iss\")\r\
     \"JScript\" Call(\"Coder::Settings\", 1, \"js\")\r\
+" L"\
     \"Lua\" Call(\"Coder::Settings\", 1, \"lua\")\r\
     \"NSIS\" Call(\"Coder::Settings\", 1, \"nsi\")\r\
     \"Pascal\" Call(\"Coder::Settings\", 1, \"dpr\")\r\
@@ -6081,11 +6154,13 @@ EXPLORER\r";
 {\r\
     \"Enable\" +Call(\"SpecialChar::Main\")\r\
     SEPARATOR1\r\
-    \"Space and Tabulation\" Call(\"SpecialChar::Settings\", 1, \"1,2\", \"0\", \"0\", -1, -1)\r\
     \"Indent line\" Call(\"SpecialChar::Settings\", 1, \"8\", \"0\", \"0\", -1, -1)\r\
-    \"New line and End of line\" Call(\"SpecialChar::Settings\", 1, \"3,9\", \"0\", \"0\", -1, -1)\r\
+    \"All symbols\" Call(\"SpecialChar::Settings\", 1, \"1,2,3,9,7,4,5,6\", \"0\", \"0\", -3, -3)\r\
+    SEPARATOR1\r\
+    \"Space and Tabulation\" Call(\"SpecialChar::Settings\", 1, \"1,2\", \"0\", \"0\", -3, -3)\r\
+    \"New line and End of line\" Call(\"SpecialChar::Settings\", 1, \"3,9\", \"0\", \"0\", -3, -3)\r\
     \"Wrap line\" Call(\"SpecialChar::Settings\", 1, \"7\", \"0\", \"0\", -1, -1)\r\
-    \"VertTab, Form-feed, Null\" Call(\"SpecialChar::Settings\", 1, \"4,5,6\", \"0\", \"0\", -1, -1)\r\
+    \"VertTab, Form-feed, Null\" Call(\"SpecialChar::Settings\", 1, \"4,5,6\", \"0\", \"0\", -3, -3)\r\
     SEPARATOR1\r\
     \"Settings...\" Call(\"SpecialChar::Settings\")\r\
 }\r\
@@ -6093,6 +6168,7 @@ EXPLORER\r";
 \"LINEBOARD\"\r\
 {\r\
     \"Enable\" +Call(\"LineBoard::Main\")\r\
+    \"Ruler\" Call(\"LineBoard::Main\", 3, -1)\r\
     SEPARATOR1\r\
     -\"Bookmark menu\" Call(\"LineBoard::Main\", 17)\r\
     -\"Go to next bookmark\" Call(\"LineBoard::Main\", 18)\r\
@@ -6185,6 +6261,36 @@ EXPLORER\r";
     \"Open...\" Call(\"Templates::Open\")\r\
 }\r\
 " L"\
+\"EXIT\"\r\
+{\r\
+    \"Enable\" +Call(\"Exit::Main\")\r\
+    SEPARATOR1\r\
+    \"Settings...\" Call(\"Exit::Settings\")\r\
+}\r\
+" L"\
+\"SMARTSEL\"\r\
+{\r\
+  \"Smart Home\" +Call(\"SmartSel::SmartHome\")\r\
+  \"Option: invert\" +Call(\"SmartSel::altSmartHome\")\r\
+  SEPARATOR1\r\
+  \"Smart End\" +Call(\"SmartSel::SmartEnd\")\r\
+  \"Option: invert\" +Call(\"SmartSel::altSmartEnd\")\r\
+  SEPARATOR1\r\
+  \"Smart Up/Down\" +Call(\"SmartSel::SmartUpDown\")\r\
+  \"Option: +PageUp/PageDown\" +Call(\"SmartSel::altSmartUpDown\")\r\
+  SEPARATOR1\r\
+  \"Exclude EOL from selection\" +Call(\"SmartSel::NoSelEOL\")\r\
+  \"Option: only single line\" +Call(\"SmartSel::altNoSelEOL\")\r\
+  SEPARATOR1\r\
+  \"Smart Backspace\" +Call(\"SmartSel::SmartBackspace\")\r\
+}\r\
+" L"\
+\"HOTKEYS\"\r\
+{\r\
+    \"Escape key\" Menu(\"EXIT\") Icon(\"%a\\AkelFiles\\Plugs\\Exit.dll\", 0)\r\
+    \"Navigation\" Menu(\"SMARTSEL\")\r\
+}\r\
+" L"\
 \"FORMAT\"\r\
 {\r\
     \"Sort lines by string ascending\" Call(\"Format::LineSortStrAsc\") Icon(\"%a\\AkelFiles\\Plugs\\Format.dll\", 0)\r\
@@ -6211,24 +6317,12 @@ EXPLORER\r";
     \"Vertical synchronization\" Call(\"Scroll::SyncVert\") Icon(\"%a\\AkelFiles\\Plugs\\Scroll.dll\", 1)\r\
     \"Horizontal synchronization\" Call(\"Scroll::SyncHorz\") Icon(\"%a\\AkelFiles\\Plugs\\Scroll.dll\", 0)\r\
     SEPARATOR1\r\
-    \"Autoscrolling\" +Call(\"Scroll::AutoScroll\")\r\
-    \"Autofocus\" +Call(\"Scroll::AutoFocus\")\r\
-    \"No scroll operation processing\" +Call(\"Scroll::NoScroll\")\r\
+    \"Autoscrolling\" +Call(\"Scroll::AutoScroll\") Icon(\"%a\\AkelFiles\\Plugs\\Scroll.dll\", 2)\r\
+    \"No scroll operations\" +Call(\"Scroll::NoScroll\") Icon(\"%a\\AkelFiles\\Plugs\\Scroll.dll\", 3)\r\
+    \"Align caret\" +Call(\"Scroll::AlignCaret\") Icon(\"%a\\AkelFiles\\Plugs\\Scroll.dll\", 4)\r\
+    \"Autofocus\" +Call(\"Scroll::AutoFocus\") Icon(\"%a\\AkelFiles\\Plugs\\Scroll.dll\", 5)\r\
     SEPARATOR1\r\
     \"Settings...\" Call(\"Scroll::Settings\")\r\
-}\r\
-" L"\
-\"HOTKEYS\"\r\
-{\r\
-    \"Smart Home\" +Call(\"SmartSel::SmartHome\")\r\
-    \"Smart End\" +Call(\"SmartSel::SmartEnd\")\r\
-    SEPARATOR1\r\
-    \"Escape key\" Icon(\"%a\\AkelFiles\\Plugs\\Exit.dll\", 0)\r\
-    {\r\
-        \"Enable\" +Call(\"Exit::Main\")\r\
-        SEPARATOR1\r\
-        \"Settings...\" Call(\"Exit::Settings\")\r\
-    }\r\
 }\r\
 " L"\
 \"MINIMIZETOTRAY\"\r\
@@ -6331,16 +6425,10 @@ EXPLORER\r";
         -\"Hotkeys...\" +Call(\"Hotkeys::Main\") Icon(\"%a\\AkelFiles\\Plugs\\Hotkeys.dll\", 0)\r\
     UNSET(32)\r\
     SET(32, \"%a\\AkelFiles\\Plugs\\Exit.dll\")\r\
-        \"Escape key\" Icon(\"%a\\AkelFiles\\Plugs\\Exit.dll\", 0)\r\
-        {\r\
-            \"Enable\" +Call(\"Exit::Main\")\r\
-            SEPARATOR1\r\
-            \"Settings...\" Call(\"Exit::Settings\")\r\
-        }\r\
+        \"Escape key\" Menu(\"EXIT\") Icon(\"%a\\AkelFiles\\Plugs\\Exit.dll\", 0)\r\
     UNSET(32)\r\
     SET(32, \"%a\\AkelFiles\\Plugs\\SmartSel.dll\")\r\
-        \"Smart Home\" +Call(\"SmartSel::SmartHome\")\r\
-        \"Smart End\" +Call(\"SmartSel::SmartEnd\")\r\
+        \"Navigation\" Menu(\"SMARTSEL\")\r\
     UNSET(32)\r\
     SEPARATOR1\r\
 " L"\

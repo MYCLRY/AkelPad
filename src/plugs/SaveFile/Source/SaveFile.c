@@ -141,7 +141,7 @@ void __declspec(dllexport) DllAkelPadID(PLUGINVERSION *pv)
 {
   pv->dwAkelDllVersion=AKELDLL;
   pv->dwExeMinVersion3x=MAKE_IDENTIFIER(-1, -1, -1, -1);
-  pv->dwExeMinVersion4x=MAKE_IDENTIFIER(4, 8, 4, 0);
+  pv->dwExeMinVersion4x=MAKE_IDENTIFIER(4, 8, 8, 0);
   pv->pPluginName="SaveFile";
 }
 
@@ -690,60 +690,67 @@ BOOL IsBackupNeeded(FRAMEDATA *lpFrame)
 
 BOOL MakeBackupFile(HWND hWndEdit)
 {
+  static BOOL bProcessing=FALSE;
   SAVEDOCUMENTW sd;
   EDITINFO ei;
   wchar_t wszSaveFile[MAX_PATH];
   BOOL bResult=TRUE;
 
-  if (SendMessage(hMainWnd, AKD_GETEDITINFO, (WPARAM)hWndEdit, (LPARAM)&ei))
+  if (!bProcessing)
   {
-    if (ei.bModified)
-    {
-      if (dwSaveMethod & SMET_SIMPLE)
-      {
-        if (*ei.wszFile)
-        {
-          xstrcpynW(wszSaveFile, ei.wszFile, MAX_PATH);
-          sd.pFile=wszSaveFile;
-          sd.nCodePage=ei.nCodePage;
-          sd.bBOM=ei.bBOM;
-          sd.dwFlags=SD_UPDATE;
-          if (SendMessage(hMainWnd, AKD_SAVEDOCUMENTW, (WPARAM)ei.hWndEdit, (LPARAM)&sd) != ESD_SUCCESS)
-            bResult=FALSE;
-        }
-      }
-      if (dwSaveMethod & SMET_NEAR)
-      {
-        if (*ei.wszFile)
-        {
-          xprintfW(wszSaveFile, L"%s.tmp", ei.wszFile);
-          sd.pFile=wszSaveFile;
-          sd.nCodePage=ei.nCodePage;
-          sd.bBOM=ei.bBOM;
-          sd.dwFlags=0;
-          if (SendMessage(hMainWnd, AKD_SAVEDOCUMENTW, (WPARAM)ei.hWndEdit, (LPARAM)&sd) != ESD_SUCCESS)
-            bResult=FALSE;
-        }
-      }
-      if (dwSaveMethod & SMET_DIR)
-      {
-        if (*wszSaveDirExp)
-        {
-          CreateDirectoryWide(wszSaveDirExp, NULL);
+    bProcessing=TRUE;
 
+    if (SendMessage(hMainWnd, AKD_GETEDITINFO, (WPARAM)hWndEdit, (LPARAM)&ei))
+    {
+      if (ei.bModified)
+      {
+        if (dwSaveMethod & SMET_SIMPLE)
+        {
           if (*ei.wszFile)
-            xprintfW(wszSaveFile, L"%s\\%s", wszSaveDirExp, GetFileName(ei.wszFile, -1));
-          else
-            xprintfW(wszSaveFile, L"%s\\%Id.tmp", wszSaveDirExp, ei.hWndEdit);
-          sd.pFile=wszSaveFile;
-          sd.nCodePage=ei.nCodePage;
-          sd.bBOM=ei.bBOM;
-          sd.dwFlags=0;
-          if (SendMessage(hMainWnd, AKD_SAVEDOCUMENTW, (WPARAM)ei.hWndEdit, (LPARAM)&sd) != ESD_SUCCESS)
-            bResult=FALSE;
+          {
+            xstrcpynW(wszSaveFile, ei.wszFile, MAX_PATH);
+            sd.pFile=wszSaveFile;
+            sd.nCodePage=ei.nCodePage;
+            sd.bBOM=ei.bBOM;
+            sd.dwFlags=SD_UPDATE;
+            if (SendMessage(hMainWnd, AKD_SAVEDOCUMENTW, (WPARAM)ei.hWndEdit, (LPARAM)&sd) != ESD_SUCCESS)
+              bResult=FALSE;
+          }
+        }
+        if (dwSaveMethod & SMET_NEAR)
+        {
+          if (*ei.wszFile)
+          {
+            xprintfW(wszSaveFile, L"%s.tmp", ei.wszFile);
+            sd.pFile=wszSaveFile;
+            sd.nCodePage=ei.nCodePage;
+            sd.bBOM=ei.bBOM;
+            sd.dwFlags=0;
+            if (SendMessage(hMainWnd, AKD_SAVEDOCUMENTW, (WPARAM)ei.hWndEdit, (LPARAM)&sd) != ESD_SUCCESS)
+              bResult=FALSE;
+          }
+        }
+        if (dwSaveMethod & SMET_DIR)
+        {
+          if (*wszSaveDirExp)
+          {
+            CreateDirectoryWide(wszSaveDirExp, NULL);
+
+            if (*ei.wszFile)
+              xprintfW(wszSaveFile, L"%s\\%s", wszSaveDirExp, GetFileName(ei.wszFile, -1));
+            else
+              xprintfW(wszSaveFile, L"%s\\%Id.tmp", wszSaveDirExp, ei.hWndEdit);
+            sd.pFile=wszSaveFile;
+            sd.nCodePage=ei.nCodePage;
+            sd.bBOM=ei.bBOM;
+            sd.dwFlags=0;
+            if (SendMessage(hMainWnd, AKD_SAVEDOCUMENTW, (WPARAM)ei.hWndEdit, (LPARAM)&sd) != ESD_SUCCESS)
+              bResult=FALSE;
+          }
         }
       }
     }
+    bProcessing=FALSE;
   }
   return bResult;
 }

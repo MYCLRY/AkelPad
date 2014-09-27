@@ -48,7 +48,7 @@ HRESULT STDMETHODCALLTYPE SystemFunction_Invoke(ISystemFunction *this, DISPID di
 HRESULT STDMETHODCALLTYPE SystemFunction_AddParameter(ISystemFunction *this, VARIANT vtParameter);
 HRESULT STDMETHODCALLTYPE SystemFunction_Call(ISystemFunction *this, BSTR wpDllFunction, SAFEARRAY **psa, INT_PTR *nResult);
 HRESULT STDMETHODCALLTYPE SystemFunction_GetLastError(ISystemFunction *this, DWORD *dwLastError);
-HRESULT STDMETHODCALLTYPE SystemFunction_RegisterCallback(ISystemFunction *this, BSTR wpCallbackName, IDispatch *objCallback, int nArgCount, VARIANT *vtFunction);
+HRESULT STDMETHODCALLTYPE SystemFunction_RegisterCallback(ISystemFunction *this, IDispatch *objCallback, int nArgCount, VARIANT *vtFunction);
 HRESULT STDMETHODCALLTYPE SystemFunction_UnregisterCallback(ISystemFunction *this, IDispatch *objFunction);
 SYSPARAMITEM* StackInsertSysParam(SYSPARAMSTACK *hStack);
 void StackSaveSysParam(SYSPARAMSTACK *hFromStack, SYSPARAMSTACK *hToStack);

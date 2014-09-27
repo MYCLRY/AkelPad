@@ -53,10 +53,9 @@
 #define IDI_ICON_48                     148
 #define IDI_ICON_49                     149
 #define IDI_ICON_50                     150
-#define IDD_SETUPA                      1001
-#define IDD_SETUPW                      1002
-#define IDD_SETUP                       1002
+#define IDD_SETUP                       1001
 #define IDC_TOOLBAR                     1101
+#define IDC_TOOLBARTEXT                 1102
 #define IDC_BIGICONS                    1103
 #define IDC_FLATBUTTONS                 1104
 #define IDC_16BIT                       1105
@@ -67,9 +66,8 @@
 #define IDC_SIDEBOTTOM                  1110
 #define IDC_SIDE_LABEL                  1111
 #define IDC_ROWS_LABEL                  1112
+#define IDC_ROWS                        1113
 #define IDM_SETUP                       1201
-#define IDC_TOOLBARTEXT                 10001
-#define IDC_ROWS                        13004
 #define IDC_STATIC                      -1
 
 // Next default values for new objects
@@ -78,7 +76,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        11001
 #define _APS_NEXT_COMMAND_VALUE         12001
-#define _APS_NEXT_CONTROL_VALUE         13005
+#define _APS_NEXT_CONTROL_VALUE         13006
 #define _APS_NEXT_SYMED_VALUE           14001
 #endif
 #endif

@@ -1,5 +1,5 @@
 *****************************************************************
-***                 Stats AkelPad plugin v3.0                 ***
+***                 Stats AkelPad plugin v3.1                 ***
 *****************************************************************
 
 2014 Shengalts Aleksander aka Instructor (Shengalts@mail.ru)

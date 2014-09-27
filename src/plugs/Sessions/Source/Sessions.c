@@ -321,7 +321,7 @@ typedef struct {
   INT_PTR nAction;
   wchar_t *wpColorText;
   wchar_t *wpColorBk;
-  INT_PTR bMatchCase;
+  UINT_PTR dwFlags;
   UINT_PTR dwFontStyle;
   UINT_PTR dwMarkID;
   wchar_t *wpMarkText;
@@ -334,6 +334,9 @@ typedef struct {
 #define DLLA_HIGHLIGHT_GETMARKSTACK 12
 
 #define MARKID_SELECTION  (DWORD)-2
+
+#define MARKFLAG_MATCHCASE 0x1
+#define MARKFLAG_REGEXP    0x2
 
 //Functions prototypes
 void CreateDock(HWND *hWndDock, DOCK **dkDock, BOOL bShow);
@@ -492,7 +495,7 @@ void __declspec(dllexport) DllAkelPadID(PLUGINVERSION *pv)
 {
   pv->dwAkelDllVersion=AKELDLL;
   pv->dwExeMinVersion3x=MAKE_IDENTIFIER(-1, -1, -1, -1);
-  pv->dwExeMinVersion4x=MAKE_IDENTIFIER(4, 8, 4, 0);
+  pv->dwExeMinVersion4x=MAKE_IDENTIFIER(4, 8, 8, 0);
   pv->pPluginName="Sessions";
 }
 
@@ -668,6 +671,11 @@ DWORD WINAPI ThreadProc(LPVOID lpParameter)
         DispatchMessageWide(&msg);
       }
     }
+  }
+  if (hThread)
+  {
+    CloseHandle(hThread);
+    hThread=NULL;
   }
   return 0;
 }
@@ -3278,10 +3286,12 @@ SESSION* AddCurrentSession(STACKSESSION *hStack, const wchar_t *wpSessionName)
               SendMessage(hMainWnd, AKD_DLLCALLW, 0, (LPARAM)&pcs);
 
               //Get bookmarks
-              if (delb.wszBookmarks=(wchar_t *)GlobalAlloc(GPTR, nBookmarksLen * sizeof(wchar_t)))
-                SendMessage(hMainWnd, AKD_DLLCALLW, 0, (LPARAM)&pcs);
-
-              wszBookmarks=delb.wszBookmarks;
+              if (nBookmarksLen)
+              {
+                if (delb.wszBookmarks=(wchar_t *)GlobalAlloc(GPTR, nBookmarksLen * sizeof(wchar_t)))
+                  SendMessage(hMainWnd, AKD_DLLCALLW, 0, (LPARAM)&pcs);
+                wszBookmarks=delb.wszBookmarks;
+              }
             }
           }
 
@@ -3349,9 +3359,11 @@ SESSION* AddCurrentSession(STACKSESSION *hStack, const wchar_t *wpSessionName)
             {
               if (hFoldsStack->first)
               {
-                nSize=GetCollapsedFoldsString(hFoldsStack, NULL);
-                if (wszCoderFolds=(wchar_t *)GlobalAlloc(GPTR, nSize * sizeof(wchar_t)))
-                  nSize=GetCollapsedFoldsString(hFoldsStack, wszCoderFolds);
+                if (nSize=GetCollapsedFoldsString(hFoldsStack, NULL))
+                {
+                  if (wszCoderFolds=(wchar_t *)GlobalAlloc(GPTR, nSize * sizeof(wchar_t)))
+                    nSize=GetCollapsedFoldsString(hFoldsStack, wszCoderFolds);
+                }
               }
             }
           }
@@ -3412,7 +3424,7 @@ SESSION* AddCurrentSession(STACKSESSION *hStack, const wchar_t *wpSessionName)
                       xprintfW(wszColorBk, L"#%02X%02X%02X", GetRValue(lpMarkItem->crBk), GetGValue(lpMarkItem->crBk), GetBValue(lpMarkItem->crBk));
 
                     if (nTextLen) nTextLen+=xprintfW(wszCoderMarks?wszCoderMarks + nTextLen:NULL, L",");
-                    nTextLen+=xprintfW(wszCoderMarks?wszCoderMarks + nTextLen:NULL, L"(%s,%s,%d,%d,%d,\"", wszColorText, wszColorBk, lpMarkItem->dwFlags, lpMarkItem->dwFontStyle, lpMarkText->dwMarkID);
+                    nTextLen+=xprintfW(wszCoderMarks?wszCoderMarks + nTextLen:NULL, L"(%s,%s,%u,%d,%d,\"", wszColorText, wszColorBk, lpMarkItem->dwFlags, lpMarkItem->dwFontStyle, lpMarkText->dwMarkID);
                     nTextLen+=EscapeString(lpMarkItem->pMarkText, lpMarkItem->nMarkTextLen, wszCoderMarks?wszCoderMarks + nTextLen:NULL);
                     nTextLen+=xprintfW(wszCoderMarks?wszCoderMarks + nTextLen:NULL, L"\")");
                   }
@@ -3982,6 +3994,7 @@ void OpenItem(SESSIONITEM *si)
       const wchar_t *wpParamEnd;
       wchar_t wszColorText[MAX_PATH];
       wchar_t wszColorBk[MAX_PATH];
+      DWORD dwHLFlags;
 
       //Force send WM_PAINT otherwise StackGetHighLightWindow returns NULL.
       UpdateWindow(ei.hWndEdit);
@@ -4003,7 +4016,12 @@ void OpenItem(SESSIONITEM *si)
 
         if (!GetEscapeParam(wpText, &wpParamStart, &wpParamEnd, &wpText))
           break;
-        dehm.bMatchCase=(int)xatoiW(wpParamStart, NULL);
+        dwHLFlags=(DWORD)xatoiW(wpParamStart, NULL);
+        dehm.dwFlags=0;
+        if (dwHLFlags & AEHLF_MATCHCASE)
+          dehm.dwFlags|=MARKFLAG_MATCHCASE;
+        if (dwHLFlags & AEHLF_REGEXP)
+          dehm.dwFlags|=MARKFLAG_REGEXP;
 
         if (!GetEscapeParam(wpText, &wpParamStart, &wpParamEnd, &wpText))
           break;

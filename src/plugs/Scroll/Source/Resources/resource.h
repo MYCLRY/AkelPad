@@ -4,13 +4,25 @@
 //
 #define IDI_ICON_00                     100
 #define IDI_ICON_01                     101
-#define IDD_SETUP                       1001
+#define IDI_ICON_02                     102
+#define IDI_ICON_03                     103
+#define IDI_ICON_04                     104
+#define IDI_ICON_05                     105
+#define IDI_ICON_06                     106
+#define IDD_SYNCHORZ_SETUP              1001
+#define IDD_SYNCVERT_SETUP              1002
+#define IDD_AUTOSCROLL_SETUP            1003
+#define IDD_NOSCROLL_SETUP              1004
+#define IDD_ALIGNCARET_SETUP            1005
+#define IDD_AUTOFOCUS_SETUP             1006
 #define IDC_AUTOSCROLL_TITLE            1101
 #define IDC_AUTOSCROLL_AUTOSTEP_GROUP   1102
-#define IDC_AUTOSCROLL_STEPTIME         1103
-#define IDC_AUTOSCROLL_STEPTIME_LABEL   1104
-#define IDC_AUTOSCROLL_STEPWIDTH        1105
-#define IDC_AUTOSCROLL_STEPWIDTH_LABEL  1106
+#define IDC_AUTOSCROLL_STEPTIME_EDIT    1103
+#define IDC_AUTOSCROLL_STEPTIME_SPIN    1104
+#define IDC_AUTOSCROLL_STEPTIME_LABEL   1105
+#define IDC_AUTOSCROLL_STEPWIDTH_EDIT   1106
+#define IDC_AUTOSCROLL_STEPWIDTH_LABEL  1107
+#define IDC_AUTOSCROLL_STEPWIDTH_SPIN   1108
 #define IDC_NOSCROLL_TITLE              1201
 #define IDC_NOSCROLL_GROUP              1202
 #define IDC_NOSCROLL_UNDO               1203
@@ -35,6 +47,14 @@
 #define IDC_AUTOFOCUS_SWITCHTAB         1409
 #define IDC_AUTOFOCUS_SWITCHTAB_INVERT  1410
 #define IDC_AUTOFOCUS_SWITCHTAB_WITHSPIN 1411
+#define IDC_ALIGNCARET_TITLE            1501
+#define IDC_ALIGNCARET_GROUP            1502
+#define IDC_ALIGNCARET_OFFSETX_EDIT     1503
+#define IDC_ALIGNCARET_OFFSETX_SPIN     1504
+#define IDC_ALIGNCARET_OFFSETX_LABEL    1505
+#define IDC_ALIGNCARET_OFFSETY_EDIT     1506
+#define IDC_ALIGNCARET_OFFSETY_SPIN     1507
+#define IDC_ALIGNCARET_OFFSETY_LABEL    1508
 #define IDC_STATIC                      -1
 
 // Next default values for new objects

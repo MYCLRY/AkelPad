@@ -1,6 +1,6 @@
 ﻿/**CARET**/
 // === [script name] ===
-// (c) 2011
+// (c) 2014
 //
 // []
 // Arguments:
@@ -9,7 +9,8 @@
 // Example:
 //   Call("Scripts::Main", 1, "", "")
 //
-
+var oSys = AkelPad.SystemFunction();
+var hMainWnd = AkelPad.GetMainWnd();
 var hWndEdit;
 var Usage = "Usage: [...] and execute Call(\"Scripts::Main\", 1, \""+WScript.ScriptName+"\", \"\")";
 

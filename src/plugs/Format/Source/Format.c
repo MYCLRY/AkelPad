@@ -6,10 +6,7 @@
 #include "StackFunc.h"
 #include "StrFunc.h"
 #include "WideFunc.h"
-
-//Include AEC functions
 #include "AkelEdit.h"
-
 #include "AkelDLL.h"
 #include "Resources\Resource.h"
 
@@ -151,7 +148,7 @@ void __declspec(dllexport) DllAkelPadID(PLUGINVERSION *pv)
 {
   pv->dwAkelDllVersion=AKELDLL;
   pv->dwExeMinVersion3x=MAKE_IDENTIFIER(-1, -1, -1, -1);
-  pv->dwExeMinVersion4x=MAKE_IDENTIFIER(4, 8, 4, 0);
+  pv->dwExeMinVersion4x=MAKE_IDENTIFIER(4, 8, 8, 0);
   pv->pPluginName="Format";
 }
 
@@ -500,6 +497,7 @@ void LinesOrder(HWND hWnd, HSTACK *hStack, int nOrder)
         SendMessage(hWnd, AEM_GETINDEX, AEGI_LASTCHAR, (LPARAM)&aesFullLines.crSel.ciMax);
       }
       aesFullLines.dwFlags=0;
+      aesFullLines.dwType=0;
 
       if (nOrder != LO_FIXWRAP)
       {
@@ -1143,7 +1141,7 @@ BOOL SetupCryptoClient()
   // Attempt to acquire a handle to the default key container.
   if (!CryptAcquireContextA(&hProv, GetLangStringA(wLangModule, STRID_PLUGIN), MS_DEF_PROV_A, PROV_RSA_FULL, 0))
   {
-    // Some sort of error occurred, create default key container.
+    // Some sort of error occured, create default key container.
     if (!CryptAcquireContextA(&hProv, GetLangStringA(wLangModule, STRID_PLUGIN), MS_DEF_PROV_A, PROV_RSA_FULL, CRYPT_NEWKEYSET))
     {
       // Error creating key container!

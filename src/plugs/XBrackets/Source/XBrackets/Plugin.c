@@ -20,7 +20,7 @@
 
 #define AKEL_DLL_VERSION    AKELDLL
 #define EXE_MIN_VERSION_3X  MAKE_IDENTIFIER(-1, -1, -1, -1)
-#define EXE_MIN_VERSION_4X  MAKE_IDENTIFIER(4, 8, 4, 0)
+#define EXE_MIN_VERSION_4X  MAKE_IDENTIFIER(4, 8, 8, 0)
 #define PLUGIN_NAME         "XBrackets"
 
 

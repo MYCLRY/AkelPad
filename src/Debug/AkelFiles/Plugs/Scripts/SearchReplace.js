@@ -1668,9 +1668,9 @@ function SearchReplace()
         if (!hWndOutput)
         {
           if (nDirection & DN_ALLFILES)
-            AkelPad.Call("Log::Output", 1, "", "", "^ \\((\\d+) (\\d+),(\\d+)\\)", "/FRAME=$1 /GOTOLINE=$2:$3");
+            AkelPad.Call("Log::Output", 1, "", "", "^ \\((\\d+) (\\d+),(\\d+)\\)", "/FRAME=\\1 /GOTOLINE=\\2:\\3");
           else
-            AkelPad.Call("Log::Output", 1, "", "", "^\\((\\d+),(\\d+)\\)", "/GOTOLINE=$1:$2");
+            AkelPad.Call("Log::Output", 1, "", "", "^\\((\\d+),(\\d+)\\)", "/GOTOLINE=\\1:\\2");
           hWndOutput=GetOutputWindow();
           oSys.Call("user32::SetWindowText" + _TCHAR, hWndOutput, "");
         }
@@ -2142,8 +2142,8 @@ function ScaleInit(hDC, hWnd)
       ptScale.y=oSys.Call("gdi32::GetDeviceCaps", hNewDC, 90 /*LOGPIXELSY*/);
 
       //Align to 16 pixel
-      ptScale.x+=ptScale.x % 16;
-      ptScale.y+=ptScale.y % 16;
+      if (ptScale.x % 16) ptScale.x+=16 - ptScale.x % 16;
+      if (ptScale.y % 16) ptScale.y+=16 - ptScale.y % 16;
     }
     else return false;
 

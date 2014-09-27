@@ -23,7 +23,7 @@ if "%VCDIR%" == "%VCDIR:2003=%" (
 )
 rc /R /DRC_VERSIONBIT=%BIT% /Fo"Scroll.res" "Resources\Scroll.rc"
 if not %ERRORLEVEL% == 0 set EXITCODE=%ERRORLEVEL%
-cl /O1 %CLFLAGS% Scroll.c Scroll.res /LD /link kernel32.lib user32.lib /OPT:NOWIN98 /MACHINE:%MACHINE% /NODEFAULTLIB /ENTRY:DllMain
+cl /O1 %CLFLAGS% Scroll.c Scroll.res /LD /link kernel32.lib user32.lib comctl32.lib /OPT:NOWIN98 /MACHINE:%MACHINE% /NODEFAULTLIB /ENTRY:DllMain
 if not %ERRORLEVEL% == 0 set EXITCODE=%ERRORLEVEL%
 
 ::### Clean up ###::

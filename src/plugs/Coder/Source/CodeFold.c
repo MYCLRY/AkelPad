@@ -22,6 +22,7 @@ PLUGINFUNCTION *pfCodeFold=NULL;
 HWND hWndCodeFoldDlg=NULL;
 HWND hWndCodeFoldList=NULL;
 HWND hWndCodeFoldFilter=NULL;
+WNDPROC lpOldFilterProc=NULL;
 RECT rcCodeFoldCurrentDialog={0};
 RECT rcCodeFoldDockRect={0};
 int nCodeFoldDockSide=DKS_RIGHT;
@@ -39,16 +40,16 @@ int nCharsLimit=1000000;
 int nFoldLimit=10000;
 int nShowDock=CFSD_AUTO;
 int nFollowCaret=FCO_ANYWHERE;
-BOOL bListSystemColors=FALSE;
-BOOL bListSystemFont=TRUE;
+BOOL bFoldListSystemColors=FALSE;
+BOOL bFoldListSystemFont=TRUE;
 BOOL bNoPrintCollapsed=FALSE;
 BOOL bCollapseOnOpen=FALSE;
 BOOL bTagMarkEnable=TRUE;
 int nDrawNodeType=DNT_ROUND;
 int nFindRootMaxDepth=0;
 HCURSOR hCursorArrow=NULL;
-DWORD dwListTextColor;
-DWORD dwListBkColor;
+DWORD dwFoldListTextColor;
+DWORD dwFoldListBkColor;
 DWORD dwCurrentCollapse=699;  //"Ctrl+="
 DWORD dwCurrentGoBegin=731;   //"Ctrl+["
 DWORD dwCurrentGoEnd=733;     //"Ctrl+]"
@@ -346,6 +347,9 @@ BOOL CALLBACK CodeFoldDockDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lP
       bd.dwFlags=BIF_CROSS|BIF_ETCHED;
       SendMessage(hMainWnd, AKD_SETBUTTONDRAW, (WPARAM)hWndTitleClose, (LPARAM)&bd);
     }
+
+    lpOldFilterProc=(WNDPROC)GetWindowLongPtrWide(hWndCodeFoldFilter, GWLP_WNDPROC);
+    SetWindowLongPtrWide(hWndCodeFoldFilter, GWLP_WNDPROC, (UINT_PTR)NewFilterProc);
   }
   else if (uMsg == AKDLL_SETUP)
   {
@@ -618,6 +622,20 @@ BOOL CALLBACK CodeFoldDockDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lP
   return FALSE;
 }
 
+LRESULT CALLBACK NewFilterProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+  if (uMsg == WM_KEYDOWN)
+  {
+    if (wParam == VK_DOWN || wParam == VK_UP)
+    {
+      if (GetFocus() != hWndCodeFoldList)
+        SetFocus(hWndCodeFoldList);
+      return SendMessage(hWndCodeFoldList, uMsg, wParam, lParam);
+    }
+  }
+  return CallWindowProcWide(lpOldFilterProc, hWnd, uMsg, wParam, lParam);
+}
+
 BOOL CALLBACK CodeFold1SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
   static HWND hWndShowDockAuto;
@@ -678,9 +696,9 @@ BOOL CALLBACK CodeFold1SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM 
 
     SetDlgItemInt(hDlg, IDC_CODEFOLD_SETUP_CHARSLIMIT, nCharsLimit, FALSE);
 
-    if (bListSystemColors)
+    if (bFoldListSystemColors)
       SendMessage(hWndListSystemColors, BM_SETCHECK, BST_CHECKED, 0);
-    if (bListSystemFont)
+    if (bFoldListSystemFont)
       SendMessage(hWndListSystemFont, BM_SETCHECK, BST_CHECKED, 0);
   }
   else if (uMsg == WM_COMMAND)
@@ -745,13 +763,13 @@ BOOL CALLBACK CodeFold1SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM 
 
       nCharsLimit=GetDlgItemInt(hDlg, IDC_CODEFOLD_SETUP_CHARSLIMIT, NULL, FALSE);
 
-      bListSystemColors=(BOOL)SendMessage(hWndListSystemColors, BM_GETCHECK, 0, 0);
+      bFoldListSystemColors=(BOOL)SendMessage(hWndListSystemColors, BM_GETCHECK, 0, 0);
 
       bState=(BOOL)SendMessage(hWndListSystemFont, BM_GETCHECK, 0, 0);
-      if (bState != bListSystemFont)
+      if (bState != bFoldListSystemFont)
       {
-        bListSystemFont=bState;
-        if (bListSystemFont)
+        bFoldListSystemFont=bState;
+        if (bFoldListSystemFont)
           SendMessage(hWndCodeFoldList, WM_SETFONT, (WPARAM)NULL, FALSE);
       }
 
@@ -1520,7 +1538,7 @@ BOOL CALLBACK CodeFoldParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM
   {
     if (dkCodeFoldDlg && !(dkCodeFoldDlg->dwFlags & DKF_HIDDEN))
     {
-      if (!bListSystemFont)
+      if (!bFoldListSystemFont)
       {
         HFONT hFontEdit;
 
@@ -1640,20 +1658,20 @@ BOOL CALLBACK CodeFoldEditMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM l
           nVPos=(int)SendMessage(hWnd, AEM_VPOSFROMLINE, AECT_CLIENT, ciFirstLine.nLine);
           nCharHeight=(int)SendMessage(hWnd, AEM_GETCHARSIZE, AECS_HEIGHT, 0);
 
-          hNormalFoldPen=CreatePen(PS_SOLID, 0, lpFoldWindow->pfwd->lpSyntaxFile->dwPanelNormalFoldColor);
-          hActiveFoldPen=CreatePen(PS_SOLID, 0, lpFoldWindow->pfwd->lpSyntaxFile->dwPanelActiveFoldColor);
-          hSecondBkPen=CreatePen(PS_SOLID, 0, lpFoldWindow->pfwd->lpSyntaxFile->dwPanelSecondBkColor);
-          if (lpFoldWindow->pfwd->lpSyntaxFile->dwPanelNormalNodeOpenSignColor != (DWORD)-1)
-            hNormalNodeOpenPen=CreatePen(PS_SOLID, 0, lpFoldWindow->pfwd->lpSyntaxFile->dwPanelNormalNodeOpenSignColor);
-          if (lpFoldWindow->pfwd->lpSyntaxFile->dwPanelNormalNodeCloseSignColor != (DWORD)-1)
-            hNormalNodeClosePen=CreatePen(PS_SOLID, 0, lpFoldWindow->pfwd->lpSyntaxFile->dwPanelNormalNodeCloseSignColor);
-          if (lpFoldWindow->pfwd->lpSyntaxFile->dwPanelActiveNodeOpenSignColor != (DWORD)-1)
-            hActiveNodeOpenPen=CreatePen(PS_SOLID, 0, lpFoldWindow->pfwd->lpSyntaxFile->dwPanelActiveNodeOpenSignColor);
-          if (lpFoldWindow->pfwd->lpSyntaxFile->dwPanelActiveNodeCloseSignColor != (DWORD)-1)
-            hActiveNodeClosePen=CreatePen(PS_SOLID, 0, lpFoldWindow->pfwd->lpSyntaxFile->dwPanelActiveNodeCloseSignColor);
+          hNormalFoldPen=CreatePen(PS_SOLID, 0, lpFoldWindow->pfwd->lpSyntaxFile->dwFoldPanelNormalFoldColor);
+          hActiveFoldPen=CreatePen(PS_SOLID, 0, lpFoldWindow->pfwd->lpSyntaxFile->dwFoldPanelActiveFoldColor);
+          hSecondBkPen=CreatePen(PS_SOLID, 0, lpFoldWindow->pfwd->lpSyntaxFile->dwFoldPanelSecondBkColor);
+          if (lpFoldWindow->pfwd->lpSyntaxFile->dwFoldPanelNormalNodeOpenSignColor != (DWORD)-1)
+            hNormalNodeOpenPen=CreatePen(PS_SOLID, 0, lpFoldWindow->pfwd->lpSyntaxFile->dwFoldPanelNormalNodeOpenSignColor);
+          if (lpFoldWindow->pfwd->lpSyntaxFile->dwFoldPanelNormalNodeCloseSignColor != (DWORD)-1)
+            hNormalNodeClosePen=CreatePen(PS_SOLID, 0, lpFoldWindow->pfwd->lpSyntaxFile->dwFoldPanelNormalNodeCloseSignColor);
+          if (lpFoldWindow->pfwd->lpSyntaxFile->dwFoldPanelActiveNodeOpenSignColor != (DWORD)-1)
+            hActiveNodeOpenPen=CreatePen(PS_SOLID, 0, lpFoldWindow->pfwd->lpSyntaxFile->dwFoldPanelActiveNodeOpenSignColor);
+          if (lpFoldWindow->pfwd->lpSyntaxFile->dwFoldPanelActiveNodeCloseSignColor != (DWORD)-1)
+            hActiveNodeClosePen=CreatePen(PS_SOLID, 0, lpFoldWindow->pfwd->lpSyntaxFile->dwFoldPanelActiveNodeCloseSignColor);
 
           //Erase board background
-          hFirstBkBrush=CreateSolidBrush(lpFoldWindow->pfwd->lpSyntaxFile->dwPanelFirstBkColor);
+          hFirstBkBrush=CreateSolidBrush(lpFoldWindow->pfwd->lpSyntaxFile->dwFoldPanelFirstBkColor);
           FillRect(hBufferDC, &lpFoldWindow->rcBoard, hFirstBkBrush);
 
           hPenOld=(HPEN)SelectObject(hBufferDC, hSecondBkPen);
@@ -1667,16 +1685,16 @@ BOOL CALLBACK CodeFoldEditMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM l
           SelectObject(hBufferDC, hCurrentPen);
 
           //Brushes
-          if (lpFoldWindow->pfwd->lpSyntaxFile->dwPanelNormalNodeOpenBkColor != (DWORD)-1)
-            hNormalNodeOpenBrush=CreateSolidBrush(lpFoldWindow->pfwd->lpSyntaxFile->dwPanelNormalNodeOpenBkColor);
-          if (lpFoldWindow->pfwd->lpSyntaxFile->dwPanelNormalNodeCloseBkColor != (DWORD)-1)
-            hNormalNodeCloseBrush=CreateSolidBrush(lpFoldWindow->pfwd->lpSyntaxFile->dwPanelNormalNodeCloseBkColor);
-          if (lpFoldWindow->pfwd->lpSyntaxFile->dwPanelActiveNodeOpenBkColor != (DWORD)-1)
-            hActiveNodeOpenBrush=CreateSolidBrush(lpFoldWindow->pfwd->lpSyntaxFile->dwPanelActiveNodeOpenBkColor);
-          if (lpFoldWindow->pfwd->lpSyntaxFile->dwPanelActiveNodeCloseBkColor != (DWORD)-1)
-            hActiveNodeCloseBrush=CreateSolidBrush(lpFoldWindow->pfwd->lpSyntaxFile->dwPanelActiveNodeCloseBkColor);
-          hNormalFoldBrush=CreateSolidBrush(lpFoldWindow->pfwd->lpSyntaxFile->dwPanelNormalFoldColor);
-          hActiveFoldBrush=CreateSolidBrush(lpFoldWindow->pfwd->lpSyntaxFile->dwPanelActiveFoldColor);
+          if (lpFoldWindow->pfwd->lpSyntaxFile->dwFoldPanelNormalNodeOpenBkColor != (DWORD)-1)
+            hNormalNodeOpenBrush=CreateSolidBrush(lpFoldWindow->pfwd->lpSyntaxFile->dwFoldPanelNormalNodeOpenBkColor);
+          if (lpFoldWindow->pfwd->lpSyntaxFile->dwFoldPanelNormalNodeCloseBkColor != (DWORD)-1)
+            hNormalNodeCloseBrush=CreateSolidBrush(lpFoldWindow->pfwd->lpSyntaxFile->dwFoldPanelNormalNodeCloseBkColor);
+          if (lpFoldWindow->pfwd->lpSyntaxFile->dwFoldPanelActiveNodeOpenBkColor != (DWORD)-1)
+            hActiveNodeOpenBrush=CreateSolidBrush(lpFoldWindow->pfwd->lpSyntaxFile->dwFoldPanelActiveNodeOpenBkColor);
+          if (lpFoldWindow->pfwd->lpSyntaxFile->dwFoldPanelActiveNodeCloseBkColor != (DWORD)-1)
+            hActiveNodeCloseBrush=CreateSolidBrush(lpFoldWindow->pfwd->lpSyntaxFile->dwFoldPanelActiveNodeCloseBkColor);
+          hNormalFoldBrush=CreateSolidBrush(lpFoldWindow->pfwd->lpSyntaxFile->dwFoldPanelNormalFoldColor);
+          hActiveFoldBrush=CreateSolidBrush(lpFoldWindow->pfwd->lpSyntaxFile->dwFoldPanelActiveFoldColor);
           hHollowBrush=(HBRUSH)GetStockObject(HOLLOW_BRUSH);
           hBrushOld=(HBRUSH)SelectObject(hBufferDC, hHollowBrush);
 
@@ -2176,6 +2194,7 @@ BOOL CALLBACK AllNextLevelProc(void *lpParameter, LPARAM lParam, DWORD dwSupport
         aes.crSel.ciMin=ciGoto;
         aes.crSel.ciMax=ciGoto;
         aes.dwFlags=AESELT_LOCKSCROLL;
+        aes.dwType=0;
         SendMessage(lpCurrentFoldWindow->hWndEdit, AEM_SETSEL, (WPARAM)NULL, (LPARAM)&aes);
 
         ScrollToPoint(lpCurrentFoldWindow->hWndEdit, NULL);
@@ -2245,6 +2264,7 @@ BOOL CALLBACK AllPrevLevelProc(void *lpParameter, LPARAM lParam, DWORD dwSupport
         aes.crSel.ciMin=ciGoto;
         aes.crSel.ciMax=ciGoto;
         aes.dwFlags=AESELT_LOCKSCROLL;
+        aes.dwType=0;
         SendMessage(lpCurrentFoldWindow->hWndEdit, AEM_SETSEL, (WPARAM)NULL, (LPARAM)&aes);
 
         ScrollToPoint(lpCurrentFoldWindow->hWndEdit, NULL);
@@ -2373,6 +2393,7 @@ BOOL CALLBACK FindRootLevelProc(void *lpParameter, LPARAM lParam, DWORD dwSuppor
             aes.crSel.ciMin=crSelRange.ciMin;
             aes.crSel.ciMax=crSelRange.ciMax;
             aes.dwFlags=AESELT_LOCKSCROLL;
+            aes.dwType=0;
             SendMessage(lpCurrentFoldWindow->hWndEdit, AEM_SETSEL, (WPARAM)NULL, (LPARAM)&aes);
 
             ScrollToPoint(lpCurrentFoldWindow->hWndEdit, NULL);
@@ -3366,6 +3387,7 @@ void FoldInView(FOLDWINDOW *lpFoldWindow, AEFOLD *lpFold, int nMenuAction)
     aes.crSel.ciMin=ciChar;
     aes.crSel.ciMax=ciChar;
     aes.dwFlags=AESELT_LOCKSCROLL;
+    aes.dwType=0;
     SendMessage(lpFoldWindow->hWndEdit, AEM_SETSEL, (WPARAM)NULL, (LPARAM)&aes);
 
     ScrollToPoint(lpFoldWindow->hWndEdit, NULL);
@@ -3387,6 +3409,7 @@ BOOL FoldSelect(FOLDWINDOW *lpFoldWindow, AEFOLD *lpFold)
     aes.crSel.ciMin=crNameRange.ciMin;
     aes.crSel.ciMax=crNameRange.ciMax;
     aes.dwFlags=AESELT_LOCKSCROLL;
+    aes.dwType=0;
     SendMessage(lpFoldWindow->hWndEdit, AEM_SETSEL, (WPARAM)&crNameRange.ciMin, (LPARAM)&aes);
 
     ScrollToPoint(lpFoldWindow->hWndEdit, NULL);
@@ -3641,7 +3664,7 @@ FOLDWINDOW* SetActiveEdit(HWND hWndEdit, HWND hWndTreeView, DWORD dwFlags)
         DWORD dwText;
         DWORD dwBk;
 
-        if (bListSystemColors)
+        if (bFoldListSystemColors)
         {
           dwText=(DWORD)-1;
           dwBk=(DWORD)-1;
@@ -3650,13 +3673,13 @@ FOLDWINDOW* SetActiveEdit(HWND hWndEdit, HWND hWndTreeView, DWORD dwFlags)
         {
           if (lpFoldWindow && lpFoldWindow->pfwd->lpSyntaxFile)
           {
-            dwText=lpFoldWindow->pfwd->lpSyntaxFile->dwListTextColor;
-            dwBk=lpFoldWindow->pfwd->lpSyntaxFile->dwListBkColor;
+            dwText=lpFoldWindow->pfwd->lpSyntaxFile->dwFoldListTextColor;
+            dwBk=lpFoldWindow->pfwd->lpSyntaxFile->dwFoldListBkColor;
           }
           else
           {
-            dwText=dwListTextColor;
-            dwBk=dwListBkColor;
+            dwText=dwFoldListTextColor;
+            dwBk=dwFoldListBkColor;
           }
         }
         if ((DWORD)SendMessage(hWndTreeView, TVM_GETTEXTCOLOR, 0, 0) != dwText)
@@ -3664,7 +3687,7 @@ FOLDWINDOW* SetActiveEdit(HWND hWndEdit, HWND hWndTreeView, DWORD dwFlags)
         if ((DWORD)SendMessage(hWndTreeView, TVM_GETBKCOLOR, 0, 0) != dwBk)
           SendMessage(hWndTreeView, TVM_SETBKCOLOR, 0, (LPARAM)dwBk);
 
-        if (!bListSystemFont)
+        if (!bFoldListSystemFont)
         {
           HFONT hFontEdit;
 
@@ -4464,8 +4487,8 @@ void ReadCodeFoldOptions(HANDLE hOptions)
   WideOption(hOptions, L"FoldLimit", PO_DWORD, (LPBYTE)&nFoldLimit, sizeof(DWORD));
   WideOption(hOptions, L"CharsLimit", PO_DWORD, (LPBYTE)&nCharsLimit, sizeof(DWORD));
   WideOption(hOptions, L"FollowCaret", PO_DWORD, (LPBYTE)&nFollowCaret, sizeof(DWORD));
-  WideOption(hOptions, L"ListSystemColors", PO_DWORD, (LPBYTE)&bListSystemColors, sizeof(DWORD));
-  WideOption(hOptions, L"ListSystemFont", PO_DWORD, (LPBYTE)&bListSystemFont, sizeof(DWORD));
+  WideOption(hOptions, L"FoldListSystemColors", PO_DWORD, (LPBYTE)&bFoldListSystemColors, sizeof(DWORD));
+  WideOption(hOptions, L"FoldListSystemFont", PO_DWORD, (LPBYTE)&bFoldListSystemFont, sizeof(DWORD));
   WideOption(hOptions, L"DrawNodeType", PO_DWORD, (LPBYTE)&nDrawNodeType, sizeof(DWORD));
   WideOption(hOptions, L"TagMarkEnable", PO_DWORD, (LPBYTE)&bTagMarkEnable, sizeof(DWORD));
   WideOption(hOptions, L"CollapseOnOpen", PO_DWORD, (LPBYTE)&bCollapseOnOpen, sizeof(DWORD));
@@ -4502,8 +4525,8 @@ void SaveCodeFoldOptions(HANDLE hOptions, DWORD dwFlags)
     WideOption(hOptions, L"FoldLimit", PO_DWORD, (LPBYTE)&nFoldLimit, sizeof(DWORD));
     WideOption(hOptions, L"CharsLimit", PO_DWORD, (LPBYTE)&nCharsLimit, sizeof(DWORD));
     WideOption(hOptions, L"FollowCaret", PO_DWORD, (LPBYTE)&nFollowCaret, sizeof(DWORD));
-    WideOption(hOptions, L"ListSystemColors", PO_DWORD, (LPBYTE)&bListSystemColors, sizeof(DWORD));
-    WideOption(hOptions, L"ListSystemFont", PO_DWORD, (LPBYTE)&bListSystemFont, sizeof(DWORD));
+    WideOption(hOptions, L"FoldListSystemColors", PO_DWORD, (LPBYTE)&bFoldListSystemColors, sizeof(DWORD));
+    WideOption(hOptions, L"FoldListSystemFont", PO_DWORD, (LPBYTE)&bFoldListSystemFont, sizeof(DWORD));
     WideOption(hOptions, L"DrawNodeType", PO_DWORD, (LPBYTE)&nDrawNodeType, sizeof(DWORD));
     WideOption(hOptions, L"TagMarkEnable", PO_DWORD, (LPBYTE)&bTagMarkEnable, sizeof(DWORD));
     WideOption(hOptions, L"CollapseOnOpen", PO_DWORD, (LPBYTE)&bCollapseOnOpen, sizeof(DWORD));

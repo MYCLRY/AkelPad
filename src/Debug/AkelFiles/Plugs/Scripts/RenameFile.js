@@ -2,13 +2,12 @@
 //// Переименовать текущий файл.
 
 //Variables
-var fso=new ActiveXObject("Scripting.FileSystemObject");
 var hMainWnd=AkelPad.GetMainWnd();
 var hWndEdit=AkelPad.GetEditWnd();
 var oSys=AkelPad.SystemFunction();
 var pFileFullName=AkelPad.GetEditFile(0);
-var pFileName=fso.GetFileName(pFileFullName);
-var pFileDir=fso.GetParentFolderName(pFileFullName);
+var pFileName=GetFileName(pFileFullName);
+var pFileDir=GetFileDir(pFileFullName);
 var pNewFileFullName="";
 var lpPoint64;
 var lpSel;
@@ -16,9 +15,8 @@ var lpCaret;
 var nCodePage;
 var nBOM;
 var dwFlags;
-var nError;
 
-if (hMainWnd && fso)
+if (hWndEdit)
 {
   if (!pFileFullName)
   {
@@ -36,7 +34,7 @@ if (hMainWnd && fso)
     if (pNewFileFullName == pFileFullName)
       WScript.Quit();
 
-    if (fso.FileExists(pNewFileFullName) || fso.FolderExists(pNewFileFullName))
+    if (IsFileExist(pNewFileFullName))
       AkelPad.MessageBox(hMainWnd, GetLangString(2).replace(/%s/, pNewFileFullName), WScript.ScriptName, 48 /*MB_ICONEXCLAMATION*/);
     else
       break;
@@ -44,7 +42,7 @@ if (hMainWnd && fso)
 
   if (lpPoint64=AkelPad.MemAlloc(_X64?16:8 /*sizeof(POINT64)*/))
   {
-    if (lpSel=AkelPad.MemAlloc(_X64?56:28 /*sizeof(AESELECTION)*/))
+    if (lpSel=AkelPad.MemAlloc(_X64?56:32 /*sizeof(AESELECTION)*/))
     {
       if (lpCaret=AkelPad.MemAlloc(_X64?24:12 /*sizeof(AECHARINDEX)*/))
       {
@@ -58,13 +56,9 @@ if (hMainWnd && fso)
         if (AkelPad.SendMessage(hMainWnd, 273 /*WM_COMMAND*/, 4324 /*IDM_WINDOW_FILECLOSE*/, 0))
         {
           //Rename file
-          try
+          if (!oSys.Call("kernel32::MoveFile" + _TCHAR, pFileFullName, pNewFileFullName))
           {
-            fso.MoveFile(pFileFullName, pNewFileFullName);
-          }
-          catch (nError)
-          {
-            AkelPad.MessageBox(hMainWnd, nError.description, WScript.ScriptName, 48 /*MB_ICONEXCLAMATION*/);
+            AkelPad.MessageBox(hMainWnd, GetLangString(3).replace(/%d/, "" + oSys.GetLastError()), WScript.ScriptName, 48 /*MB_ICONEXCLAMATION*/);
             pNewFileFullName=pFileFullName;
           }
 
@@ -87,6 +81,31 @@ if (hMainWnd && fso)
 
 
 //Functions
+function IsFileExist(pFile)
+{
+  if (oSys.Call("kernel32::GetFileAttributes" + _TCHAR, pFile) == -1)
+    return false;
+  return true;
+}
+
+function GetFileName(pFile)
+{
+  var nOffset=pFile.lastIndexOf("\\");
+
+  if (nOffset != -1)
+    pFile=pFile.substr(nOffset + 1);
+  return pFile;
+}
+
+function GetFileDir(pFile)
+{
+  var nOffset=pFile.lastIndexOf("\\");
+
+  if (nOffset != -1)
+    return pFile.substr(0, nOffset);
+  return "";
+}
+
 function GetLangString(nStringID)
 {
   var nLangID=AkelPad.GetLangId(1 /*LANGID_PRIMARY*/);
@@ -99,6 +118,8 @@ function GetLangString(nStringID)
       return "\u0421\u043F\u0435\u0440\u0432\u0430\u0020\u0441\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u0435\u0020\u0444\u0430\u0439\u043B\u002E";
     if (nStringID == 2)
       return "\u0424\u0430\u0439\u043B \"%s\" \u0443\u0436\u0435\u0020\u0441\u0443\u0449\u0435\u0441\u0442\u0432\u0443\u0435\u0442\u002E";
+    if (nStringID == 3)
+      return "\u041E\u0448\u0438\u0431\u043A\u0430 MoveFile: \"%d\".";
   }
   else
   {
@@ -108,6 +129,8 @@ function GetLangString(nStringID)
       return "Save file first.";
     if (nStringID == 2)
       return "File \"%s\" already exists.";
+    if (nStringID == 3)
+      return "MoveFile error: \"%d\".";
   }
   return "";
 }

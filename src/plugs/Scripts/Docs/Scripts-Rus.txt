@@ -1,5 +1,5 @@
 *****************************************************************
-***                 Scripts AkelPad plugin v14.3              ***
+***                 Scripts AkelPad plugin v15.7              ***
 *****************************************************************
 
 2014 Шенгальц Александр aka Instructor (Shengalts@mail.ru)
@@ -117,6 +117,7 @@ AkelPad.Include
 AkelPad.IsInclude
 AkelPad.OpenFile
 AkelPad.ReadFile
+AkelPad.WriteFile
 AkelPad.SaveFile
 AkelPad.SystemFunction                       +ActiveX
 AkelPad.SystemFunction().AddParameter        +ActiveX
@@ -315,7 +316,7 @@ __________________
 Возвращаемое значение
   0  //ISAEW_NONE     используется контрол RichEdit (AkelPad v3.x.x).
   1  //ISAEW_PROGRAM  используется контрол AkelEdit (AkelPad v4.x.x или выше)
-                      или, если указан дескриптор, то данный дескриптор является AkelEdit окном программы.
+     //               или, если указан дескриптор, то данный дескриптор является AkelEdit окном программы.
   2  //ISAEW_PLUGIN   если указан дескриптор, то данный дескриптор является AkelEdit окном плагина.
 
 Пример:
@@ -1138,7 +1139,7 @@ ________________
     0x010  //OD_ADT_NOMESSAGES       Не выводить сообщения при ошибке автоопределения.
     0x100  //OD_REOPEN               Не создавать новое окно, использовать имеющееся.
     0x200  //OD_NOSCROLL             Не восстанавливать прокрутку текста.
-         //По умолчанию 0xD        (OD_ADT_BINARY_ERROR|OD_ADT_DETECT_CODEPAGE|OD_ADT_DETECT_BOM).
+           //По умолчанию 0xD        (OD_ADT_BINARY_ERROR|OD_ADT_DETECT_CODEPAGE|OD_ADT_DETECT_BOM).
   nCodePage
     Кодировка файла, игнорируется если (nFlags & OD_ADT_DETECT_CODEPAGE)
   bBOM
@@ -1172,15 +1173,16 @@ ________________
 
 Аргументы
   pFile
-    File to read.
+    Файл для чтения.
   nFlags
-    0x1  //OD_ADT_BINARY_ERROR     Проверить является ли файл бинарным.
-    0x2  //OD_ADT_REG_CODEPAGE     Если кодировка файла была сохранена в реестре, то она будет использована
-         //                        с флагом OD_ADT_DETECT_BOM, если нет, то следующие флаги будут использованы
-         //                        OD_ADT_DETECT_CODEPAGE|OD_ADT_DETECT_BOM.
-    0x4  //OD_ADT_DETECT_CODEPAGE  Определить кодировку.
-    0x8  //OD_ADT_DETECT_BOM       Определить наличие сигнатуры BOM.
-         //По умолчанию 0xD        (OD_ADT_BINARY_ERROR|OD_ADT_DETECT_CODEPAGE|OD_ADT_DETECT_BOM).
+    0x01  //OD_ADT_BINARY_ERROR     Проверить является ли файл бинарным.
+    0x02  //OD_ADT_REG_CODEPAGE     Если кодировка файла была сохранена в реестре, то она будет использована
+          //                        с флагом OD_ADT_DETECT_BOM, если нет, то следующие флаги будут использованы
+          //                        OD_ADT_DETECT_CODEPAGE|OD_ADT_DETECT_BOM.
+    0x04  //OD_ADT_DETECT_CODEPAGE  Определить кодировку.
+    0x08  //OD_ADT_DETECT_BOM       Определить наличие сигнатуры BOM.
+    0x10  //OD_ADT_NOMESSAGES       Не выводить сообщения при ошибке автоопределения.
+          //По умолчанию 0xD        (OD_ADT_BINARY_ERROR|OD_ADT_DETECT_CODEPAGE|OD_ADT_DETECT_BOM).
   nCodePage
     Кодировка файла, игнорируется если (nFlags & OD_ADT_DETECT_CODEPAGE).
   bBOM
@@ -1193,6 +1195,39 @@ ________________
 
 Пример:
   var pText=AkelPad.ReadFile("C:\\MyFile.txt");
+
+
+AkelPad.WriteFile
+_________________
+
+Записать содержимое файла.
+
+  WriteFile(vFile, pContent, nContentLen, nCodePage, bBOM[, nFlags]);
+
+Аргументы
+  vFile
+    Файл для записи как строка или как дескриптор файла.
+  pContent
+    Содержимое для записи.
+  nContentLen
+    Длина содержимого. Если -1, длина вычисляется автоматически.
+  nCodePage
+    Кодировка файла.
+  bBOM
+    Сигнатура BOM.
+  nFlags
+    0x1  //WFF_WRITEREADONLY  Игнорировать атрибут только чтение. Только, если vFile указан как строка.
+    0x2  //WFF_APPENDFILE     Добавить содержимое в конец файла. Только, если vFile указан как строка.
+         //По умолчанию 0x0.
+
+Возвращаемое значение
+   0  //ESD_SUCCESS         Успешно.
+  -1  //ESD_OPEN            Невозможно открыть файл для записи.
+  -2  //ESD_WRITE           Невозможно записать в файл.
+  -3  //ESD_READONLY        Файл имеет атрибут только-чтение.
+
+Пример:
+  AkelPad.WriteFile("C:\\MyFile.txt", "Text", -1, 65001, true);
 
 
 AkelPad.SaveFile
@@ -1316,19 +1351,15 @@ _________________________________________
 
 Зарегистрировать функцию обратного вызова.
 
-  RegisterCallback(pFunction[, lpCallback][, nArgCount]);
+  RegisterCallback(lpCallback[, nArgCount]);
 
 Аргументы
-  pFunction
-    Имя функции строкой.
   lpCallback
-    Функция обратного вызова. См. замечания.
+    Функция обратного вызова.
   nArgCount
-    Число аргументов в функции обратного вызова. См. замечания.
+    Число аргументов в функции обратного вызова. Можно не указывать в JScript, но необходимо в VBScript.
 
 Замечания
-  Если аргументы lpCallback и nArgCount указаны, то pFunction игнорируется.
-  Использование аргументов lpCallback и nArgCount это единственный способ для RegisterCallback, работающий в VBScript и ActiveX.
   Максимальное число работающих функций обратного вызова не должно превышать 30-ти.
 
 Возвращаемое значение
@@ -1339,7 +1370,7 @@ _________________________________________
   var lpEnumWindowsCallback;
   var nStopAfter=3;
 
-  if (lpEnumWindowsCallback=oSys.RegisterCallback("EnumWindowsProc"))
+  if (lpEnumWindowsCallback=oSys.RegisterCallback(EnumWindowsProc))
   {
     oSys.Call("user32::EnumWindows", lpEnumWindowsCallback, 0);
     oSys.UnregisterCallback(lpEnumWindowsCallback);
@@ -1364,7 +1395,7 @@ _________________________________________
   set oSys=AkelPad.SystemFunction()
   nStopAfter=3
 
-  set lpEnumWindowsCallback = oSys.RegisterCallback ("", GetRef("EnumWindowsProc"), 2)
+  set lpEnumWindowsCallback = oSys.RegisterCallback (GetRef("EnumWindowsProc"), 2)
   oSys.Call "user32::EnumWindows", lpEnumWindowsCallback, 0
   oSys.UnregisterCallback lpEnumWindowsCallback
 
@@ -1382,33 +1413,6 @@ _________________________________________
       EnumWindowsProc = 1
     end if
   End Function
-
-Пример (обратный вызов из ActiveX):
-  var AkelPad=new ActiveXObject("AkelPad.Document");
-  var oSys=AkelPad.SystemFunction();
-  var lpEnumWindowsCallback;
-  var nStopAfter=3;
-
-  if (lpEnumWindowsCallback=oSys.RegisterCallback("", EnumWindowsProc, 2))
-  {
-    oSys.Call("user32::EnumWindows", lpEnumWindowsCallback, 0);
-    oSys.UnregisterCallback(lpEnumWindowsCallback);
-  }
-
-  function EnumWindowsProc(hWnd, lParam)
-  {
-    //Convert hWnd to hex
-    if (hWnd < 0) hWnd=(0xFFFFFFFF + 1) + hWnd;
-    hWnd="0x" + hWnd.toString(16).toUpperCase();
-
-    //Show parameters
-    WScript.Echo("hWnd=" + hWnd + "; lParam=" + lParam);
-
-    if (--nStopAfter <= 0)
-      return false;
-    else
-      return true;
-  }
 
 
 AkelPad.SystemFunction().UnregisterCallback
@@ -1762,9 +1766,10 @@ ______________________________
   pScriptBaseName
     Имя скрипта без расширения.
   nFlags
-    0x1  //POB_READ   Начать операции чтения.
-    0x2  //POB_SAVE   Начать операции записи.
-    0x4  //POB_CLEAR  Начать операции записи с очисткой (POB_SAVE|POB_CLEAR).
+    0x1  //POB_READ      Начать операции чтения.
+    0x2  //POB_SAVE      Начать операции записи.
+    0x4  //POB_CLEAR     Начать операции записи с очисткой (POB_SAVE|POB_CLEAR).
+    0x20 //POB_NOSCRIPTS Настройки плагина, pScriptBaseName - имя плагина без расширения.
 
 Возвращаемое значение
   Число. Дескриптор настроек.
@@ -2173,7 +2178,7 @@ ________________________
   nFlags
     0x1  //WGM_ENABLE    Устанавливается в любом случае.
     0x2  //WGM_NOKEYSEND Не посылать сообщения клавиш диалогу от дочерних окон
-                         (WM_KEYUP, WM_CHAR, WM_DEADCHAR, WM_SYSKEYDOWN, WM_SYSKEYUP, WM_SYSCHAR, WM_SYSDEADCHAR, WM_UNICHAR).
+         //              (WM_KEYUP, WM_CHAR, WM_DEADCHAR, WM_SYSKEYDOWN, WM_SYSKEYUP, WM_SYSCHAR, WM_SYSDEADCHAR, WM_UNICHAR).
          //По умолчанию 0x0.
 
 Возвращаемое значение
@@ -2438,6 +2443,9 @@ ____________________
     16  //SH_GETLOCKPROGRAMTHREAD  Блокировка потока программы, ожидающего завершения скрипта (при внешнем вызове скрипта с кодом 2).
         //  vData: дескриптор скрипта. Если ноль, то используется дескриптор текущего скрипта.
         //  Возвращаемое значение: true - присутствует, false - отсутствует.
+    17  //SH_GETSERVICEWINDOW  Получить дескриптор служебного окна потока скрипта. Автоматически создается при использовании методов WindowSubClass, ThreadHook и RegisterCallback.
+        //  vData: дескриптор скрипта. Если ноль, то используется дескриптор текущего скрипта.
+        //  Возвращаемое значение: дескриптор служебного окна потока скрипта.
     21  //SH_GETNAME  Получить имя скрипта.
         //  vData: дескриптор скрипта. Если ноль, то используется дескриптор текущего скрипта.
         //  Возвращаемое значение: имя скрипта.

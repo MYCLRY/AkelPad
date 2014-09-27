@@ -1,5 +1,5 @@
 *****************************************************************
-***                  Log AkelPad plugin v3.8                  ***
+***                  Log AkelPad plugin v4.2                  ***
 *****************************************************************
 
 2014 Шенгальц Александр aka Instructor (Shengalts@mail.ru)
@@ -36,11 +36,11 @@ Call("Log::Output", 1, "PROGRAM", "WORKDIR", "REPATTERN", "RETAGS", INPUTCODEPAG
       Шаблон регулярного выражения. Применяется к каждой строке вывода для перехода к тексту из панели.
     "RETAGS"
       Соответствие вхождений выражения.
-        /FILE=$1         файл для перехода.
-        /GOTOLINE=$2:$3  строка и колонка для перехода.
-        /GOTOBYTE=$2     смещение в байтах для перехода.
-        /GOTOCHAR=$2     смещение в символам для перехода.
-        /FRAME=$1        дескриптор данных вкладки для перехода.
+        /FILE=\1         файл для перехода.
+        /GOTOLINE=\2:\3  строка и колонка для перехода.
+        /GOTOBYTE=\2     смещение в байтах для перехода.
+        /GOTOCHAR=\2     смещение в символам для перехода.
+        /FRAME=\1        дескриптор данных вкладки для перехода.
     INPUTCODEPAGE
       Кодировка текста для передачи на вход запускаемому файлу.
       Если -1, кодировка будет определена автоматически.
@@ -50,12 +50,14 @@ Call("Log::Output", 1, "PROGRAM", "WORKDIR", "REPATTERN", "RETAGS", INPUTCODEPAG
       Если -1, кодировка будет определена автоматически.
       Если -2 либо не указана, будет использована кодировка из настроек плагина.
     FLAGS (сумма следующих):
-         1  Не отображать панель вывода.
+         1  Не создавать панель вывода.
          2  Не отображать строку для ввода.
          4  Сохранить все документы перед выполнением.
          8  Добавлять текст в конец.
         16  Не прокручивать в конец.
         32  Переносить строки.
+        64  Создать, но не отображать панель вывода. Требуется закрытие через Call("Log::Output", 6).
+       128  Закрыть панель вывода, если код возврата приложения равен нулю.
 
       4096  Источник для передачи - выделение, либо весь документ, если нет выделения.
       8192  Источник для передачи - весь документ.
@@ -75,7 +77,7 @@ Call("Log::Output", 1, "PROGRAM", "WORKDIR", "REPATTERN", "RETAGS", INPUTCODEPAG
   Пример (вывод в выделение без панели вывода):
     Call("Log::Output", 1, `ipconfig`, "", "", "", -1, -1, 1048577)
   Пример (запуск пакетного файла для компиляции):
-    Call("Log::Output", 1, `"%d\Build.cmd" /S`, "%d", "^(([^\(:]+(:[\\/])?)+)[\(:](\d+)([,:](\d+))?[\):]", "/FILE=$1 /GOTOLINE=$4:$6")
+    Call("Log::Output", 1, `"%d\Build.cmd" /S`, "%d", "^\s*(.*)[(:](\d+)([,:](\d+))?[):]", "/FILE=\1 /GOTOLINE=\2:\4", -2, -2, 4)
 
 Call("Log::Output", 2, *WINDOW)
   Параметры:
@@ -152,6 +154,38 @@ Call("Log::Output", 4, "TEXT", TEXTLEN, APPEND, CODEPAGE, "ALIAS")
 
 Call("Log::Output", 5, "TEXT", TEXTLEN, APPEND)
   То же, что и 4. Оставлено для совместимости.
+
+Call("Log::Output", 6)
+  Параметры:
+    6
+      Закрыть панель вывода.
+  Пример (используются функции GetOutputWindow и GetExecState):
+    WScript.Echo(GetStdOut("ipconfig"));
+
+    function GetStdOut(pCmd)
+    {
+      var hWndOutput=GetOutputWindow();
+      var pStdOut="";
+      var bClose=true;
+
+      AkelPad.Call("Log::Output", 1, pCmd, "", "", "", -1, -1, 64);
+      while (GetExecState())
+        WScript.Sleep(100);
+
+      if (hWndOutput)
+        bClose=false;
+      else
+        hWndOutput=GetOutputWindow();
+
+      if (hWndOutput)
+      {
+        AkelPad.SetEditWnd(hWndOutput);
+        pStdOut=AkelPad.GetTextRange(0, -1);
+        AkelPad.SetEditWnd(0);
+        if (bClose) AkelPad.Call("Log::Output", 6);
+      }
+      return pStdOut;
+    }
 
 
 *** Внешний вызов Log::Settings ***

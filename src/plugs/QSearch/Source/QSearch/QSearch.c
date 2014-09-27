@@ -8,7 +8,7 @@
 
 #define AKEL_DLL_VERSION    AKELDLL
 #define EXE_MIN_VERSION_3X  MAKE_IDENTIFIER(-1, -1, -1, -1)
-#define EXE_MIN_VERSION_4X  MAKE_IDENTIFIER(4, 8, 7, 0)
+#define EXE_MIN_VERSION_4X  MAKE_IDENTIFIER(4, 8, 8, 0)
 #define PLUGIN_NAME         "QSearch"
 
 
@@ -1029,7 +1029,7 @@ void CheckEditNotification(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             {
                 if ( g_Options.dwFlags[OPTF_SRCH_PICKUP_SELECTION] & 0x01 )
                 {
-                    AECHARRANGE* aeCrSel = &(((AENSELCHANGE *) hdr)->aes.crSel);
+                    AECHARRANGE* aeCrSel = &(((AENSELCHANGE *) hdr)->crSel);
                     if ( (aeCrSel->ciMin.nLine != aeCrSel->ciMax.nLine) ||
                          (aeCrSel->ciMin.nCharInLine != aeCrSel->ciMax.nCharInLine) )
                     {

@@ -1,4 +1,5 @@
 ﻿::::CARET
+@SETLOCAL
 @ECHO OFF 
 :: < Script definition > 
 
@@ -8,8 +9,10 @@ IF "%1"=="" GOTO :NoParam
 :: main stuff here 
 ::::CARET
 
-EXIT /B %ERRORLEVEL% 
+ENDLOCAL
+@EXIT /B %ERRORLEVEL% 
 
 :NoParam 
 ECHO %~n0. Command line error: "%*" 
-EXIT /B 1
+ENDLOCAL
+@EXIT /B 1

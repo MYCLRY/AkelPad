@@ -29,6 +29,7 @@
 #define StackMoveIndex
 #define StackDelete
 #define StackClear
+#define StackCopy
 #define StackJoin
 #include "StackFunc.h"
 
@@ -85,6 +86,8 @@
 #define DefWindowProcWide
 #define DialogBoxParamWide
 #define DialogBoxWide
+#define ExpandEnvironmentStringsWide
+#define ExtractIconExWide
 #define FindFirstFileWide
 #define FindNextFileWide
 #define GetSaveFileNameWide
@@ -92,12 +95,13 @@
 #define GetWindowTextLengthWide
 #define GetWindowTextWide
 #define ListBox_AddStringWide
-#define ListBox_InsertStringWide
 #define ListView_GetItemWide
 #define ListView_InsertColumnWide
 #define ListView_InsertItemWide
 #define ListView_SetItemWide
+#define PropertySheetWide
 #define RegisterClassWide
+#define SearchPathWide
 #define SetDlgItemTextWide
 #define SetWindowLongPtrWide
 #define SetWindowTextWide
@@ -113,7 +117,9 @@
 //*/
 
 //Include RegExp functions
+#define RE_FUNCTIONS
 #include "RegExpFunc.h"
+
 
 //// Global variables
 wchar_t wszBuffer[BUFFER_SIZE];
@@ -122,6 +128,7 @@ wchar_t wszPluginName[MAX_PATH];
 wchar_t wszPluginTitle[MAX_PATH];
 char szCoderDir[MAX_PATH];
 wchar_t wszCoderDir[MAX_PATH];
+wchar_t wszExeDir[MAX_PATH];
 HINSTANCE hInstanceDLL;
 HINSTANCE hInstanceEXE;
 HWND hMainWnd;
@@ -161,10 +168,8 @@ WNDPROCDATA *NewFrameProcData=NULL;
 WNDPROCDATA *NewEditProcData=NULL;
 
 //Options dialog
-PROPSHEETHEADERA pshA={0};
-PROPSHEETHEADERW pshW={0};
-PROPSHEETPAGEA pspA[5]={0};
-PROPSHEETPAGEW pspW[5]={0};
+PROPSHEETHEADERW psh={0};
+PROPSHEETPAGEW psp[PAGE_MAX]={0};
 HWND hWndPropSheet=NULL;
 HIMAGELIST hImageList;
 HHOOK hHookOptions;
@@ -182,7 +187,7 @@ void __declspec(dllexport) DllAkelPadID(PLUGINVERSION *pv)
 {
   pv->dwAkelDllVersion=AKELDLL;
   pv->dwExeMinVersion3x=MAKE_IDENTIFIER(-1, -1, -1, -1);
-  pv->dwExeMinVersion4x=MAKE_IDENTIFIER(4, 8, 4, 0);
+  pv->dwExeMinVersion4x=MAKE_IDENTIFIER(4, 8, 8, 0);
   pv->pPluginName="Coder";
 }
 
@@ -918,7 +923,8 @@ void SettingsSheet(int nStartPage)
   HICON hIconHighLight=NULL;
   HICON hIconCodeFold1=NULL;
   HICON hIconCodeFold2=NULL;
-  HICON hIconAutoComplete=NULL;
+  HICON hIconAutoComplete1=NULL;
+  HICON hIconAutoComplete2=NULL;
   POINT ptSmallIcon;
 
   //Create image list
@@ -930,117 +936,74 @@ void SettingsSheet(int nStartPage)
     hIconHighLight=(HICON)LoadImageA(hInstanceDLL, MAKEINTRESOURCEA(IDI_HIGHLIGHT_ICON), IMAGE_ICON, ptSmallIcon.x, ptSmallIcon.y, 0);
     hIconCodeFold1=(HICON)LoadImageA(hInstanceDLL, MAKEINTRESOURCEA(IDI_CODEFOLD_ICON), IMAGE_ICON, ptSmallIcon.x, ptSmallIcon.y, 0);
     hIconCodeFold2=(HICON)LoadImageA(hInstanceDLL, MAKEINTRESOURCEA(IDI_CODEFOLD_ICON), IMAGE_ICON, ptSmallIcon.x, ptSmallIcon.y, 0);
-    hIconAutoComplete=(HICON)LoadImageA(hInstanceDLL, MAKEINTRESOURCEA(IDI_AUTOCOMPLETE_ICON), IMAGE_ICON, ptSmallIcon.x, ptSmallIcon.y, 0);
+    hIconAutoComplete1=(HICON)LoadImageA(hInstanceDLL, MAKEINTRESOURCEA(IDI_AUTOCOMPLETE_ICON), IMAGE_ICON, ptSmallIcon.x, ptSmallIcon.y, 0);
+    hIconAutoComplete2=(HICON)LoadImageA(hInstanceDLL, MAKEINTRESOURCEA(IDI_AUTOCOMPLETE_ICON), IMAGE_ICON, ptSmallIcon.x, ptSmallIcon.y, 0);
     ImageList_AddIcon(hImageList, hIconHighLight);
     ImageList_AddIcon(hImageList, hIconCodeFold1);
     ImageList_AddIcon(hImageList, hIconCodeFold2);
-    ImageList_AddIcon(hImageList, hIconAutoComplete);
+    ImageList_AddIcon(hImageList, hIconAutoComplete1);
+    ImageList_AddIcon(hImageList, hIconAutoComplete2);
   }
 
   bSaveOptions=FALSE;
 
   //Show property sheet
-  if (bOldWindows)
-  {
-    char szGeneralTitle[MAX_PATH];
-    char szPluginTitle[MAX_PATH];
+  psp[PAGE_GENERAL].dwSize            =sizeof(PROPSHEETPAGEW);
+  psp[PAGE_GENERAL].dwFlags           =PSP_DEFAULT|PSP_USETITLE;
+  psp[PAGE_GENERAL].hInstance         =hInstanceDLL;
+  psp[PAGE_GENERAL].pszTemplate       =MAKEINTRESOURCEW(IDD_GENERAL_SETUP);
+  psp[PAGE_GENERAL].pszTitle          =GetLangStringW(wLangModule, STRID_GENERAL);
+  psp[PAGE_GENERAL].pfnDlgProc        =(DLGPROC)GeneralSetupDlgProc;
 
-    WideCharToMultiByte(CP_ACP, 0, GetLangStringW(wLangModule, STRID_GENERAL), -1, szGeneralTitle, MAX_PATH, NULL, NULL);
-    WideCharToMultiByte(CP_ACP, 0, wszPluginTitle, -1, szPluginTitle, MAX_PATH, NULL, NULL);
+  psp[PAGE_HIGHLIGHT].dwSize          =sizeof(PROPSHEETPAGEW);
+  psp[PAGE_HIGHLIGHT].dwFlags         =PSP_DEFAULT|PSP_USEHICON;
+  psp[PAGE_HIGHLIGHT].hInstance       =hInstanceDLL;
+  psp[PAGE_HIGHLIGHT].pszTemplate     =MAKEINTRESOURCEW(IDD_HIGHLIGHT_SETUP);
+  psp[PAGE_HIGHLIGHT].hIcon           =hIconHighLight;
+  psp[PAGE_HIGHLIGHT].pfnDlgProc      =(DLGPROC)HighLightSetupDlgProc;
 
-    pspA[PAGE_GENERAL].dwSize           =sizeof(PROPSHEETPAGEA);
-    pspA[PAGE_GENERAL].dwFlags          =PSP_DEFAULT|PSP_USETITLE;
-    pspA[PAGE_GENERAL].hInstance        =hInstanceDLL;
-    pspA[PAGE_GENERAL].pszTemplate      =MAKEINTRESOURCEA(IDD_GENERAL_SETUP);
-    pspA[PAGE_GENERAL].pszTitle         =szGeneralTitle;
-    pspA[PAGE_GENERAL].pfnDlgProc       =(DLGPROC)GeneralSetupDlgProc;
-    pspA[PAGE_HIGHLIGHT].dwSize         =sizeof(PROPSHEETPAGEA);
-    pspA[PAGE_HIGHLIGHT].dwFlags        =PSP_DEFAULT|PSP_USEHICON;
-    pspA[PAGE_HIGHLIGHT].hInstance      =hInstanceDLL;
-    pspA[PAGE_HIGHLIGHT].pszTemplate    =MAKEINTRESOURCEA(IDD_HIGHLIGHT_SETUP);
-    pspA[PAGE_HIGHLIGHT].hIcon          =hIconHighLight;
-    pspA[PAGE_HIGHLIGHT].pfnDlgProc     =(DLGPROC)HighLightSetupDlgProc;
-    pspA[PAGE_CODEFOLD1].dwSize         =sizeof(PROPSHEETPAGEA);
-    pspA[PAGE_CODEFOLD1].dwFlags        =PSP_DEFAULT|PSP_USEHICON;
-    pspA[PAGE_CODEFOLD1].hInstance      =hInstanceDLL;
-    pspA[PAGE_CODEFOLD1].pszTemplate    =MAKEINTRESOURCEA(IDD_CODEFOLD1_SETUP);
-    pspA[PAGE_CODEFOLD1].hIcon          =hIconCodeFold1;
-    pspA[PAGE_CODEFOLD1].pfnDlgProc     =(DLGPROC)CodeFold1SetupDlgProc;
-    pspA[PAGE_CODEFOLD2].dwSize         =sizeof(PROPSHEETPAGEA);
-    pspA[PAGE_CODEFOLD2].dwFlags        =PSP_DEFAULT|PSP_USEHICON;
-    pspA[PAGE_CODEFOLD2].hInstance      =hInstanceDLL;
-    pspA[PAGE_CODEFOLD2].pszTemplate    =MAKEINTRESOURCEA(IDD_CODEFOLD2_SETUP);
-    pspA[PAGE_CODEFOLD2].hIcon          =hIconCodeFold2;
-    pspA[PAGE_CODEFOLD2].pfnDlgProc     =(DLGPROC)CodeFold2SetupDlgProc;
-    pspA[PAGE_AUTOCOMPLETE].dwSize      =sizeof(PROPSHEETPAGEA);
-    pspA[PAGE_AUTOCOMPLETE].dwFlags     =PSP_DEFAULT|PSP_USEHICON;
-    pspA[PAGE_AUTOCOMPLETE].hInstance   =hInstanceDLL;
-    pspA[PAGE_AUTOCOMPLETE].pszTemplate =MAKEINTRESOURCEA(IDD_AUTOCOMPLETE_SETUP);
-    pspA[PAGE_AUTOCOMPLETE].hIcon       =hIconAutoComplete;
-    pspA[PAGE_AUTOCOMPLETE].pfnDlgProc  =(DLGPROC)AutoCompleteSetupDlgProc;
+  psp[PAGE_CODEFOLD1].dwSize          =sizeof(PROPSHEETPAGEW);
+  psp[PAGE_CODEFOLD1].dwFlags         =PSP_DEFAULT|PSP_USEHICON;
+  psp[PAGE_CODEFOLD1].hInstance       =hInstanceDLL;
+  psp[PAGE_CODEFOLD1].pszTemplate     =MAKEINTRESOURCEW(IDD_CODEFOLD1_SETUP);
+  psp[PAGE_CODEFOLD1].hIcon           =hIconCodeFold1;
+  psp[PAGE_CODEFOLD1].pfnDlgProc      =(DLGPROC)CodeFold1SetupDlgProc;
 
-    pshA.dwSize      =(bOldComctl32)?(PROPSHEETHEADERA_V1_SIZE):(sizeof(PROPSHEETHEADERA));
-    pshA.dwFlags     =PSH_PROPSHEETPAGE|PSH_USEICONID|PSH_USECALLBACK;
-    pshA.hwndParent  =hMainWnd;
-    pshA.hInstance   =hInstanceEXE;
-    pshA.pszIcon     =MAKEINTRESOURCEA(IDI_ICON_MAIN);
-    pshA.pszCaption  =szPluginTitle;
-    pshA.nPages      =sizeof(pspA) / sizeof(PROPSHEETPAGEA);
-    pshA.nStartPage  =nStartPage;
-    pshA.ppsp        =&pspA[0];
-    pshA.pfnCallback =PropSheetProc;
+  psp[PAGE_CODEFOLD2].dwSize          =sizeof(PROPSHEETPAGEW);
+  psp[PAGE_CODEFOLD2].dwFlags         =PSP_DEFAULT|PSP_USEHICON;
+  psp[PAGE_CODEFOLD2].hInstance       =hInstanceDLL;
+  psp[PAGE_CODEFOLD2].pszTemplate     =MAKEINTRESOURCEW(IDD_CODEFOLD2_SETUP);
+  psp[PAGE_CODEFOLD2].hIcon           =hIconCodeFold2;
+  psp[PAGE_CODEFOLD2].pfnDlgProc      =(DLGPROC)CodeFold2SetupDlgProc;
 
-    hHookOptions=SetWindowsHookEx(WH_CBT, CBTProc, NULL, GetCurrentThreadId());
-    PropertySheetA(&pshA);
-  }
-  else
-  {
-    pspW[PAGE_GENERAL].dwSize           =sizeof(PROPSHEETPAGEW);
-    pspW[PAGE_GENERAL].dwFlags          =PSP_DEFAULT|PSP_USETITLE;
-    pspW[PAGE_GENERAL].hInstance        =hInstanceDLL;
-    pspW[PAGE_GENERAL].pszTemplate      =MAKEINTRESOURCEW(IDD_GENERAL_SETUP);
-    pspW[PAGE_GENERAL].pszTitle         =GetLangStringW(wLangModule, STRID_GENERAL);
-    pspW[PAGE_GENERAL].pfnDlgProc       =(DLGPROC)GeneralSetupDlgProc;
-    pspW[PAGE_HIGHLIGHT].dwSize         =sizeof(PROPSHEETPAGEW);
-    pspW[PAGE_HIGHLIGHT].dwFlags        =PSP_DEFAULT|PSP_USEHICON;
-    pspW[PAGE_HIGHLIGHT].hInstance      =hInstanceDLL;
-    pspW[PAGE_HIGHLIGHT].pszTemplate    =MAKEINTRESOURCEW(IDD_HIGHLIGHT_SETUP);
-    pspW[PAGE_HIGHLIGHT].hIcon          =hIconHighLight;
-    pspW[PAGE_HIGHLIGHT].pfnDlgProc     =(DLGPROC)HighLightSetupDlgProc;
-    pspW[PAGE_CODEFOLD1].dwSize         =sizeof(PROPSHEETPAGEW);
-    pspW[PAGE_CODEFOLD1].dwFlags        =PSP_DEFAULT|PSP_USEHICON;
-    pspW[PAGE_CODEFOLD1].hInstance      =hInstanceDLL;
-    pspW[PAGE_CODEFOLD1].pszTemplate    =MAKEINTRESOURCEW(IDD_CODEFOLD1_SETUP);
-    pspW[PAGE_CODEFOLD1].hIcon          =hIconCodeFold1;
-    pspW[PAGE_CODEFOLD1].pfnDlgProc     =(DLGPROC)CodeFold1SetupDlgProc;
-    pspW[PAGE_CODEFOLD2].dwSize         =sizeof(PROPSHEETPAGEW);
-    pspW[PAGE_CODEFOLD2].dwFlags        =PSP_DEFAULT|PSP_USEHICON;
-    pspW[PAGE_CODEFOLD2].hInstance      =hInstanceDLL;
-    pspW[PAGE_CODEFOLD2].pszTemplate    =MAKEINTRESOURCEW(IDD_CODEFOLD2_SETUP);
-    pspW[PAGE_CODEFOLD2].hIcon          =hIconCodeFold2;
-    pspW[PAGE_CODEFOLD2].pfnDlgProc     =(DLGPROC)CodeFold2SetupDlgProc;
-    pspW[PAGE_AUTOCOMPLETE].dwSize      =sizeof(PROPSHEETPAGEW);
-    pspW[PAGE_AUTOCOMPLETE].dwFlags     =PSP_DEFAULT|PSP_USEHICON;
-    pspW[PAGE_AUTOCOMPLETE].hInstance   =hInstanceDLL;
-    pspW[PAGE_AUTOCOMPLETE].pszTemplate =MAKEINTRESOURCEW(IDD_AUTOCOMPLETE_SETUP);
-    pspW[PAGE_AUTOCOMPLETE].hIcon       =hIconAutoComplete;
-    pspW[PAGE_AUTOCOMPLETE].pfnDlgProc  =(DLGPROC)AutoCompleteSetupDlgProc;
+  psp[PAGE_AUTOCOMPLETE1].dwSize      =sizeof(PROPSHEETPAGEW);
+  psp[PAGE_AUTOCOMPLETE1].dwFlags     =PSP_DEFAULT|PSP_USEHICON;
+  psp[PAGE_AUTOCOMPLETE1].hInstance   =hInstanceDLL;
+  psp[PAGE_AUTOCOMPLETE1].pszTemplate =MAKEINTRESOURCEW(IDD_AUTOCOMPLETE1_SETUP);
+  psp[PAGE_AUTOCOMPLETE1].hIcon       =hIconAutoComplete1;
+  psp[PAGE_AUTOCOMPLETE1].pfnDlgProc  =(DLGPROC)AutoCompleteSetup1DlgProc;
 
-    pshW.dwSize      =sizeof(PROPSHEETHEADERW);
-    pshW.dwFlags     =PSH_PROPSHEETPAGE|PSH_USEICONID|PSH_USECALLBACK;
-    pshW.hwndParent  =hMainWnd;
-    pshW.hInstance   =hInstanceEXE;
-    pshW.pszIcon     =MAKEINTRESOURCEW(IDI_ICON_MAIN);
-    pshW.pszCaption  =wszPluginTitle;
-    pshW.nPages      =sizeof(pspW) / sizeof(PROPSHEETPAGEW);
-    pshW.nStartPage  =nStartPage;
-    pshW.ppsp        =&pspW[0];
-    pshW.pfnCallback =PropSheetProc;
+  psp[PAGE_AUTOCOMPLETE2].dwSize      =sizeof(PROPSHEETPAGEW);
+  psp[PAGE_AUTOCOMPLETE2].dwFlags     =PSP_DEFAULT|PSP_USEHICON;
+  psp[PAGE_AUTOCOMPLETE2].hInstance   =hInstanceDLL;
+  psp[PAGE_AUTOCOMPLETE2].pszTemplate =MAKEINTRESOURCEW(IDD_AUTOCOMPLETE2_SETUP);
+  psp[PAGE_AUTOCOMPLETE2].hIcon       =hIconAutoComplete2;
+  psp[PAGE_AUTOCOMPLETE2].pfnDlgProc  =(DLGPROC)AutoCompleteSetup2DlgProc;
 
-    hHookOptions=SetWindowsHookEx(WH_CBT, CBTProc, NULL, GetCurrentThreadId());
-    nPropMaxVisitPage=nStartPage;
-    PropertySheetW(&pshW);
-  }
+  psh.dwSize      =sizeof(PROPSHEETHEADERW);
+  psh.dwFlags     =PSH_PROPSHEETPAGE|PSH_USEICONID|PSH_USECALLBACK;
+  psh.hwndParent  =hMainWnd;
+  psh.hInstance   =hInstanceEXE;
+  psh.pszIcon     =MAKEINTRESOURCEW(IDI_ICON_MAIN);
+  psh.pszCaption  =wszPluginTitle;
+  psh.nPages      =PAGE_MAX;
+  psh.nStartPage  =nStartPage;
+  psh.ppsp        =&psp[0];
+  psh.pfnCallback =PropSheetProc;
+
+  hHookOptions=SetWindowsHookEx(WH_CBT, CBTProc, NULL, GetCurrentThreadId());
+  nPropMaxVisitPage=nStartPage;
+  PropertySheetWide(&psh);
 
   if (bSaveOptions)
     UpdateAllOptions();
@@ -1048,10 +1011,8 @@ void SettingsSheet(int nStartPage)
   //Destroy image list
   if (hImageList)
   {
-    ImageList_Destroy(hImageList);
-    //DestroyIcon(hIconHighLight);
-    //DestroyIcon(hIconCodeFold);
-    //DestroyIcon(hIconAutoComplete);
+    if (ImageList_Destroy(hImageList))
+      hImageList=NULL;
   }
 }
 
@@ -1082,23 +1043,34 @@ LRESULT CALLBACK CBTProc(int iCode, WPARAM wParam, LPARAM lParam)
 
 int CALLBACK PropSheetProc(HWND hDlg, UINT uMsg, LPARAM lParam)
 {
-  //Remove "?"
+  static HWND hWndPropTab;
+
   if (uMsg == PSCB_PRECREATE)
   {
+    //Remove "?"
     ((DLGTEMPLATE *)lParam)->style&=~DS_CONTEXTHELP;
   }
   else if (uMsg == PSCB_INITIALIZED)
   {
     HIMAGELIST hImageListOld;
-    HWND hWndPropTab;
 
     hWndPropSheet=hDlg;
 
+    //Set 32-bit hImageList
     if (hWndPropTab=(HWND)SendMessage(hDlg, PSM_GETTABCONTROL, 0, 0))
     {
-      hImageListOld=(HIMAGELIST)SendMessage(hWndPropTab, TCM_GETIMAGELIST, 0, 0);
-      SendMessage(hWndPropTab, TCM_SETIMAGELIST, 0, (LPARAM)hImageList);
+      hImageListOld=(HIMAGELIST)SendMessage(hWndPropTab, TCM_SETIMAGELIST, 0, (LPARAM)hImageList);
       if (hImageListOld) ImageList_Destroy(hImageListOld);
+    }
+  }
+  else if (uMsg == PSCB_BUTTONPRESSED)
+  {
+    if (lParam == PSBTN_OK ||
+        lParam == PSBTN_CANCEL ||
+        lParam == PSBTN_FINISH)
+    {
+      //Detach hImageList otherwise ImageList_Destroy failed
+      SendMessage(hWndPropTab, TCM_SETIMAGELIST, 0, (LPARAM)NULL);
     }
   }
   return TRUE;
@@ -1115,6 +1087,7 @@ BOOL CALLBACK GeneralSetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lP
   static HWND hWndVarThemeDelete;
   static HWND hWndVarThemeList;
   static HMENU hMenuList;
+  static VARTHEME vtCur;
   static VARTHEME *lpCurVarTheme;
   static int nCurThemeIndex;
   static int nPrevThemeIndex;
@@ -1343,6 +1316,8 @@ BOOL CALLBACK GeneralSetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lP
 
           if (lpCurVarTheme)
           {
+            StackCopyVarTheme(lpCurVarTheme, &vtCur);
+
             if (!bTopVarOpenScroll)
             {
               RECT rc;
@@ -1353,7 +1328,7 @@ BOOL CALLBACK GeneralSetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lP
             }
             else bTopVarOpenScroll=FALSE;
 
-            FillVarThemeList(hWndVarThemeList, lpCurVarTheme);
+            FillVarThemeList(hWndVarThemeList, &vtCur);
             InvalidateRect(hWndVarThemeList, NULL, FALSE);
 
             SendMessage(hWndVarThemeList, LVM_SCROLL, (WPARAM)ptTopVarIndex.x, (LPARAM)ptTopVarIndex.y);
@@ -1405,15 +1380,14 @@ BOOL CALLBACK GeneralSetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lP
         }
         if (bProcess)
         {
-          lpVarTheme->nVarThemeNameLen=(int)xstrcpynW(lpVarTheme->wszVarThemeName, wszThemeName, MAX_PATH);
+          vtCur.nVarThemeNameLen=(int)xstrcpynW(vtCur.wszVarThemeName, wszThemeName, MAX_PATH);
           lpCurVarTheme=lpVarTheme;
         }
       }
 
       if (bProcess)
       {
-        RetriveVarThemeList(hWndVarThemeList, lpCurVarTheme);
-
+        StackCopyVarTheme(&vtCur, lpCurVarTheme);
         SetFocus(hWndVarThemeName);
         SendMessage(hWndVarThemeNameEdit, EM_SETMODIFY, FALSE, 0);
         EnableWindow(hWndVarThemeSave, FALSE);
@@ -1471,6 +1445,7 @@ BOOL CALLBACK GeneralSetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lP
              LOWORD(wParam) == IDC_GENERAL_DELITEM)
     {
       LVITEMW lvi;
+      VARINFO *lpVarInfo;
       wchar_t wszVarName[MAX_PATH];
       wchar_t wszVarValue[MAX_PATH];
       int nSelItem;
@@ -1479,65 +1454,76 @@ BOOL CALLBACK GeneralSetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lP
 
       //Selected item
       nSelItem=(int)SendMessage(hWndVarThemeList, LVM_GETNEXTITEM, (WPARAM)-1, LVNI_SELECTED);
+      lpVarInfo=(VARINFO *)ListViewItemParam(hWndVarThemeList, nSelItem);
 
-      if (nSelItem >= 0 || nCmd == IDC_GENERAL_ADDITEM)
+      if (lpVarInfo || nCmd == IDC_GENERAL_ADDITEM)
       {
         if (nCmd == IDC_GENERAL_DELITEM)
         {
+          StackDeleteVar(&vtCur.hVarStack, lpVarInfo);
           SendMessage(hWndVarThemeList, LVM_DELETEITEM, (WPARAM)nSelItem, 0);
           bListChanged=TRUE;
         }
         else
         {
-          lvi.mask=LVIF_TEXT;
-          lvi.pszText=wszVarName;
-          lvi.cchTextMax=MAX_PATH;
-          lvi.iItem=nSelItem;
-          lvi.iSubItem=LVSI_LIST_VARIABLE;
-          ListView_GetItemWide(hWndVarThemeList, &lvi);
-
-          lvi.mask=LVIF_TEXT;
-          lvi.pszText=wszVarValue;
-          lvi.cchTextMax=MAX_PATH;
-          lvi.iItem=nSelItem;
-          lvi.iSubItem=LVSI_LIST_VALUE;
-          ListView_GetItemWide(hWndVarThemeList, &lvi);
-
           if (nCmd == IDC_GENERAL_ADDITEM ||
               nCmd == IDC_GENERAL_MODITEM)
           {
             VARINFO vi;
             INT_PTR nResult;
 
-            //Because vi.next is unused, use it to transfer command value
+            //Because vi.next and vi.prev are unused, use them to transfer some local variables
+            xmemset(&vi, 0, sizeof(VARINFO));
             vi.next=(VARINFO *)(UINT_PTR)nCmd;
+            vi.prev=(VARINFO *)(UINT_PTR)bVarThemeGlobal;
             vi.wpVarName=wszVarName;
-            vi.nVarNameLen=lstrlenW(wszVarName);
             vi.wpVarValue=wszVarValue;
-            vi.nVarValueLen=lstrlenW(wszVarValue);
-
+            if (lpVarInfo)
+            {
+              xstrcpynW(wszVarName, lpVarInfo->wpVarName, MAX_PATH);
+              xstrcpynW(wszVarValue, lpVarInfo->wpVarValue, MAX_PATH);
+              vi.nVarNameLen=lpVarInfo->nVarNameLen;
+              vi.nVarValueLen=lpVarInfo->nVarValueLen;
+              vi.dwVarFlags=lpVarInfo->dwVarFlags;
+            }
             nResult=DialogBoxParamWide(hInstanceDLL, MAKEINTRESOURCEW(IDD_GENERAL_VAREDIT), hDlg, (DLGPROC)GeneralVarEditDlgProc, (LPARAM)&vi);
+            if (!bVarThemeGlobal && vi.prev)
+            {
+              StackInsertVar(&hVarThemeGlobal.hVarStack, vi.wpVarName, vi.nVarNameLen, vi.wpVarValue, vi.nVarValueLen);
+              nResult=0;
+            }
+
             SetFocus(hWndVarThemeList);
 
             if (nResult)
             {
               if (nCmd == IDC_GENERAL_ADDITEM)
               {
-                if (nSelItem < 0)
-                  nSelItem=(int)SendMessage(hWndVarThemeList, LVM_GETITEMCOUNT, 0, 0);
-                else
-                  nSelItem+=1;
-                lvi.mask=LVIF_TEXT|LVIF_STATE;
-                lvi.stateMask=LVIS_SELECTED|LVIS_FOCUSED;
-                lvi.state=LVIS_SELECTED|LVIS_FOCUSED;
-                lvi.pszText=wszVarName;
-                lvi.cchTextMax=MAX_PATH;
-                lvi.iItem=nSelItem;
-                lvi.iSubItem=LVSI_LIST_VARIABLE;
-                ListView_InsertItemWide(hWndVarThemeList, &lvi);
+                if (lpVarInfo=StackInsertVar(&vtCur.hVarStack, vi.wpVarName, vi.nVarNameLen, vi.wpVarValue, vi.nVarValueLen))
+                {
+                  lpVarInfo->dwVarFlags=vi.dwVarFlags;
+
+                  lvi.mask=LVIF_TEXT|LVIF_STATE|LVIF_PARAM;
+                  lvi.stateMask=LVIS_SELECTED|LVIS_FOCUSED;
+                  lvi.state=LVIS_SELECTED|LVIS_FOCUSED;
+                  lvi.pszText=wszVarName;
+                  lvi.cchTextMax=MAX_PATH;
+                  lvi.iItem=(nSelItem > -1)?nSelItem + 1:0x7FFFFFFF;
+                  lvi.iSubItem=LVSI_LIST_VARIABLE;
+                  lvi.lParam=(LPARAM)lpVarInfo;
+                  nSelItem=ListView_InsertItemWide(hWndVarThemeList, &lvi);
+                }
               }
               else
               {
+                GlobalFree((HGLOBAL)lpVarInfo->wpVarName);
+                if (lpVarInfo->wpVarName=(wchar_t *)GlobalAlloc(GPTR, (vi.nVarNameLen + 1) * sizeof(wchar_t)))
+                  lpVarInfo->nVarNameLen=(int)xstrcpynW(lpVarInfo->wpVarName, vi.wpVarName, vi.nVarNameLen + 1);
+                GlobalFree((HGLOBAL)lpVarInfo->wpVarValue);
+                if (lpVarInfo->wpVarValue=(wchar_t *)GlobalAlloc(GPTR, (vi.nVarValueLen + 1) * sizeof(wchar_t)))
+                  lpVarInfo->nVarValueLen=(int)xstrcpynW(lpVarInfo->wpVarValue, vi.wpVarValue, vi.nVarValueLen + 1);
+                lpVarInfo->dwVarFlags=vi.dwVarFlags;
+
                 lvi.mask=LVIF_TEXT;
                 lvi.pszText=wszVarName;
                 lvi.cchTextMax=MAX_PATH;
@@ -1545,7 +1531,6 @@ BOOL CALLBACK GeneralSetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lP
                 lvi.iSubItem=LVSI_LIST_VARIABLE;
                 ListView_SetItemWide(hWndVarThemeList, &lvi);
               }
-
               lvi.mask=LVIF_TEXT;
               lvi.pszText=wszVarValue;
               lvi.cchTextMax=MAX_PATH;
@@ -1563,22 +1548,32 @@ BOOL CALLBACK GeneralSetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lP
             SendMessage(hWndVarThemeList, LVM_DELETEITEM, (WPARAM)nSelItem, 0);
 
             if (nCmd == IDC_GENERAL_MOVEUPITEM)
-              nSelItem=max(nSelItem - 1, 0);
+            {
+              if (lpVarInfo->prev)
+              {
+                nSelItem=max(nSelItem - 1, 0);
+                StackMoveBefore((stack **)&vtCur.hVarStack.first, (stack **)&vtCur.hVarStack.last, (stack *)lpVarInfo, (stack *)lpVarInfo->prev);
+              }
+            }
             else if (nCmd == IDC_GENERAL_MOVEDOWNITEM)
-              nSelItem=min(nSelItem + 1, (int)SendMessage(hWndVarThemeList, LVM_GETITEMCOUNT, 0, 0));
-
-            lvi.mask=LVIF_TEXT|LVIF_STATE;
+            {
+              if (lpVarInfo->next)
+              {
+                nSelItem=min(nSelItem + 1, (int)SendMessage(hWndVarThemeList, LVM_GETITEMCOUNT, 0, 0));
+                StackMoveAfter((stack **)&vtCur.hVarStack.first, (stack **)&vtCur.hVarStack.last, (stack *)lpVarInfo, (stack *)lpVarInfo->next);
+              }
+            }
+            lvi.mask=LVIF_TEXT|LVIF_STATE|LVIF_PARAM;
             lvi.stateMask=LVIS_SELECTED|LVIS_FOCUSED;
             lvi.state=LVIS_SELECTED|LVIS_FOCUSED;
-            lvi.pszText=wszVarName;
-            lvi.cchTextMax=MAX_PATH;
+            lvi.pszText=lpVarInfo->wpVarName;
             lvi.iItem=nSelItem;
             lvi.iSubItem=LVSI_LIST_VARIABLE;
+            lvi.lParam=(LPARAM)lpVarInfo;
             ListView_InsertItemWide(hWndVarThemeList, &lvi);
 
             lvi.mask=LVIF_TEXT;
-            lvi.pszText=wszVarValue;
-            lvi.cchTextMax=MAX_PATH;
+            lvi.pszText=lpVarInfo->wpVarValue;
             lvi.iItem=nSelItem;
             lvi.iSubItem=LVSI_LIST_VALUE;
             ListView_SetItemWide(hWndVarThemeList, &lvi);
@@ -1635,6 +1630,7 @@ BOOL CALLBACK GeneralSetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lP
       {
         LPNMLVCUSTOMDRAW lplvcd=(LPNMLVCUSTOMDRAW)lParam;
         LVITEMW lvi;
+        VARINFO *lpVarInfo;
         LRESULT lResult;
 
         if (lplvcd->nmcd.dwDrawStage == CDDS_PREPAINT)
@@ -1659,13 +1655,23 @@ BOOL CALLBACK GeneralSetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lP
               lvi.iSubItem=LVSI_LIST_VARIABLE;
               if (ListView_GetItemWide(hWndVarThemeList, &lvi))
               {
-                if (StackGetVarByName(&hVarThemeGlobal.hVarStack, wszBuffer, -1))
+                if (lpVarInfo=StackGetVarByName(&hVarThemeGlobal.hVarStack, wszBuffer, -1))
                 {
-                  lplvcd->clrText=GetSysColor(COLOR_GRAYTEXT);
+                  if (!(lpVarInfo->dwVarFlags & VARF_LOWPRIORITY))
+                    lplvcd->clrText=GetSysColor(COLOR_GRAYTEXT);
                 }
               }
             }
           }
+          else
+          {
+            if (lpVarInfo=(VARINFO *)lplvcd->nmcd.lItemlParam)
+            {
+              if (lpVarInfo->dwVarFlags & VARF_LOWPRIORITY)
+                lplvcd->clrText=GetSysColor(COLOR_GRAYTEXT);
+            }
+          }
+
           if (lplvcd->iSubItem == LVSI_LIST_COLOR)
           {
             lvi.mask=LVIF_TEXT;
@@ -1677,7 +1683,7 @@ BOOL CALLBACK GeneralSetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lP
             {
               if (wszBuffer[0] == L'#')
               {
-                lplvcd->clrTextBk=GetColorValueFromStrW(wszBuffer + 1);
+                lplvcd->clrTextBk=GetColorFromStr(wszBuffer + 1);
               }
             }
           }
@@ -1693,6 +1699,7 @@ BOOL CALLBACK GeneralSetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lP
       {
         LVHITTESTINFO lvhti;
         LVITEMW lvi;
+        VARINFO *lpVarInfo;
         COLORREF crColor;
 
         GetCursorPos(&lvhti.pt);
@@ -1705,7 +1712,7 @@ BOOL CALLBACK GeneralSetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lP
           {
             if (lvhti.iSubItem == LVSI_LIST_COLOR)
             {
-              lvi.mask=LVIF_TEXT;
+              lvi.mask=LVIF_TEXT|LVIF_PARAM;
               lvi.pszText=wszBuffer;
               lvi.cchTextMax=BUFFER_SIZE;
               lvi.iItem=lvhti.iItem;
@@ -1714,11 +1721,19 @@ BOOL CALLBACK GeneralSetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lP
               {
                 if (wszBuffer[0] == L'#')
                 {
-                  crColor=GetColorValueFromStrW(wszBuffer + 1);
+                  crColor=GetColorFromStr(wszBuffer + 1);
                   if (SelectColorDialog(hDlg, &crColor))
                   {
                     wszBuffer[0]=L'#';
-                    GetColorStrFromValueW(crColor, wszBuffer + 1);
+                    GetStrFromColor(crColor, wszBuffer + 1);
+                    if (lpVarInfo=(VARINFO *)lvi.lParam)
+                    {
+                      GlobalFree((HGLOBAL)lpVarInfo->wpVarValue);
+                      lpVarInfo->nVarValueLen=(int)xstrlenW(wszBuffer);
+                      if (lpVarInfo->wpVarValue=(wchar_t *)GlobalAlloc(GPTR, (lpVarInfo->nVarValueLen + 1) * sizeof(wchar_t)))
+                        xstrcpynW(lpVarInfo->wpVarValue, wszBuffer, lpVarInfo->nVarValueLen + 1);
+                    }
+                    lvi.mask&=~LVIF_PARAM;
                     ListView_SetItemWide(hWndVarThemeList, &lvi);
                     SendMessage(hWndVarThemeList, LVM_UPDATE, (WPARAM)lvhti.iItem, 0);
 
@@ -1870,6 +1885,7 @@ BOOL CALLBACK GeneralSetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lP
       ptTopVarIndex.y=mod(rc.bottom);
 
       DestroyMenu(hMenuList);
+      StackFreeVars(&vtCur.hVarStack);
     }
   }
   return FALSE;
@@ -1879,26 +1895,47 @@ BOOL CALLBACK GeneralVarEditDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM 
 {
   static HWND hWndName;
   static HWND hWndValue;
+  static HWND hWndCheckbox;
   static VARINFO *vi;
+  static int nCmd;
+  static BOOL bVarThemeGlobal;
 
   if (uMsg == WM_INITDIALOG)
   {
     vi=(VARINFO *)lParam;
+    nCmd=(int)(INT_PTR)vi->next;
+    bVarThemeGlobal=(BOOL)(INT_PTR)vi->prev;
 
     SendMessage(hDlg, WM_SETICON, (WPARAM)ICON_BIG, (LPARAM)hMainIcon);
     hWndName=GetDlgItem(hDlg, IDC_GENERAL_VARNAME);
     hWndValue=GetDlgItem(hDlg, IDC_GENERAL_VARVALUE);
+    hWndCheckbox=GetDlgItem(hDlg, IDC_GENERAL_VARCHECKBOX);
 
-    if ((INT_PTR)vi->next == IDC_GENERAL_ADDITEM)
+    if (nCmd == IDC_GENERAL_ADDITEM)
       SetWindowTextWide(hDlg, GetLangStringW(wLangModule, STRID_ADDVAR));
     else
       SetWindowTextWide(hDlg, GetLangStringW(wLangModule, STRID_EDITVAR));
     SetDlgItemTextWide(hDlg, IDC_GENERAL_VARNAME_LABEL, GetLangStringW(wLangModule, STRID_VARIABLE));
     SetDlgItemTextWide(hDlg, IDC_GENERAL_VARVALUE_LABEL, GetLangStringW(wLangModule, STRID_VALUE));
+    if (bVarThemeGlobal)
+      SetDlgItemTextWide(hDlg, IDC_GENERAL_VARCHECKBOX, GetLangStringW(wLangModule, STRID_LOWPRIORITY));
+    else
+      SetDlgItemTextWide(hDlg, IDC_GENERAL_VARCHECKBOX, GetLangStringW(wLangModule, STRID_MAKEGLOBAL));
     SetDlgItemTextWide(hDlg, IDOK, GetLangStringW(wLangModule, STRID_OK));
     SetDlgItemTextWide(hDlg, IDCANCEL, GetLangStringW(wLangModule, STRID_CANCEL));
 
-    if ((INT_PTR)vi->next == IDC_GENERAL_MODITEM)
+    if (bVarThemeGlobal)
+    {
+      if (vi->dwVarFlags & VARF_LOWPRIORITY)
+        SendMessage(hWndCheckbox, BM_SETCHECK, BST_CHECKED, 0);
+    }
+    else
+    {
+      if (StackGetVarByName(&hVarThemeGlobal.hVarStack, vi->wpVarName, -1))
+        ShowWindow(hWndCheckbox, SW_HIDE);
+    }
+
+    if (nCmd == IDC_GENERAL_MODITEM)
     {
       SetWindowTextWide(hWndName, vi->wpVarName);
       SetWindowTextWide(hWndValue, vi->wpVarValue);
@@ -1909,8 +1946,21 @@ BOOL CALLBACK GeneralVarEditDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM 
   {
     if (LOWORD(wParam) == IDOK)
     {
-      GetWindowTextWide(hWndName, vi->wpVarName, MAX_PATH);
-      GetWindowTextWide(hWndValue, vi->wpVarValue, MAX_PATH);
+      vi->nVarNameLen=GetWindowTextWide(hWndName, vi->wpVarName, MAX_PATH);
+      vi->nVarValueLen=GetWindowTextWide(hWndValue, vi->wpVarValue, MAX_PATH);
+      if (bVarThemeGlobal)
+      {
+        if (SendMessage(hWndCheckbox, BM_GETCHECK, 0, 0) == BST_CHECKED)
+          vi->dwVarFlags|=VARF_LOWPRIORITY;
+        else
+          vi->dwVarFlags&=~VARF_LOWPRIORITY;
+      }
+      else
+      {
+        //Make global
+        if (SendMessage(hWndCheckbox, BM_GETCHECK, 0, 0) == BST_CHECKED)
+          vi->prev=(VARINFO *)(UINT_PTR)TRUE;
+      }
 
       //Remove '"' from name to avoid save/read problems.
       xstrrepW(vi->wpVarName, -1, L"\"", -1, L"", -1, TRUE, vi->wpVarName, NULL);
@@ -2323,6 +2373,8 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
   wchar_t wszFile[MAX_PATH];
   const wchar_t *wpFileName;
   wchar_t *wszText;
+  wchar_t *wpTextStart;
+  wchar_t *wpSectionStart;
   wchar_t *wpText;
   wchar_t *wpWildcard;
   wchar_t *wpDelimiter;
@@ -2385,6 +2437,7 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
             ++wpText;
             --dwUnicodeLen;
           }
+          wpTextStart=wpText;
 
           lpLoadSyntaxFile=lpSyntaxFile;
           bSyntaxFileLoadError=FALSE;
@@ -2410,6 +2463,7 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
 
               goto SectionStart;
             }
+            wpSectionStart=wpText;
             GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack);
             if (!NextLine(&wpText)) goto FreeText;
             if (!SkipComment(&wpText)) goto FreeText;
@@ -2420,15 +2474,16 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
               for (;;)
               {
                 //Parse line
+                lpWildElement=NULL;
+                wpWildcard=NULL;
+
                 for (;;)
                 {
-                  lpWildElement=NULL;
-                  wpWildcard=NULL;
-
                   //Wildcard
                   if ((nWildcardLen=GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, &bQuoteString, lpVarStack)) || bQuoteString)
                   {
                     if (!bQuoteString && wszBuffer[0] == L';') break;
+                    if (lpSyntaxFile->bReserveCacheWildcard) break;
 
                     if (wpWildcard=(wchar_t *)GlobalAlloc(GPTR, (nWildcardLen + 1) * sizeof(wchar_t)))
                       xmemcpy(wpWildcard, wszBuffer, (nWildcardLen + 1) * sizeof(wchar_t));
@@ -2457,15 +2512,15 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
               for (;;)
               {
                 //Parse line
+                lpDelimElement=NULL;
+                wpDelimiter=NULL;
+                dwFlags=AEHLF_MATCHCASE;
+                dwFontStyle=0;
+                dwColor1=(DWORD)-1;
+                dwColor2=(DWORD)-1;
+
                 for (;;)
                 {
-                  lpDelimElement=NULL;
-                  wpDelimiter=NULL;
-                  dwFlags=AEHLF_MATCHCASE;
-                  dwFontStyle=0;
-                  dwColor1=(DWORD)-1;
-                  dwColor2=(DWORD)-1;
-
                   //Highlight flags
                   if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
                   {
@@ -2486,7 +2541,7 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                   {
                     if (*wszBuffer == L'#')
                     {
-                      dwColor1=GetColorValueFromStrW(wszBuffer + 1);
+                      dwColor1=GetColorFromStr(wszBuffer + 1);
                     }
                     else if (*wszBuffer != L'0') break;
                   }
@@ -2497,7 +2552,7 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                   {
                     if (*wszBuffer == L'#')
                     {
-                      dwColor2=GetColorValueFromStrW(wszBuffer + 1);
+                      dwColor2=GetColorFromStr(wszBuffer + 1);
                     }
                     else if (*wszBuffer != L'0') break;
                   }
@@ -2605,7 +2660,7 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                 {
                   if (*wszBuffer == L'#')
                   {
-                    lpSyntaxFile->aecColors.crBasicText=GetColorValueFromStrW(wszBuffer + 1);
+                    lpSyntaxFile->aecColors.crBasicText=GetColorFromStr(wszBuffer + 1);
                     lpSyntaxFile->aecColors.dwFlags|=AECLR_BASICTEXT;
                   }
                   else if (*wszBuffer != L'0') break;
@@ -2616,7 +2671,7 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                 {
                   if (*wszBuffer == L'#')
                   {
-                    lpSyntaxFile->aecColors.crBasicBk=GetColorValueFromStrW(wszBuffer + 1);
+                    lpSyntaxFile->aecColors.crBasicBk=GetColorFromStr(wszBuffer + 1);
                     lpSyntaxFile->aecColors.dwFlags|=AECLR_BASICBK;
                   }
                   else if (*wszBuffer != L'0') break;
@@ -2627,7 +2682,7 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                 {
                   if (*wszBuffer == L'#')
                   {
-                    lpSyntaxFile->aecColors.crSelText=GetColorValueFromStrW(wszBuffer + 1);
+                    lpSyntaxFile->aecColors.crSelText=GetColorFromStr(wszBuffer + 1);
                     lpSyntaxFile->aecColors.dwFlags|=AECLR_SELTEXT;
                   }
                   else if (*wszBuffer != L'0') break;
@@ -2638,7 +2693,7 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                 {
                   if (*wszBuffer == L'#')
                   {
-                    lpSyntaxFile->aecColors.crSelBk=GetColorValueFromStrW(wszBuffer + 1);
+                    lpSyntaxFile->aecColors.crSelBk=GetColorFromStr(wszBuffer + 1);
                     lpSyntaxFile->aecColors.dwFlags|=AECLR_SELBK;
                   }
                   else if (*wszBuffer != L'0') break;
@@ -2649,7 +2704,7 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                 {
                   if (*wszBuffer == L'#')
                   {
-                    lpSyntaxFile->aecColors.crActiveLineText=GetColorValueFromStrW(wszBuffer + 1);
+                    lpSyntaxFile->aecColors.crActiveLineText=GetColorFromStr(wszBuffer + 1);
                     lpSyntaxFile->aecColors.dwFlags|=AECLR_ACTIVELINETEXT;
                   }
                   else if (*wszBuffer != L'0') break;
@@ -2660,7 +2715,7 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                 {
                   if (*wszBuffer == L'#')
                   {
-                    lpSyntaxFile->aecColors.crActiveLineBk=GetColorValueFromStrW(wszBuffer + 1);
+                    lpSyntaxFile->aecColors.crActiveLineBk=GetColorFromStr(wszBuffer + 1);
                     lpSyntaxFile->aecColors.dwFlags|=AECLR_ACTIVELINEBK;
                   }
                   else if (*wszBuffer != L'0') break;
@@ -2671,7 +2726,7 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                 {
                   if (*wszBuffer == L'#')
                   {
-                    lpSyntaxFile->aecColors.crActiveLineBorder=GetColorValueFromStrW(wszBuffer + 1);
+                    lpSyntaxFile->aecColors.crActiveLineBorder=GetColorFromStr(wszBuffer + 1);
                     lpSyntaxFile->aecColors.dwFlags|=AECLR_ACTIVELINEBORDER;
                   }
                   else if (*wszBuffer != L'0') break;
@@ -2682,7 +2737,7 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                 {
                   if (*wszBuffer == L'#')
                   {
-                    lpSyntaxFile->aecColors.crAltLineText=GetColorValueFromStrW(wszBuffer + 1);
+                    lpSyntaxFile->aecColors.crAltLineText=GetColorFromStr(wszBuffer + 1);
                     lpSyntaxFile->aecColors.dwFlags|=AECLR_ALTLINETEXT;
                   }
                   else if (*wszBuffer != L'0') break;
@@ -2693,7 +2748,7 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                 {
                   if (*wszBuffer == L'#')
                   {
-                    lpSyntaxFile->aecColors.crAltLineBk=GetColorValueFromStrW(wszBuffer + 1);
+                    lpSyntaxFile->aecColors.crAltLineBk=GetColorFromStr(wszBuffer + 1);
                     lpSyntaxFile->aecColors.dwFlags|=AECLR_ALTLINEBK;
                   }
                   else if (*wszBuffer != L'0') break;
@@ -2704,7 +2759,7 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                 {
                   if (*wszBuffer == L'#')
                   {
-                    lpSyntaxFile->aecColors.crAltLineBorder=GetColorValueFromStrW(wszBuffer + 1);
+                    lpSyntaxFile->aecColors.crAltLineBorder=GetColorFromStr(wszBuffer + 1);
                     lpSyntaxFile->aecColors.dwFlags|=AECLR_ALTLINEBORDER;
                   }
                   else if (*wszBuffer != L'0') break;
@@ -2715,7 +2770,7 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                 {
                   if (*wszBuffer == L'#')
                   {
-                    lpSyntaxFile->aecColors.crActiveColumn=GetColorValueFromStrW(wszBuffer + 1);
+                    lpSyntaxFile->aecColors.crActiveColumn=GetColorFromStr(wszBuffer + 1);
                     lpSyntaxFile->aecColors.dwFlags|=AECLR_ACTIVECOLUMN;
                   }
                   else if (*wszBuffer != L'0') break;
@@ -2726,7 +2781,7 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                 {
                   if (*wszBuffer == L'#')
                   {
-                    lpSyntaxFile->aecColors.crColumnMarker=GetColorValueFromStrW(wszBuffer + 1);
+                    lpSyntaxFile->aecColors.crColumnMarker=GetColorFromStr(wszBuffer + 1);
                     lpSyntaxFile->aecColors.dwFlags|=AECLR_COLUMNMARKER;
                   }
                   else if (*wszBuffer != L'0') break;
@@ -2737,7 +2792,7 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                 {
                   if (*wszBuffer == L'#')
                   {
-                    lpSyntaxFile->aecColors.crCaret=GetColorValueFromStrW(wszBuffer + 1);
+                    lpSyntaxFile->aecColors.crCaret=GetColorFromStr(wszBuffer + 1);
                     lpSyntaxFile->aecColors.dwFlags|=AECLR_CARET;
                   }
                   else if (*wszBuffer != L'0') break;
@@ -2748,7 +2803,7 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                 {
                   if (*wszBuffer == L'#')
                   {
-                    lpSyntaxFile->aecColors.crUrlText=GetColorValueFromStrW(wszBuffer + 1);
+                    lpSyntaxFile->aecColors.crUrlText=GetColorFromStr(wszBuffer + 1);
                     lpSyntaxFile->aecColors.dwFlags|=AECLR_URLTEXT;
                   }
                   else if (*wszBuffer != L'0') break;
@@ -2759,7 +2814,7 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                 {
                   if (*wszBuffer == L'#')
                   {
-                    lpSyntaxFile->aecColors.crUrlCursorText=GetColorValueFromStrW(wszBuffer + 1);
+                    lpSyntaxFile->aecColors.crUrlCursorText=GetColorFromStr(wszBuffer + 1);
                     lpSyntaxFile->aecColors.dwFlags|=AECLR_URLCURSORTEXT;
                   }
                   else if (*wszBuffer != L'0') break;
@@ -2770,7 +2825,7 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                 {
                   if (*wszBuffer == L'#')
                   {
-                    lpSyntaxFile->aecColors.crUrlVisitText=GetColorValueFromStrW(wszBuffer + 1);
+                    lpSyntaxFile->aecColors.crUrlVisitText=GetColorFromStr(wszBuffer + 1);
                     lpSyntaxFile->aecColors.dwFlags|=AECLR_URLVISITTEXT;
                   }
                   else if (*wszBuffer != L'0') break;
@@ -2827,7 +2882,7 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                 {
                   if (*wszBuffer == L'#')
                   {
-                    lpSyntaxFile->dwAutoMarkTextColor=GetColorValueFromStrW(wszBuffer + 1);
+                    lpSyntaxFile->dwAutoMarkTextColor=GetColorFromStr(wszBuffer + 1);
                   }
                   else if (*wszBuffer != L'0') break;
                 }
@@ -2837,7 +2892,7 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                 {
                   if (*wszBuffer == L'#')
                   {
-                    lpSyntaxFile->dwAutoMarkBkColor=GetColorValueFromStrW(wszBuffer + 1);
+                    lpSyntaxFile->dwAutoMarkBkColor=GetColorFromStr(wszBuffer + 1);
                   }
                   else if (*wszBuffer != L'0') break;
                 }
@@ -2850,18 +2905,18 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
               for (;;)
               {
                 //Parse line
+                lpQuoteElement=NULL;
+                wpQuoteStart=NULL;
+                wpQuoteEnd=NULL;
+                wpQuoteInclude=NULL;
+                wpQuoteExclude=NULL;
+                dwFlags=AEHLF_MATCHCASE;
+                dwFontStyle=0;
+                dwColor1=(DWORD)-1;
+                dwColor2=(DWORD)-1;
+
                 for (;;)
                 {
-                  lpQuoteElement=NULL;
-                  wpQuoteStart=NULL;
-                  wpQuoteEnd=NULL;
-                  wpQuoteInclude=NULL;
-                  wpQuoteExclude=NULL;
-                  dwFlags=AEHLF_MATCHCASE;
-                  dwFontStyle=0;
-                  dwColor1=(DWORD)-1;
-                  dwColor2=(DWORD)-1;
-
                   //Highlight flags
                   if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
                   {
@@ -2882,7 +2937,7 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                   {
                     if (*wszBuffer == L'#')
                     {
-                      dwColor1=GetColorValueFromStrW(wszBuffer + 1);
+                      dwColor1=GetColorFromStr(wszBuffer + 1);
                     }
                     else if (*wszBuffer != L'0') break;
                   }
@@ -2893,7 +2948,7 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                   {
                     if (*wszBuffer == L'#')
                     {
-                      dwColor2=GetColorValueFromStrW(wszBuffer + 1);
+                      dwColor2=GetColorFromStr(wszBuffer + 1);
                     }
                     else if (*wszBuffer != L'0') break;
                   }
@@ -2980,13 +3035,13 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
               for (;;)
               {
                 //Parse line
+                lpQuoteElement=NULL;
+                wpQuoteStart=NULL;
+                wpQuoteEnd=NULL;
+                dwFlags=AEHLF_MATCHCASE;
+
                 for (;;)
                 {
-                  lpQuoteElement=NULL;
-                  wpQuoteStart=NULL;
-                  wpQuoteEnd=NULL;
-                  dwFlags=AEHLF_MATCHCASE;
-
                   //Highlight flags
                   if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
                   {
@@ -3039,15 +3094,15 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
               for (;;)
               {
                 //Parse line
+                lpWordElement=NULL;
+                wpWord=NULL;
+                dwFlags=AEHLF_MATCHCASE;
+                dwFontStyle=0;
+                dwColor1=(DWORD)-1;
+                dwColor2=(DWORD)-1;
+
                 for (;;)
                 {
-                  lpWordElement=NULL;
-                  wpWord=NULL;
-                  dwFlags=AEHLF_MATCHCASE;
-                  dwFontStyle=0;
-                  dwColor1=(DWORD)-1;
-                  dwColor2=(DWORD)-1;
-
                   //Highlight flags
                   if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
                   {
@@ -3068,7 +3123,7 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                   {
                     if (*wszBuffer == L'#')
                     {
-                      dwColor1=GetColorValueFromStrW(wszBuffer + 1);
+                      dwColor1=GetColorFromStr(wszBuffer + 1);
                     }
                     else if (*wszBuffer != L'0') break;
                   }
@@ -3079,7 +3134,7 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                   {
                     if (*wszBuffer == L'#')
                     {
-                      dwColor2=GetColorValueFromStrW(wszBuffer + 1);
+                      dwColor2=GetColorFromStr(wszBuffer + 1);
                     }
                     else if (*wszBuffer != L'0') break;
                   }
@@ -3096,7 +3151,7 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                   else break;
 
                   //Add to stack
-                  if (lpWordElement=StackInsertWord(&lpSyntaxFile->hWordStack, nWordLen))
+                  if (lpWordElement=StackInsertWord(&lpSyntaxFile->hWordStack, &lpSyntaxFile->hWordOrderStack, nWordLen))
                   {
                     lpWordElement->wpWord=wpWord;
                     lpWordElement->nWordLen=nWordLen;
@@ -3119,25 +3174,25 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
               //Parse line
               for (;;)
               {
-                lpSyntaxFile->dwPanelFirstBkColor=(DWORD)-1;
-                lpSyntaxFile->dwPanelSecondBkColor=(DWORD)-1;
-                lpSyntaxFile->dwPanelNormalFoldColor=(DWORD)-1;
-                lpSyntaxFile->dwPanelActiveFoldColor=(DWORD)-1;
-                lpSyntaxFile->dwPanelNormalNodeOpenBkColor=(DWORD)-1;
-                lpSyntaxFile->dwPanelNormalNodeCloseBkColor=(DWORD)-1;
-                lpSyntaxFile->dwPanelActiveNodeOpenBkColor=(DWORD)-1;
-                lpSyntaxFile->dwPanelActiveNodeCloseBkColor=(DWORD)-1;
-                lpSyntaxFile->dwPanelNormalNodeOpenSignColor=(DWORD)-1;
-                lpSyntaxFile->dwPanelNormalNodeCloseSignColor=(DWORD)-1;
-                lpSyntaxFile->dwPanelActiveNodeOpenSignColor=(DWORD)-1;
-                lpSyntaxFile->dwPanelActiveNodeCloseSignColor=(DWORD)-1;
+                lpSyntaxFile->dwFoldPanelFirstBkColor=(DWORD)-1;
+                lpSyntaxFile->dwFoldPanelSecondBkColor=(DWORD)-1;
+                lpSyntaxFile->dwFoldPanelNormalFoldColor=(DWORD)-1;
+                lpSyntaxFile->dwFoldPanelActiveFoldColor=(DWORD)-1;
+                lpSyntaxFile->dwFoldPanelNormalNodeOpenBkColor=(DWORD)-1;
+                lpSyntaxFile->dwFoldPanelNormalNodeCloseBkColor=(DWORD)-1;
+                lpSyntaxFile->dwFoldPanelActiveNodeOpenBkColor=(DWORD)-1;
+                lpSyntaxFile->dwFoldPanelActiveNodeCloseBkColor=(DWORD)-1;
+                lpSyntaxFile->dwFoldPanelNormalNodeOpenSignColor=(DWORD)-1;
+                lpSyntaxFile->dwFoldPanelNormalNodeCloseSignColor=(DWORD)-1;
+                lpSyntaxFile->dwFoldPanelActiveNodeOpenSignColor=(DWORD)-1;
+                lpSyntaxFile->dwFoldPanelActiveNodeCloseSignColor=(DWORD)-1;
 
                 //First background color
                 if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
                 {
                   if (*wszBuffer == L'#')
                   {
-                    lpSyntaxFile->dwPanelFirstBkColor=GetColorValueFromStrW(wszBuffer + 1);
+                    lpSyntaxFile->dwFoldPanelFirstBkColor=GetColorFromStr(wszBuffer + 1);
                   }
                   else if (*wszBuffer != L'0') break;
                 }
@@ -3147,7 +3202,7 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                 {
                   if (*wszBuffer == L'#')
                   {
-                    lpSyntaxFile->dwPanelSecondBkColor=GetColorValueFromStrW(wszBuffer + 1);
+                    lpSyntaxFile->dwFoldPanelSecondBkColor=GetColorFromStr(wszBuffer + 1);
                   }
                   else if (*wszBuffer != L'0') break;
                 }
@@ -3157,7 +3212,7 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                 {
                   if (*wszBuffer == L'#')
                   {
-                    lpSyntaxFile->dwPanelNormalFoldColor=GetColorValueFromStrW(wszBuffer + 1);
+                    lpSyntaxFile->dwFoldPanelNormalFoldColor=GetColorFromStr(wszBuffer + 1);
                   }
                   else if (*wszBuffer != L'0') break;
                 }
@@ -3167,7 +3222,7 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                 {
                   if (*wszBuffer == L'#')
                   {
-                    lpSyntaxFile->dwPanelActiveFoldColor=GetColorValueFromStrW(wszBuffer + 1);
+                    lpSyntaxFile->dwFoldPanelActiveFoldColor=GetColorFromStr(wszBuffer + 1);
                   }
                   else if (*wszBuffer != L'0') break;
                 }
@@ -3177,7 +3232,7 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                 {
                   if (*wszBuffer == L'#')
                   {
-                    lpSyntaxFile->dwPanelNormalNodeOpenBkColor=GetColorValueFromStrW(wszBuffer + 1);
+                    lpSyntaxFile->dwFoldPanelNormalNodeOpenBkColor=GetColorFromStr(wszBuffer + 1);
                   }
                   else if (*wszBuffer != L'0') break;
                 }
@@ -3187,7 +3242,7 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                 {
                   if (*wszBuffer == L'#')
                   {
-                    lpSyntaxFile->dwPanelNormalNodeCloseBkColor=GetColorValueFromStrW(wszBuffer + 1);
+                    lpSyntaxFile->dwFoldPanelNormalNodeCloseBkColor=GetColorFromStr(wszBuffer + 1);
                   }
                   else if (*wszBuffer != L'0') break;
                 }
@@ -3197,7 +3252,7 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                 {
                   if (*wszBuffer == L'#')
                   {
-                    lpSyntaxFile->dwPanelActiveNodeOpenBkColor=GetColorValueFromStrW(wszBuffer + 1);
+                    lpSyntaxFile->dwFoldPanelActiveNodeOpenBkColor=GetColorFromStr(wszBuffer + 1);
                   }
                   else if (*wszBuffer != L'0') break;
                 }
@@ -3207,7 +3262,7 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                 {
                   if (*wszBuffer == L'#')
                   {
-                    lpSyntaxFile->dwPanelActiveNodeCloseBkColor=GetColorValueFromStrW(wszBuffer + 1);
+                    lpSyntaxFile->dwFoldPanelActiveNodeCloseBkColor=GetColorFromStr(wszBuffer + 1);
                   }
                   else if (*wszBuffer != L'0') break;
                 }
@@ -3217,7 +3272,7 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                 {
                   if (*wszBuffer == L'#')
                   {
-                    lpSyntaxFile->dwPanelNormalNodeOpenSignColor=GetColorValueFromStrW(wszBuffer + 1);
+                    lpSyntaxFile->dwFoldPanelNormalNodeOpenSignColor=GetColorFromStr(wszBuffer + 1);
                   }
                   else if (*wszBuffer != L'0') break;
                 }
@@ -3227,7 +3282,7 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                 {
                   if (*wszBuffer == L'#')
                   {
-                    lpSyntaxFile->dwPanelNormalNodeCloseSignColor=GetColorValueFromStrW(wszBuffer + 1);
+                    lpSyntaxFile->dwFoldPanelNormalNodeCloseSignColor=GetColorFromStr(wszBuffer + 1);
                   }
                   else if (*wszBuffer != L'0') break;
                 }
@@ -3237,7 +3292,7 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                 {
                   if (*wszBuffer == L'#')
                   {
-                    lpSyntaxFile->dwPanelActiveNodeOpenSignColor=GetColorValueFromStrW(wszBuffer + 1);
+                    lpSyntaxFile->dwFoldPanelActiveNodeOpenSignColor=GetColorFromStr(wszBuffer + 1);
                   }
                   else if (*wszBuffer != L'0') break;
                 }
@@ -3247,7 +3302,7 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                 {
                   if (*wszBuffer == L'#')
                   {
-                    lpSyntaxFile->dwPanelActiveNodeCloseSignColor=GetColorValueFromStrW(wszBuffer + 1);
+                    lpSyntaxFile->dwFoldPanelActiveNodeCloseSignColor=GetColorFromStr(wszBuffer + 1);
                   }
                   else if (*wszBuffer != L'0') break;
                 }
@@ -3260,15 +3315,15 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
               //Parse line
               for (;;)
               {
-                lpSyntaxFile->dwListTextColor=(DWORD)-1;
-                lpSyntaxFile->dwListBkColor=(DWORD)-1;
+                lpSyntaxFile->dwFoldListTextColor=(DWORD)-1;
+                lpSyntaxFile->dwFoldListBkColor=(DWORD)-1;
 
                 //List text color
                 if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
                 {
                   if (*wszBuffer == L'#')
                   {
-                    lpSyntaxFile->dwListTextColor=GetColorValueFromStrW(wszBuffer + 1);
+                    lpSyntaxFile->dwFoldListTextColor=GetColorFromStr(wszBuffer + 1);
                   }
                   else if (*wszBuffer != L'0') break;
                 }
@@ -3278,7 +3333,7 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                 {
                   if (*wszBuffer == L'#')
                   {
-                    lpSyntaxFile->dwListBkColor=GetColorValueFromStrW(wszBuffer + 1);
+                    lpSyntaxFile->dwFoldListBkColor=GetColorFromStr(wszBuffer + 1);
                   }
                   else if (*wszBuffer != L'0') break;
                 }
@@ -3314,7 +3369,7 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                 {
                   if (*wszBuffer == L'#')
                   {
-                    lpSyntaxFile->dwTagMarkTextColor=GetColorValueFromStrW(wszBuffer + 1);
+                    lpSyntaxFile->dwTagMarkTextColor=GetColorFromStr(wszBuffer + 1);
                   }
                   else if (*wszBuffer != L'0') break;
                 }
@@ -3324,7 +3379,7 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                 {
                   if (*wszBuffer == L'#')
                   {
-                    lpSyntaxFile->dwTagMarkBkColor=GetColorValueFromStrW(wszBuffer + 1);
+                    lpSyntaxFile->dwTagMarkBkColor=GetColorFromStr(wszBuffer + 1);
                   }
                   else if (*wszBuffer != L'0') break;
                 }
@@ -3337,13 +3392,13 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
               for (;;)
               {
                 //Parse line
+                lpSkipInfo=NULL;
+                wpSkipStart=NULL;
+                wpSkipEnd=NULL;
+                dwFlags=FIF_MATCHCASE;
+
                 for (;;)
                 {
-                  lpSkipInfo=NULL;
-                  wpSkipStart=NULL;
-                  wpSkipEnd=NULL;
-                  dwFlags=FIF_MATCHCASE;
-
                   //Skip flags
                   if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
                   {
@@ -3430,17 +3485,17 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
               for (;;)
               {
                 //Parse line
+                lpFoldInfo=NULL;
+                wpFoldStart=NULL;
+                wpFoldEnd=NULL;
+                wpFoldDelimiters=NULL;
+                dwFlags=FIF_MATCHCASE;
+                dwFontStyle=0;
+                dwColor1=(DWORD)-1;
+                dwColor2=(DWORD)-1;
+
                 for (;;)
                 {
-                  lpFoldInfo=NULL;
-                  wpFoldStart=NULL;
-                  wpFoldEnd=NULL;
-                  wpFoldDelimiters=NULL;
-                  dwFlags=FIF_MATCHCASE;
-                  dwFontStyle=0;
-                  dwColor1=(DWORD)-1;
-                  dwColor2=(DWORD)-1;
-
                   //Fold flags
                   if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
                   {
@@ -3461,7 +3516,7 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                   {
                     if (*wszBuffer == L'#')
                     {
-                      dwColor1=GetColorValueFromStrW(wszBuffer + 1);
+                      dwColor1=GetColorFromStr(wszBuffer + 1);
                     }
                     else if (*wszBuffer != L'0') break;
                   }
@@ -3472,7 +3527,7 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                   {
                     if (*wszBuffer == L'#')
                     {
-                      dwColor2=GetColorValueFromStrW(wszBuffer + 1);
+                      dwColor2=GetColorFromStr(wszBuffer + 1);
                     }
                     else if (*wszBuffer != L'0') break;
                   }
@@ -3593,6 +3648,136 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
             }
 
             //AutoComplete
+            else if (!xstrcmpiW(wszBuffer, L"CompleteList:"))
+            {
+              //Parse line
+              for (;;)
+              {
+                lpSyntaxFile->dwCompleteListFontStyle=0;
+                lpSyntaxFile->nCompleteListFontSize=0;
+                lpSyntaxFile->wszCompleteListFaceName[0]=L'\0';
+                lpSyntaxFile->nCompleteListLineGap=0;
+                lpSyntaxFile->wszCompleteListBlockIcon[0]=L'\0';
+                lpSyntaxFile->dwCompleteListBlockIconMargins=0;
+                lpSyntaxFile->wszCompleteListHlBaseIcon[0]=L'\0';
+                lpSyntaxFile->dwCompleteListHlBaseIconMargins=0;
+                lpSyntaxFile->wszCompleteListDocWordIcon[0]=L'\0';
+                lpSyntaxFile->dwCompleteListDocWordIconMargins=0;
+                lpSyntaxFile->dwCompleteListIcons=0;
+                lpSyntaxFile->dwCompleteListBasicTextColor=(DWORD)-1;
+                lpSyntaxFile->dwCompleteListBasicBkColor=(DWORD)-1;
+                lpSyntaxFile->dwCompleteListSelTextColor=(DWORD)-1;
+                lpSyntaxFile->dwCompleteListSelBkColor=(DWORD)-1;
+
+                //Font style
+                if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
+                {
+                  lpSyntaxFile->dwCompleteListFontStyle=(DWORD)xatoiW(wszBuffer, NULL);
+                }
+
+                //Font size
+                if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
+                {
+                  lpSyntaxFile->nCompleteListFontSize=(int)xatoiW(wszBuffer, NULL);
+                }
+
+                //Face name
+                if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
+                {
+                  xstrcpynW(lpSyntaxFile->wszCompleteListFaceName, wszBuffer, LF_FACESIZE);
+                }
+
+                //Line gap
+                if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
+                {
+                  lpSyntaxFile->nCompleteListLineGap=(int)xatoiW(wszBuffer, NULL);
+                }
+
+                //Block icon
+                if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
+                {
+                  xstrcpynW(lpSyntaxFile->wszCompleteListBlockIcon, wszBuffer, MAX_PATH);
+                  if (*lpSyntaxFile->wszCompleteListBlockIcon)
+                    lpSyntaxFile->dwCompleteListIcons|=BIT_BLOCK;
+                }
+
+                //Block icon margins
+                if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
+                {
+                  StrToArray(wszBuffer, &lpSyntaxFile->dwCompleteListBlockIconMargins, sizeof(DWORD), sizeof(WORD), NULL);
+                }
+
+                //HighLight base icon
+                if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
+                {
+                  xstrcpynW(lpSyntaxFile->wszCompleteListHlBaseIcon, wszBuffer, MAX_PATH);
+                  if (*lpSyntaxFile->wszCompleteListHlBaseIcon)
+                    lpSyntaxFile->dwCompleteListIcons|=BIT_HLBASE;
+                }
+
+                //HighLight base icon margins
+                if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
+                {
+                  StrToArray(wszBuffer, &lpSyntaxFile->dwCompleteListHlBaseIconMargins, sizeof(DWORD), sizeof(WORD), NULL);
+                }
+
+                //Document word icon
+                if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
+                {
+                  xstrcpynW(lpSyntaxFile->wszCompleteListDocWordIcon, wszBuffer, MAX_PATH);
+                  if (*lpSyntaxFile->wszCompleteListDocWordIcon)
+                    lpSyntaxFile->dwCompleteListIcons|=BIT_DOCWORD;
+                }
+
+                //Document word icon margins
+                if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
+                {
+                  StrToArray(wszBuffer, &lpSyntaxFile->dwCompleteListDocWordIconMargins, sizeof(DWORD), sizeof(WORD), NULL);
+                }
+
+                //List basic text color
+                if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
+                {
+                  if (*wszBuffer == L'#')
+                  {
+                    lpSyntaxFile->dwCompleteListBasicTextColor=GetColorFromStr(wszBuffer + 1);
+                  }
+                  else if (*wszBuffer != L'0') break;
+                }
+
+                //List basic background color
+                if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
+                {
+                  if (*wszBuffer == L'#')
+                  {
+                    lpSyntaxFile->dwCompleteListBasicBkColor=GetColorFromStr(wszBuffer + 1);
+                  }
+                  else if (*wszBuffer != L'0') break;
+                }
+
+                //List sel text color
+                if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
+                {
+                  if (*wszBuffer == L'#')
+                  {
+                    lpSyntaxFile->dwCompleteListSelTextColor=GetColorFromStr(wszBuffer + 1);
+                  }
+                  else if (*wszBuffer != L'0') break;
+                }
+
+                //List sel background color
+                if (GetWord(wpText, wszBuffer, BUFFER_SIZE, &wpText, NULL, lpVarStack))
+                {
+                  if (*wszBuffer == L'#')
+                  {
+                    lpSyntaxFile->dwCompleteListSelBkColor=GetColorFromStr(wszBuffer + 1);
+                  }
+                  else if (*wszBuffer != L'0') break;
+                }
+
+                break;
+              }
+            }
             else if (!xstrcmpiW(wszBuffer, L"Blocks:"))
             {
               BLOCKINFO *lpBlockMaster;
@@ -3741,8 +3926,12 @@ SYNTAXFILE* StackLoadSyntaxFile(HSTACK *hStack, SYNTAXFILE *lpSyntaxFile)
                 if (wszBlockParsed) GlobalFree((HGLOBAL)wszBlockParsed);
               }
             }
-            else goto FreeText;
-
+            else
+            {
+              xprintfW(wszMessage, GetLangStringW(wLangModule, STRID_UNKNOWNSECTION), lpSyntaxFile->wszSyntaxFileName, wpSectionStart - wpTextStart, wszBuffer);
+              MessageBoxW(hMainWnd, wszMessage, wszPluginTitle, MB_OK|MB_ICONEXCLAMATION);
+              goto FreeText;
+            }
             goto SectionStart;
           }
           lpLoadSyntaxFile=NULL;
@@ -3762,7 +3951,8 @@ void StackRequestSyntaxFile(SYNTAXFILE *lpSyntaxFile)
   if (lpSyntaxFile->bCache)
   {
     lpSyntaxFile->bCache=FALSE;
-    StackFreeWildcard(&lpSyntaxFile->hWildcardStack);
+    if (!lpSyntaxFile->bReserveCacheWildcard)
+      StackFreeWildcard(&lpSyntaxFile->hWildcardStack);
     StackLoadSyntaxFile(&hSyntaxFilesStack, lpSyntaxFile);
     dwSaveCache|=SC_SAVE;
   }
@@ -3893,13 +4083,22 @@ void StackFreeSyntaxFiles(HSTACK *hStack)
     StackFreeWildcard(&lpElement->hWildcardStack);
 
     StackFreeDelimiter(&lpElement->hDelimiterStack);
-    StackFreeWord(&lpElement->hWordStack);
+    StackFreeWord(&lpElement->hWordStack, &lpElement->hWordOrderStack);
     StackFreeQuote(&lpElement->hQuoteStack);
     if (hWndCurEdit && lpElement->hThemeHighLight)
       SendMessage(hWndCurEdit, AEM_HLDELETETHEME, (WPARAM)lpElement->hThemeHighLight, 0);
 
     StackFreeSkipInfo(&lpElement->hSkipStack, &lpElement->hSkipStartStack);
     StackFreeFoldInfo(&lpElement->hFoldStack, &lpElement->hFoldStartStack);
+
+    if (lpElement->hCompleteListFont)
+      DeleteObject(lpElement->hCompleteListFont);
+    if (lpElement->hCompleteListBlockIcon)
+      DestroyIcon(lpElement->hCompleteListBlockIcon);
+    if (lpElement->hCompleteListHlBaseIcon)
+      DestroyIcon(lpElement->hCompleteListHlBaseIcon);
+    if (lpElement->hCompleteListDocWordIcon)
+      DestroyIcon(lpElement->hCompleteListDocWordIcon);
 
     StackFreeTitle(&lpElement->hTitleStack);
     StackFreeBlock(&lpElement->hBlockStack);
@@ -4172,6 +4371,33 @@ void StackMoveVarTheme(STACKVARTHEME *hStack, VARTHEME *lpVarTheme, int nIndex)
   StackMoveIndex((stack **)&hStack->first, (stack **)&hStack->last, (stack *)lpVarTheme, nIndex);
 }
 
+void StackCopyVarTheme(VARTHEME *vtSrc, VARTHEME *vtDst)
+{
+  VARINFO *viSrc;
+  VARINFO *viDsc;
+
+  StackFreeVars(&vtDst->hVarStack);
+
+  for (viSrc=vtSrc->hVarStack.first; viSrc; viSrc=viSrc->next)
+  {
+    if (!StackInsertBefore((stack **)&vtDst->hVarStack.first, (stack **)&vtDst->hVarStack.last, NULL, (stack **)&viDsc, sizeof(VARINFO)))
+    {
+      if (viDsc->wpVarName=(wchar_t *)GlobalAlloc(GPTR, (viSrc->nVarNameLen + 1) * sizeof(wchar_t)))
+        viDsc->nVarNameLen=(int)xstrcpynW(viDsc->wpVarName, viSrc->wpVarName, viSrc->nVarNameLen + 1);
+      if (viDsc->wpVarValue=(wchar_t *)GlobalAlloc(GPTR, (viSrc->nVarValueLen + 1) * sizeof(wchar_t)))
+        viDsc->nVarValueLen=(int)xstrcpynW(viDsc->wpVarValue, viSrc->wpVarValue, viSrc->nVarValueLen + 1);
+      viDsc->dwVarFlags=viSrc->dwVarFlags;
+    }
+    else break;
+  }
+  if (!viSrc)
+  {
+    vtDst->hVarStack.lpVarThemeOwner=vtDst;
+    vtDst->nVarThemeNameLen=(int)xstrcpynW(vtDst->wszVarThemeName, vtSrc->wszVarThemeName, MAX_PATH);
+    vtDst->wpTextData=NULL;
+  }
+}
+
 void StackDeleteVarTheme(STACKVARTHEME *hStack, VARTHEME *lpVarTheme)
 {
   if (lpVarTheme == lpVarThemeActive)
@@ -4179,6 +4405,7 @@ void StackDeleteVarTheme(STACKVARTHEME *hStack, VARTHEME *lpVarTheme)
     //Set to default theme
     lpVarThemeActive=(VARTHEME *)hStack->first;
   }
+  StackFreeVars(&lpVarTheme->hVarStack);
   StackDelete((stack **)&hStack->first, (stack **)&hStack->last, (stack *)lpVarTheme);
 }
 
@@ -4254,8 +4481,8 @@ void GetVarThemeGlobals(VARTHEME *lpVarTheme)
   dwAutoMarkFontStyle=AEHLS_NONE;
   dwAutoMarkTextColor=RGB(0x00, 0x00, 0x00);
   dwAutoMarkBkColor=RGB(0x75, 0xD9, 0x75);
-  dwListTextColor=(DWORD)-1;
-  dwListBkColor=(DWORD)-1;
+  dwFoldListTextColor=(DWORD)-1;
+  dwFoldListBkColor=(DWORD)-1;
 
   //Non-default variable theme
   for (;;)
@@ -4274,7 +4501,7 @@ void GetVarThemeGlobals(VARTHEME *lpVarTheme)
     if (!(lpVarInfo=StackGetVarByName(&lpVarTheme->hVarStack, L"HighLight_AutoMarkTextColor", -1)))
       break;
     if (lpVarInfo->wpVarValue[0] == L'#')
-      dwAutoMarkTextColor=GetColorValueFromStrW(lpVarInfo->wpVarValue + 1);
+      dwAutoMarkTextColor=GetColorFromStr(lpVarInfo->wpVarValue + 1);
     else
       dwAutoMarkTextColor=(DWORD)-1;
 
@@ -4282,7 +4509,7 @@ void GetVarThemeGlobals(VARTHEME *lpVarTheme)
     if (!(lpVarInfo=StackGetVarByName(&lpVarTheme->hVarStack, L"HighLight_AutoMarkBkColor", -1)))
       break;
     if (lpVarInfo->wpVarValue[0] == L'#')
-      dwAutoMarkBkColor=GetColorValueFromStrW(lpVarInfo->wpVarValue + 1);
+      dwAutoMarkBkColor=GetColorFromStr(lpVarInfo->wpVarValue + 1);
     else
       dwAutoMarkBkColor=(DWORD)-1;
 
@@ -4291,17 +4518,17 @@ void GetVarThemeGlobals(VARTHEME *lpVarTheme)
     if (!(lpVarInfo=StackGetVarByName(&lpVarTheme->hVarStack, L"CodeFold_ListTextColor", -1)))
       break;
     if (lpVarInfo->wpVarValue[0] == L'#')
-      dwListTextColor=GetColorValueFromStrW(lpVarInfo->wpVarValue + 1);
+      dwFoldListTextColor=GetColorFromStr(lpVarInfo->wpVarValue + 1);
     else
-      dwListTextColor=(DWORD)-1;
+      dwFoldListTextColor=(DWORD)-1;
 
     lpVarInfoFastCheck=lpVarInfo->next;
     if (!(lpVarInfo=StackGetVarByName(&lpVarTheme->hVarStack, L"CodeFold_ListBkColor", -1)))
       break;
     if (lpVarInfo->wpVarValue[0] == L'#')
-      dwListBkColor=GetColorValueFromStrW(lpVarInfo->wpVarValue + 1);
+      dwFoldListBkColor=GetColorFromStr(lpVarInfo->wpVarValue + 1);
     else
-      dwListBkColor=(DWORD)-1;
+      dwFoldListBkColor=(DWORD)-1;
 
     break;
   }
@@ -4317,10 +4544,11 @@ int FillVarThemeList(HWND hWnd, VARTHEME *lpVarTheme)
 
   for (lpVarInfo=lpVarTheme->hVarStack.first; lpVarInfo; lpVarInfo=lpVarInfo->next)
   {
-    lvi.mask=LVIF_TEXT;
+    lvi.mask=LVIF_TEXT|LVIF_PARAM;
     lvi.pszText=lpVarInfo->wpVarName;
     lvi.iItem=nIndex;
     lvi.iSubItem=LVSI_LIST_VARIABLE;
+    lvi.lParam=(LPARAM)lpVarInfo;
     ListView_InsertItemWide(hWnd, &lvi);
 
     lvi.mask=LVIF_TEXT;
@@ -4334,67 +4562,36 @@ int FillVarThemeList(HWND hWnd, VARTHEME *lpVarTheme)
   return nIndex;
 }
 
-int RetriveVarThemeList(HWND hWnd, VARTHEME *lpVarTheme)
+LPARAM ListViewItemParam(HWND hWnd, int nItem)
 {
-  VARINFO *lpVarInfo;
   LVITEMW lvi;
-  wchar_t wszVarName[MAX_PATH];
-  wchar_t wszVarValue[MAX_PATH];
-  int nVarNameLen;
-  int nVarValueLen;
-  int nIndex=0;
 
-  StackFreeVars(&lpVarTheme->hVarStack);
-
-  for (;;)
-  {
-    lvi.mask=LVIF_TEXT;
-    lvi.pszText=wszVarName;
-    lvi.cchTextMax=MAX_PATH;
-    lvi.iItem=nIndex;
-    lvi.iSubItem=LVSI_LIST_VARIABLE;
-    if (!ListView_GetItemWide(hWnd, &lvi))
-      break;
-    nVarNameLen=lstrlenW(wszVarName);
-
-    lvi.mask=LVIF_TEXT;
-    lvi.pszText=wszVarValue;
-    lvi.cchTextMax=MAX_PATH;
-    lvi.iItem=nIndex;
-    lvi.iSubItem=LVSI_LIST_VALUE;
-    if (!ListView_GetItemWide(hWnd, &lvi))
-      break;
-    nVarValueLen=lstrlenW(wszVarValue);
-
-    if (lpVarInfo=StackInsertVar(&lpVarTheme->hVarStack))
-    {
-      if (lpVarInfo->wpVarName=(wchar_t *)GlobalAlloc(GPTR, (nVarNameLen + 1) * sizeof(wchar_t)))
-      {
-        lpVarInfo->nVarNameLen=(int)xstrcpynW(lpVarInfo->wpVarName, wszVarName, nVarNameLen + 1);
-      }
-      if (lpVarInfo->wpVarValue=(wchar_t *)GlobalAlloc(GPTR, (nVarValueLen + 1) * sizeof(wchar_t)))
-      {
-        lpVarInfo->nVarValueLen=(int)xstrcpynW(lpVarInfo->wpVarValue, wszVarValue, nVarValueLen + 1);
-      }
-    }
-
-    ++nIndex;
-  }
-  return nIndex;
+  lvi.mask=LVIF_PARAM;
+  lvi.iItem=nItem;
+  if (ListView_GetItemWide(hWnd, &lvi))
+    return lvi.lParam;
+  return 0;
 }
 
-VARINFO* StackInsertVar(STACKVAR *hStack)
+VARINFO* StackInsertVar(STACKVAR *hStack, const wchar_t *wpVarName, int nVarNameLen, const wchar_t *wpVarValue, int nVarValueLen)
 {
-  VARINFO *lpElement=NULL;
+  VARINFO *lpVarInfo=NULL;
 
-  StackInsertIndex((stack **)&hStack->first, (stack **)&hStack->last, (stack **)&lpElement, -1, sizeof(VARINFO));
-  return lpElement;
+  if (!StackInsertIndex((stack **)&hStack->first, (stack **)&hStack->last, (stack **)&lpVarInfo, -1, sizeof(VARINFO)))
+  {
+    if (lpVarInfo->wpVarName=(wchar_t *)GlobalAlloc(GPTR, (nVarNameLen + 1) * sizeof(wchar_t)))
+      lpVarInfo->nVarNameLen=(int)xstrcpynW(lpVarInfo->wpVarName, wpVarName, nVarNameLen + 1);
+    if (lpVarInfo->wpVarValue=(wchar_t *)GlobalAlloc(GPTR, (nVarValueLen + 1) * sizeof(wchar_t)))
+      lpVarInfo->nVarValueLen=(int)UnescapeString(wpVarValue, nVarValueLen, lpVarInfo->wpVarValue);
+  }
+  return lpVarInfo;
 }
 
 VARINFO* StackGetVarByName(STACKVAR *hStack, const wchar_t *wpVarName, int nVarNameLen)
 {
   STACKVAR *hStackCurrent;
   VARINFO *lpElement=lpVarInfoFastCheck;
+  VARINFO *lpLowPriority=NULL;
 
   if (lpElement)
   {
@@ -4417,6 +4614,11 @@ VARINFO* StackGetVarByName(STACKVAR *hStack, const wchar_t *wpVarName, int nVarN
       if ((nVarNameLen == lpElement->nVarNameLen && !xstrcmpnW(wpVarName, lpElement->wpVarName, nVarNameLen)) ||
           (nVarNameLen == -1 && !xstrcmpW(wpVarName, lpElement->wpVarName)))
       {
+        if ((lpElement->dwVarFlags & VARF_LOWPRIORITY) && hStackCurrent == &hVarThemeGlobal.hVarStack)
+        {
+          lpLowPriority=lpElement;
+          break;
+        }
         return lpElement;
       }
     }
@@ -4425,6 +4627,8 @@ VARINFO* StackGetVarByName(STACKVAR *hStack, const wchar_t *wpVarName, int nVarN
     //Secondly search in input var theme
     hStackCurrent=hStack;
   }
+  if (lpLowPriority)
+    return lpLowPriority;
   return NULL;
 }
 
@@ -4441,14 +4645,21 @@ VARINFO* StackGetVarByIndex(STACKVAR *hStack, int nIndex)
   return lpElement;
 }
 
+void StackDeleteVar(STACKVAR *hStack, VARINFO *lpElement)
+{
+  if (lpElement->wpVarName) GlobalFree((HGLOBAL)lpElement->wpVarName);
+  if (lpElement->wpVarValue) GlobalFree((HGLOBAL)lpElement->wpVarValue);
+  StackDelete((stack **)&hStack->first, (stack **)&hStack->last, (stack *)lpElement);
+}
+
 void StackFreeVars(STACKVAR *hStack)
 {
   VARINFO *lpElement;
 
   for (lpElement=hStack->first; lpElement; lpElement=lpElement->next)
   {
-    GlobalFree((HGLOBAL)lpElement->wpVarName);
-    GlobalFree((HGLOBAL)lpElement->wpVarValue);
+    if (lpElement->wpVarName) GlobalFree((HGLOBAL)lpElement->wpVarName);
+    if (lpElement->wpVarValue) GlobalFree((HGLOBAL)lpElement->wpVarValue);
   }
   StackClear((stack **)&hStack->first, (stack **)&hStack->last);
 }
@@ -4457,11 +4668,13 @@ int ParseStringToVars(STACKVAR *lpVarStack, const wchar_t *wpText)
 {
   VARINFO *lpVarInfo;
   wchar_t wszVarName[MAX_PATH];
-  wchar_t wszVarValue[MAX_PATH];
   wchar_t *wpCount=(wchar_t *)wpText;
+  const wchar_t *wpVarValueStart;
+  const wchar_t *wpVarValueEnd;
   int nVarNameLen;
   int nVarValueLen;
   int nVarCount=0;
+  DWORD dwVarFlags;
 
   do
   {
@@ -4474,25 +4687,25 @@ int ParseStringToVars(STACKVAR *lpVarStack, const wchar_t *wpText)
     else break;
 
     //Var value
-    if (nVarValueLen=GetWord(wpCount, wszVarValue, MAX_PATH, &wpCount, NULL, lpVarStack))
+    if (nVarValueLen=(int)GetEscapeParam(wpCount, &wpVarValueStart, &wpVarValueEnd, (const wchar_t **)&wpCount))
     {
-      if (wszVarName[0] == L'#')
+      if (wpVarValueStart[0] == L'#')
       {
         //Make length at least 7 wide characters for "#RRGGBB"
         nVarValueLen=max(nVarValueLen, 7);
       }
     }
 
-    if (lpVarInfo=StackInsertVar(lpVarStack))
+    //Var flags
+    if (GetWord(wpCount, wszBuffer, BUFFER_SIZE, &wpCount, NULL, lpVarStack))
+      dwVarFlags=(DWORD)xatoiW(wszBuffer, NULL);
+    else
+      dwVarFlags=0;
+
+    if (lpVarInfo=StackInsertVar(lpVarStack, wszVarName, nVarNameLen, wpVarValueStart, nVarValueLen))
     {
-      if (lpVarInfo->wpVarName=(wchar_t *)GlobalAlloc(GPTR, (nVarNameLen + 1) * sizeof(wchar_t)))
-      {
-        lpVarInfo->nVarNameLen=(int)xstrcpynW(lpVarInfo->wpVarName, wszVarName, nVarNameLen + 1);
-      }
-      if (lpVarInfo->wpVarValue=(wchar_t *)GlobalAlloc(GPTR, (nVarValueLen + 1) * sizeof(wchar_t)))
-      {
-        lpVarInfo->nVarValueLen=(int)xstrcpynW(lpVarInfo->wpVarValue, wszVarValue, nVarValueLen + 1);
-      }
+      lpVarInfo->dwVarFlags=dwVarFlags;
+
       ++nVarCount;
     }
   }
@@ -4510,7 +4723,7 @@ DWORD ParseVarsToString(STACKVAR *lpVarStack, wchar_t **wpText)
   //Variable theme data
   for (dwSize=0, lpVarInfo=lpVarStack->first; lpVarInfo; lpVarInfo=lpVarInfo->next)
   {
-    dwSize+=lpVarInfo->nVarNameLen + lpVarInfo->nVarValueLen + 4; //4 - "" \r
+    dwSize+=lpVarInfo->nVarNameLen + 2 + (lpVarInfo->nVarValueLen * 2) + 2 + 10 + 1; //wpVarName "wpVarValue" dwFlags\r
   }
   dwSize+=sizeof(wchar_t);
 
@@ -4520,7 +4733,12 @@ DWORD ParseVarsToString(STACKVAR *lpVarStack, wchar_t **wpText)
     {
       for (dwSize=0, lpVarInfo=lpVarStack->first; lpVarInfo; lpVarInfo=lpVarInfo->next)
       {
-        dwSize+=(DWORD)xprintfW(wszVarThemeValue + dwSize, L"%s \"%s\"\r", lpVarInfo->wpVarName, lpVarInfo->wpVarValue);
+        dwSize+=(DWORD)xprintfW(wszVarThemeValue + dwSize, L"%s \"", lpVarInfo->wpVarName);
+        dwSize+=(DWORD)EscapeString(lpVarInfo->wpVarValue, lpVarInfo->nVarValueLen, wszVarThemeValue + dwSize);
+        if (lpVarStack == &hVarThemeGlobal.hVarStack)
+          dwSize+=(DWORD)xprintfW(wszVarThemeValue + dwSize, L"\" %d\r", lpVarInfo->dwVarFlags);
+        else
+          dwSize+=(DWORD)xprintfW(wszVarThemeValue + dwSize, L"\"\r");
       }
       dwSize+=sizeof(wchar_t);
     }
@@ -4730,31 +4948,6 @@ const wchar_t* GetFileName(const wchar_t *wpFile, int nFileLen)
   return wpFile;
 }
 
-int GetBaseName(const wchar_t *wpFile, wchar_t *wszBaseName, int nBaseNameMaxLen)
-{
-  int nFileLen=lstrlenW(wpFile);
-  int nEndOffset=-1;
-  int i;
-
-  for (i=nFileLen - 1; i >= 0; --i)
-  {
-    if (wpFile[i] == L'\\')
-      break;
-
-    if (nEndOffset == -1)
-    {
-      if (wpFile[i] == L'.')
-        nEndOffset=i;
-    }
-  }
-  ++i;
-  if (nEndOffset == -1) nEndOffset=nFileLen;
-  nBaseNameMaxLen=min(nEndOffset - i + 1, nBaseNameMaxLen);
-  xstrcpynW(wszBaseName, wpFile + i, nBaseNameMaxLen);
-
-  return nBaseNameMaxLen;
-}
-
 HWND GetCurEdit()
 {
   EDITINFO ei;
@@ -4882,6 +5075,302 @@ void UpdateEditAll(DWORD dwFlags)
   }
 }
 
+HFONT CreateFontMethod(const wchar_t *wpFaceName, DWORD dwFontStyle, int nPointSize)
+{
+  LOGFONTW lfNew;
+  FRAMEDATA *lpFrame;
+  HDC hDC;
+  HFONT hFont=NULL;
+
+  if (lpFrame=(FRAMEDATA *)SendMessage(hMainWnd, AKD_FRAMEFIND, FWF_CURRENT, 0))
+  {
+    xmemcpy(&lfNew, &lpFrame->lf, sizeof(LOGFONTW));
+
+    if (nPointSize)
+    {
+      if (hDC=GetDC(hMainWnd))
+      {
+        lfNew.lfHeight=-MulDiv(nPointSize, GetDeviceCaps(hDC, LOGPIXELSY), 72);
+        ReleaseDC(hMainWnd, hDC);
+      }
+    }
+    if (dwFontStyle != AEHLS_NONE)
+    {
+      lfNew.lfWeight=(dwFontStyle == AEHLS_FONTBOLD || dwFontStyle == AEHLS_FONTBOLDITALIC)?FW_BOLD:FW_NORMAL;
+      lfNew.lfItalic=(dwFontStyle == AEHLS_FONTITALIC || dwFontStyle == AEHLS_FONTBOLDITALIC)?TRUE:FALSE;
+    }
+    if (*wpFaceName != L'\0')
+    {
+      xstrcpynW(lfNew.lfFaceName, wpFaceName, LF_FACESIZE);
+    }
+    hFont=CreateFontIndirectWide(&lfNew);
+  }
+  return hFont;
+}
+
+HICON GetIconMethod(wchar_t *wszIconFile, int nFileIconIndex, BOOL bBigIcons)
+{
+  wchar_t wszPath[MAX_PATH];
+  SIZE sizeIcon;
+  wchar_t *wpFileName;
+  HICON hIcon=NULL;
+
+  if (!*wszIconFile)
+  {
+    if (bBigIcons)
+    {
+      sizeIcon.cx=32;
+      sizeIcon.cy=32;
+    }
+    else
+    {
+      sizeIcon.cx=16;
+      sizeIcon.cy=16;
+    }
+    hIcon=(HICON)LoadImageA(hInstanceDLL, MAKEINTRESOURCEA(nFileIconIndex + 100), IMAGE_ICON, sizeIcon.cx, sizeIcon.cy, 0);
+  }
+  else
+  {
+    if (TranslateFileString(wszIconFile, wszPath, MAX_PATH))
+    {
+      if (SearchPathWide(NULL, wszPath, NULL, MAX_PATH, wszIconFile, &wpFileName))
+      {
+        if (bBigIcons)
+          ExtractIconExWide(wszPath, nFileIconIndex, &hIcon, NULL, 1);
+        else
+          ExtractIconExWide(wszPath, nFileIconIndex, NULL, &hIcon, 1);
+      }
+    }
+  }
+  return hIcon;
+}
+
+void GetIconParameters(const wchar_t *wpText, wchar_t *wszIconFile, int nMaxIconFile, int *nIconIndex, const wchar_t **wppText)
+{
+  wchar_t wchStopChar;
+  int i;
+
+  wszIconFile[0]=L'\0';
+  *nIconIndex=0;
+
+  //File
+  while (*wpText == L' ' || *wpText == L'\t') ++wpText;
+
+  if (*wpText == L'\"' || *wpText == L'\'' || *wpText == L'`')
+  {
+    wchStopChar=*wpText++;
+
+    for (i=0; i < nMaxIconFile && *wpText != wchStopChar && *wpText != L'\0'; ++i, ++wpText)
+    {
+      wszIconFile[i]=*wpText;
+    }
+    wszIconFile[i]=L'\0';
+
+    while (*wpText != L',' && *wpText != L')' && *wpText != L'\0')
+      ++wpText;
+    if (*wpText == L',')
+      ++wpText;
+    else
+      goto End;
+  }
+
+  //Index
+  while (*wpText == L' ' || *wpText == L'\t') ++wpText;
+
+  *nIconIndex=(int)xatoiW(wpText, NULL);
+
+  while (*wpText != L',' && *wpText != L')' && *wpText != L'\0')
+    ++wpText;
+  if (*wpText == L',')
+    ++wpText;
+  else
+    goto End;
+
+  //End
+  End:
+  if (*wpText == L')')
+    ++wpText;
+  if (wppText) *wppText=wpText;
+}
+
+int TranslateFileString(const wchar_t *wpString, wchar_t *wszBuffer, int nBufferSize)
+{
+  //%a -AkelPad directory, %% -%
+  wchar_t *wpExeDir=wszExeDir;
+  wchar_t *wszSource;
+  wchar_t *wpSource;
+  wchar_t *wpTarget=wszBuffer;
+  wchar_t *wpTargetMax=wszBuffer + (wszBuffer?nBufferSize:0x7FFFFFFF);
+  int nStringLen;
+  BOOL bStringStart=TRUE;
+
+  //Expand environment strings
+  nStringLen=ExpandEnvironmentStringsWide(wpString, NULL, 0);
+
+  if (wszSource=(wchar_t *)GlobalAlloc(GPTR, nStringLen * sizeof(wchar_t)))
+  {
+    ExpandEnvironmentStringsWide(wpString, wszSource, nStringLen);
+
+    //Expand plugin variables
+    for (wpSource=wszSource; *wpSource && wpTarget < wpTargetMax;)
+    {
+      if (bStringStart && *wpSource == L'%')
+      {
+        if (*++wpSource == L'%')
+        {
+          ++wpSource;
+          if (wszBuffer) *wpTarget=L'%';
+          ++wpTarget;
+        }
+        else if (*wpSource == L'a' || *wpSource == L'A')
+        {
+          ++wpSource;
+          wpTarget+=xstrcpynW(wszBuffer?wpTarget:NULL, wpExeDir, wpTargetMax - wpTarget) - !wszBuffer;
+        }
+      }
+      else
+      {
+        if (*wpSource != L'\"' && *wpSource != L'\'' && *wpSource != L'`')
+          bStringStart=FALSE;
+        if (wszBuffer) *wpTarget=*wpSource;
+        ++wpTarget;
+        ++wpSource;
+      }
+    }
+    if (wpTarget < wpTargetMax)
+    {
+      if (wszBuffer)
+        *wpTarget=L'\0';
+      else
+        ++wpTarget;
+    }
+    GlobalFree((HGLOBAL)wszSource);
+  }
+  return (int)(wpTarget - wszBuffer);
+}
+
+INT_PTR EscapeString(const wchar_t *wpInput, INT_PTR nInputLen, wchar_t *wszOutput)
+{
+  //Escape: \ -> \\ and " -> \"
+  const wchar_t *wpInputMax=wpInput + nInputLen;
+  wchar_t *wpOutput=wszOutput;
+
+  for (; wpInput < wpInputMax; ++wpInput)
+  {
+    if (*wpInput == L'\\')
+    {
+      if (wszOutput)
+      {
+        *wpOutput++=L'\\';
+        *wpOutput++=L'\\';
+      }
+      else wpOutput+=2;
+    }
+    else if (*wpInput == L'\"')
+    {
+      if (wszOutput)
+      {
+        *wpOutput++=L'\\';
+        *wpOutput++=L'\"';
+      }
+      else wpOutput+=2;
+    }
+    else
+    {
+      if (wszOutput)
+        *wpOutput++=*wpInput;
+      else
+        wpOutput+=1;
+    }
+  }
+  return (wpOutput - wszOutput);
+}
+
+INT_PTR UnescapeString(const wchar_t *wpInput, INT_PTR nInputLen, wchar_t *wszOutput)
+{
+  //Unescape: \\ -> \ and \" -> "
+  const wchar_t *wpInputMax=wpInput + nInputLen;
+  wchar_t *wpOutput=wszOutput;
+
+  for (; wpInput < wpInputMax; ++wpInput)
+  {
+    if (*wpInput == L'\\')
+      ++wpInput;
+
+    if (wszOutput)
+      *wpOutput++=*wpInput;
+    else
+      wpOutput+=1;
+  }
+  return (wpOutput - wszOutput);
+}
+
+INT_PTR GetEscapeParam(const wchar_t *wpText, const wchar_t **wpParamStart, const wchar_t **wpParamEnd, const wchar_t **wpTextNext)
+{
+  const wchar_t *wpCount;
+  wchar_t wchStopChar;
+
+  while (*wpText == L' ' || *wpText == L'\t') ++wpText;
+
+  if (*wpText == L'\'' || *wpText == L'`')
+  {
+    wchStopChar=*wpText;
+    wpCount=++wpText;
+
+    //Parse: 'param' or `param`
+    while (*wpCount != wchStopChar && *wpCount != L'\r' && *wpCount != L'\0')
+      ++wpCount;
+  }
+  else if (*wpText == L'\"')
+  {
+    wpCount=++wpText;
+
+    //Parse: "escape param \"C:\\1.txt\""
+    while (*wpCount != L'\"' && *wpCount != L'\r' && *wpCount != L'\0')
+    {
+      if (*wpCount == L'\\')
+      {
+        if (*++wpCount == L'\r' || *wpCount == L'\0')
+          break;
+      }
+      ++wpCount;
+    }
+  }
+  else
+  {
+    wpCount=wpText;
+
+    //Parse: param1 param2 param3
+    while (*wpCount != L' ' && *wpCount != L'\t' && *wpCount != L'\r' && *wpCount != L'\0')
+      ++wpCount;
+  }
+  *wpParamStart=wpText;
+  *wpParamEnd=wpCount;
+
+  if (*wpCount != L'\r' && *wpCount != L'\0')
+    *wpTextNext=wpCount + 1;
+  else
+    *wpTextNext=wpCount;
+  return *wpParamEnd - *wpParamStart;
+}
+
+INT_PTR StrToArray(const wchar_t *wpStr, void *lpArray, INT_PTR nArraySize, int nArrayItemSize, const wchar_t **wpNextStr)
+{
+  const wchar_t *wpCount;
+  BYTE *lpCount=lpArray;
+  BYTE *lpMaxArray=lpCount + nArraySize;
+  INT_PTR nNumber;
+
+  for (wpCount=wpStr; *wpCount && lpCount < lpMaxArray; ++wpCount, lpCount+=nArrayItemSize)
+  {
+    nNumber=xatoiW(wpCount, &wpCount);
+    xmemcpy(lpCount, &nNumber, nArrayItemSize);
+    if (*wpCount != L';') break;
+  }
+  if (wpNextStr) *wpNextStr=wpCount;
+  return wpCount - wpStr;
+}
+
 BOOL SelectColorDialog(HWND hWndOwner, COLORREF *crColor)
 {
   COLORREF crCustColors[16];
@@ -4937,10 +5426,7 @@ void GetPosFromChar(HWND hWnd, INT_PTR nCharIndex, POINT *pt)
     pt->x=LOWORD(dwPosition);
     pt->y=HIWORD(dwPosition);
   }
-  else
-  {
-    SendMessage(hWnd, EM_POSFROMCHAR, (WPARAM)pt, nCharIndex);
-  }
+  else SendMessage(hWnd, EM_POSFROMCHAR, (WPARAM)pt, nCharIndex);
 }
 
 
@@ -4959,10 +5445,12 @@ void ReadSyntaxFiles()
   HANDLE hSearch;
   wchar_t wszSyntaxFileName[MAX_PATH];
   wchar_t wszVarThemeName[MAX_PATH];
+  wchar_t *wpParamStart;
   wchar_t *wpCount;
   wchar_t *wpWildcard;
   BOOL bQuoteString;
   int nWildcardLen;
+  int nParamCount;
   DWORD a;
   DWORD b;
 
@@ -4985,18 +5473,35 @@ void ReadSyntaxFiles()
           lpSyntaxFile->bCache=TRUE;
 
           //Parse line
-          //bat.coder=3B9F9A0001CE66CC:"*.bat" "*.cmd"
-          for (wpCount=lpKey->wszString; *wpCount && *wpCount != L'\"'; ++wpCount)
+          //bat.coder=3B9F9A0001CE66CC,1:"*.bat" "*.cmd"
+          wpParamStart=lpKey->wszString;
+          nParamCount=0;
+
+          for (wpCount=wpParamStart; *wpCount && *wpCount != L'\"'; ++wpCount)
           {
-            if (*wpCount == L':')
+            if (*wpCount == L',' || *wpCount == L':')
             {
-              if (wpCount - lpKey->wszString == 16)
+              if (nParamCount == 0)
               {
-                lpSyntaxFile->ftTimeStamp.dwLowDateTime=(DWORD)hex2decW(lpKey->wszString, 8);
-                lpSyntaxFile->ftTimeStamp.dwHighDateTime=(DWORD)hex2decW(lpKey->wszString + 8, 8);
-                ++wpCount;
+                if (wpCount - wpParamStart == 16)
+                {
+                  lpSyntaxFile->ftTimeStamp.dwLowDateTime=(DWORD)hex2decW(lpKey->wszString, 8);
+                  lpSyntaxFile->ftTimeStamp.dwHighDateTime=(DWORD)hex2decW(lpKey->wszString + 8, 8);
+                  wpParamStart=wpCount + 1;
+                  ++nParamCount;
+                }
               }
-              break;
+              else if (nParamCount == 1)
+              {
+                lpSyntaxFile->bReserveCacheWildcard=(BOOL)xatoiW(wpParamStart, NULL);
+                wpParamStart=wpCount + 1;
+                ++nParamCount;
+              }
+              if (*wpCount == L':')
+              {
+                ++wpCount;
+                break;
+              }
             }
           }
 
@@ -5046,7 +5551,8 @@ void ReadSyntaxFiles()
                 //Syntax file was modified
                 lpSyntaxFile->bCache=FALSE;
 
-                StackFreeWildcard(&lpSyntaxFile->hWildcardStack);
+                if (!lpSyntaxFile->bReserveCacheWildcard)
+                  StackFreeWildcard(&lpSyntaxFile->hWildcardStack);
                 StackLoadSyntaxFile(&hSyntaxFilesStack, lpSyntaxFile);
                 dwSaveCache|=SC_SAVE;
               }
@@ -5188,9 +5694,9 @@ void SaveCache(DWORD dwFlags)
         {
           nStrLen+=(int)xprintfW(NULL, L"\"%s\" ", lpWildElement->wpWildcard) - 1;
         }
-        if (wszStr=(wchar_t *)GlobalAlloc(GMEM_FIXED, (17 + nStrLen + 2) * sizeof(wchar_t)))
+        if (wszStr=(wchar_t *)GlobalAlloc(GMEM_FIXED, (30 + nStrLen + 2) * sizeof(wchar_t)))
         {
-          nStrLen=(int)xprintfW(wszStr, L"%08X%08X:", lpSyntaxFile->ftTimeStamp.dwLowDateTime, lpSyntaxFile->ftTimeStamp.dwHighDateTime);
+          nStrLen=(int)xprintfW(wszStr, L"%08X%08X%s:", lpSyntaxFile->ftTimeStamp.dwLowDateTime, lpSyntaxFile->ftTimeStamp.dwHighDateTime, lpSyntaxFile->bReserveCacheWildcard?L",1":L"");
 
           for (lpWildElement=lpSyntaxFile->hWildcardStack.first; lpWildElement; lpWildElement=lpWildElement->next)
           {
@@ -5413,7 +5919,7 @@ void SaveOptions(DWORD dwFlags)
     if ((dwFlags & OF_GENERAL_ACTIVETHEME) || (dwFlags & OF_GENERAL_ALLTHEMES))
     {
       if (lpVarThemeActive)
-        WideOption(hOptions, L"VarThemeActive", PO_STRING, (LPBYTE)lpVarThemeActive->wszVarThemeName, (lstrlenW(lpVarThemeActive->wszVarThemeName) + 1) * sizeof(wchar_t));
+        WideOption(hOptions, L"VarThemeActive", PO_STRING, (LPBYTE)lpVarThemeActive->wszVarThemeName, ((int)xstrlenW(lpVarThemeActive->wszVarThemeName) + 1) * sizeof(wchar_t));
     }
     if ((dwFlags & OF_GENERAL_GLOBALTHEME) || (dwFlags & OF_GENERAL_ALLTHEMES))
     {
@@ -5424,13 +5930,13 @@ void SaveOptions(DWORD dwFlags)
     if (dwFlags & OF_GENERAL_THEMELINK)
     {
       if (wszVarThemeLink)
-        WideOption(hOptions, L"VarThemeLink", PO_STRING, (LPBYTE)wszVarThemeLink, (lstrlenW(wszVarThemeLink) + 1) * sizeof(wchar_t));
+        WideOption(hOptions, L"VarThemeLink", PO_STRING, (LPBYTE)wszVarThemeLink, ((int)xstrlenW(wszVarThemeLink) + 1) * sizeof(wchar_t));
     }
     if (dwFlags & OF_GENERAL_SETTINGS)
     {
       WideOption(hOptions, L"UseCache", PO_DWORD, (LPBYTE)&dwUseCache, sizeof(DWORD));
       WideOption(hOptions, L"DefaultAliasEnable", PO_DWORD, (LPBYTE)&bDefaultAliasEnable, sizeof(DWORD));
-      WideOption(hOptions, L"DefaultAlias", PO_STRING, (LPBYTE)wszDefaultAlias, (lstrlenW(wszDefaultAlias) + 1) * sizeof(wchar_t));
+      WideOption(hOptions, L"DefaultAlias", PO_STRING, (LPBYTE)wszDefaultAlias, ((int)xstrlenW(wszDefaultAlias) + 1) * sizeof(wchar_t));
     }
 
     SaveHighLightOptions(hOptions, dwFlags);
@@ -5508,6 +6014,10 @@ const wchar_t* GetLangStringW(LANGID wLangID, int nStringID)
       return L"\x041F\x0435\x0440\x0435\x043C\x0435\x043D\x043D\x0430\x044F";
     if (nStringID == STRID_VALUE)
       return L"\x0417\x043D\x0430\x0447\x0435\x043D\x0438\x0435";
+    if (nStringID == STRID_MAKEGLOBAL)
+      return L"\x0421\x0434\x0435\x043B\x0430\x0442\x044C\x0020\x0433\x043B\x043E\x0431\x0430\x043B\x044C\x043D\x043E\x0439";
+    if (nStringID == STRID_LOWPRIORITY)
+      return L"\x041D\x0438\x0437\x043A\x0438\x0439\x0020\x043F\x0440\x0438\x043E\x0440\x0438\x0442\x0435\x0442";
     if (nStringID == STRID_COLOR)
       return L"\x0426\x0432\x0435\x0442";
     if (nStringID == STRID_SYNTAXFILE)
@@ -5530,6 +6040,8 @@ const wchar_t* GetLangStringW(LANGID wLangID, int nStringID)
       return L"\"%s\" \x0441\x043E\x0434\x0435\x0440\x0436\x0438\x0442\x0020\x043E\x0448\x0438\x0431\x043A\x0443\x0020\x0432\x0020\x0440\x0435\x0433\x0443\x043B\x044F\x0440\x043D\x043E\x043C\x0020\x0432\x044B\x0440\x0430\x0436\x0435\x043D\x0438\x0438 \"%.%ds\"";
     if (nStringID == STRID_REGEXP_FIXEDLENGTH)
       return L"\"%s\" \x0441\x043E\x0434\x0435\x0440\x0436\x0438\x0442\x0020\x0440\x0435\x0433\x0443\x043B\x044F\x0440\x043D\x043E\x0435\x0020\x0432\x044B\x0440\x0430\x0436\x0435\x043D\x0438\x0435\x0020\x043D\x0435\x0020\x0444\x0438\x043A\x0441\x0438\x0440\x043E\x0432\x0430\x043D\x043D\x043E\x0439\x0020\x0434\x043B\x0438\x043D\x044B \"%.%ds\"";
+    if (nStringID == STRID_UNKNOWNSECTION)
+      return L"\"%s\" (\x0441\x043C\x0435\x0449\x0435\x043D\x0438\x0435 %Id) \x0441\x043E\x0434\x0435\x0440\x0436\x0438\x0442\x0020\x043D\x0435\x0438\x0437\x0432\x0435\x0441\x0442\x043D\x043E\x0435\x0020\x0438\x043C\x044F\x0020\x0441\x0435\x043A\x0446\x0438\x0438 \"%s\".";
     if (nStringID == STRID_UNKNOWNSYNTAXFILE)
       return L"\x041D\x0435\x0020\x0443\x0434\x0430\x0435\x0442\x0441\x044F\x0020\x0430\x0441\x0441\x043E\x0446\x0438\x0438\x0440\x043E\x0432\x0430\x0442\x044C\x0020\x0442\x0435\x043C\x0443 \"%s\" \x0441\x0020\x0444\x0430\x0439\x043B\x043E\x043C \"%s\": \x043D\x0435\x0438\x0437\x0432\x0435\x0441\x0442\x043D\x044B\x0439\x0020\x0441\x0438\x043D\x0442\x0430\x043A\x0441\x0438\x0447\x0435\x0441\x043A\x0438\x0439\x0020\x0444\x0430\x0439\x043B.";
     if (nStringID == STRID_UNKNOWNVARTHEME)
@@ -5622,20 +6134,28 @@ const wchar_t* GetLangStringW(LANGID wLangID, int nStringID)
       return L"\x041A\x0020\x043F\x0440\x0435\x0434\x044B\x0434\x0443\x0449\x0435\x043C\x0443";
 
     //AutoComplete
+    if (nStringID == STRID_AUTOLIST)
+      return L"\x0410\x0432\x0442\x043E\x043C\x0430\x0442\x0438\x0447\x0435\x0441\x043A\x0438\x0439\x0020\x0441\x043F\x0438\x0441\x043E\x043A";
+    if (nStringID == STRID_AUTOLIST_PRE)
+      return L"\x041F\x043E\x043A\x0430\x0437\x0430\x0442\x044C\x0020\x043F\x043E\x0441\x043B\x0435";
+    if (nStringID == STRID_AFTERCHAR_POST)
+      return L"\x0441\x0438\x043C\x0432\x043E\x043B\x043E\x0432";
+    if (nStringID == STRID_TRANSPARENCY)
+      return L"\x041F\x0440\x043E\x0437\x0440\x0430\x0447\x043D\x043E\x0441\x0442\x044C";
+    if (nStringID == STRID_ALPHA)
+      return L"\x0410\x043B\x044C\x0444\x0430";
     if (nStringID == STRID_HOTKEYS)
       return L"\x0413\x043E\x0440\x044F\x0447\x0438\x0435\x0020\x043A\x043B\x0430\x0432\x0438\x0448\x0438";
     if (nStringID == STRID_COMPLETEWITHLIST)
       return L"\x0414\x043E\x043F\x043E\x043B\x043D\x0438\x0442\x044C\x0020\x0441\x043E\x0020\x0441\x043F\x0438\x0441\x043A\x043E\x043C";
+    if (nStringID == STRID_COMPLETEWITHOUTLIST)
+      return L"\x0414\x043E\x043F\x043E\x043B\x043D\x0438\x0442\x044C\x0020\x0431\x0435\x0437\x0020\x0441\x043F\x0438\x0441\x043A\x0430";
+    if (nStringID == STRID_COMPLETEWITHOUTLIST_PRE)
+      return L"\x0414\x043E\x043F\x043E\x043B\x043D\x0438\x0442\x044C\x0020\x0431\x0435\x0437\x0020\x0441\x043F\x0438\x0441\x043A\x0430\x0020\x043F\x043E\x0441\x043B\x0435";
     if (nStringID == STRID_COMPLETENEXT)
-      return L"\x0414\x043E\x043F\x043E\x043B\x043D\x0438\x0442\x044C\x0020\x0431\x0435\x0437\x0020\x0441\x043F\x0438\x0441\x043A\x0430\x0020\x002F\n\x041A\x0020\x0441\x043B\x0435\x0434\x0443\x044E\x0449\x0435\x0439\x0020\x043F\x043E\x0437\x0438\x0446\x0438\x0438";
+      return L"\x041A\x0020\x0441\x043B\x0435\x0434\x0443\x044E\x0449\x0435\x0439\x0020\x043F\x043E\x0437\x0438\x0446\x0438\x0438";
     if (nStringID == STRID_COMPLETEPREV)
       return L"\x041A\x0020\x043F\x0440\x0435\x0434\x044B\x0434\x0443\x044E\x0449\x0435\x0439\x0020\x043F\x043E\x0437\x0438\x0446\x0438\x0438";
-    if (nStringID == STRID_AUTOLIST)
-      return L"\x0410\x0432\x0442\x043E\x043C\x0430\x0442\x0438\x0447\x0435\x0441\x043A\x0438\x0439\x0020\x0441\x043F\x0438\x0441\x043E\x043A";
-    if (nStringID == STRID_AFTERCHAR_PRE)
-      return L"\x041F\x043E\x043A\x0430\x0437\x0430\x0442\x044C\x0020\x043F\x043E\x0441\x043B\x0435";
-    if (nStringID == STRID_AFTERCHAR_POST)
-      return L"\x0441\x0438\x043C\x0432\x043E\x043B\x043E\x0432";
     if (nStringID == STRID_DOCUMENT)
       return L"\x0414\x043E\x043A\x0443\x043C\x0435\x043D\x0442";
     if (nStringID == STRID_ADDDOCUMENTWORDS)
@@ -5654,6 +6174,10 @@ const wchar_t* GetLangStringW(LANGID wLangID, int nStringID)
       return L"\x0421\x043E\x0445\x0440\x0430\x043D\x044F\x0442\x044C\x0020\x0440\x0435\x0433\x0438\x0441\x0442\x0440\x0020\x0432\x0432\x0435\x0434\x0435\x043D\x043D\x044B\x0445\x0020\x0441\x0438\x043C\x0432\x043E\x043B\x043E\x0432";
     if (nStringID == STRID_ADDHIGHLIGHTWORDS)
       return L"\x0414\x043E\x043F\x043E\x043B\x043D\x044F\x0442\x044C\x0020\x0441\x043B\x043E\x0432\x0430\x043C\x0438\x0020\x0438\x0437\x0020\x0431\x0430\x0437\x044B\x0020\x0048\x0069\x0067\x0068\x004C\x0069\x0067\x0068\x0074\x0027\x0430\x0020\x0028\x043E\x0442\x043C\x0435\x0447\x0435\x043D\x044B\x0020\x0437\x0432\x0435\x0437\x0434\x043E\x0447\x043A\x043E\x0439\x0020\x002A\x0029";
+    if (nStringID == STRID_HLBASECOLORS)
+      return L"\x0418\x0441\x043F\x043E\x043B\x044C\x0437\x043E\x0432\x0430\x0442\x044C\x0020\x0446\x0432\x0435\x0442\x0020\x0434\x043B\x044F\x0020\x043F\x0443\x043D\x043A\x0442\x0430\x0020\x0438\x0437\x0020\x0431\x0430\x0437\x044B\x0020\x0048\x0069\x0067\x0068\x004C\x0069\x0067\x0068\x0074\x0027\x0430";
+    if (nStringID == STRID_NOSYMBOLMARK)
+      return L"\x0411\x0435\x0437\x0020\x043E\x0442\x043C\x0435\x0442\x043A\x0438\x0020\x0441\x0438\x043C\x0432\x043E\x043B\x043E\x043C\x0020\x0028\x002B\x002A\x0029\x002C\x0020\x0435\x0441\x043B\x0438\x0020\x0438\x0441\x043F\x043E\x043B\x044C\x0437\x0443\x0435\x0442\x0441\x044F\x0020\x0438\x043A\x043E\x043D\x043A\x0430\x0020\x0432\x0020\x0441\x043F\x0438\x0441\x043A\x0435";
     if (nStringID == STRID_RIGHTDELIMITERS)
       return L"\x0423\x0447\x0438\x0442\x044B\x0432\x0430\x0442\x044C\x0020\x0440\x0430\x0437\x0434\x0435\x043B\x0438\x0442\x0435\x043B\x0438\x0020\x0441\x043F\x0440\x0430\x0432\x0430\x0020\x043E\x0442\x0020\x043A\x0430\x0440\x0435\x0442\x043A\x0438";
     if (nStringID == STRID_SYNTAXDELIMITERS)
@@ -5716,6 +6240,10 @@ const wchar_t* GetLangStringW(LANGID wLangID, int nStringID)
       return L"Variable";
     if (nStringID == STRID_VALUE)
       return L"Value";
+    if (nStringID == STRID_MAKEGLOBAL)
+      return L"Make global";
+    if (nStringID == STRID_LOWPRIORITY)
+      return L"Low priority";
     if (nStringID == STRID_COLOR)
       return L"Color";
     if (nStringID == STRID_SYNTAXFILE)
@@ -5738,6 +6266,8 @@ const wchar_t* GetLangStringW(LANGID wLangID, int nStringID)
       return L"\"%s\" contain non valid regular expression \"%.%ds\"";
     if (nStringID == STRID_REGEXP_FIXEDLENGTH)
       return L"\"%s\" contain non fixed length regular expression \"%.%ds\"";
+    if (nStringID == STRID_UNKNOWNSECTION)
+      return L"\"%s\" (offset %Id) contain unknown section name \"%s\".";
     if (nStringID == STRID_UNKNOWNSYNTAXFILE)
       return L"Can't link \"%s\" theme to \"%s\" file: unknown syntax file.";
     if (nStringID == STRID_UNKNOWNVARTHEME)
@@ -5830,20 +6360,28 @@ const wchar_t* GetLangStringW(LANGID wLangID, int nStringID)
       return L"Previous level";
 
     //AutoComplete
+    if (nStringID == STRID_AUTOLIST)
+      return L"Automatic list";
+    if (nStringID == STRID_AUTOLIST_PRE)
+      return L"Show after";
+    if (nStringID == STRID_AFTERCHAR_POST)
+      return L"characters";
+    if (nStringID == STRID_TRANSPARENCY)
+      return L"Transparency";
+    if (nStringID == STRID_ALPHA)
+      return L"Alpha";
     if (nStringID == STRID_HOTKEYS)
       return L"Hotkeys";
     if (nStringID == STRID_COMPLETEWITHLIST)
       return L"Complete with list";
+    if (nStringID == STRID_COMPLETEWITHOUTLIST)
+      return L"Complete without list";
+    if (nStringID == STRID_COMPLETEWITHOUTLIST_PRE)
+      return L"Complete without list after";
     if (nStringID == STRID_COMPLETENEXT)
-      return L"Complete without list /\nGo to next position";
+      return L"Go to next position";
     if (nStringID == STRID_COMPLETEPREV)
       return L"Go to previous position";
-    if (nStringID == STRID_AUTOLIST)
-      return L"Automatic list";
-    if (nStringID == STRID_AFTERCHAR_PRE)
-      return L"Show after";
-    if (nStringID == STRID_AFTERCHAR_POST)
-      return L"characters";
     if (nStringID == STRID_DOCUMENT)
       return L"Document";
     if (nStringID == STRID_ADDDOCUMENTWORDS)
@@ -5862,6 +6400,10 @@ const wchar_t* GetLangStringW(LANGID wLangID, int nStringID)
       return L"Save typed symbols case";
     if (nStringID == STRID_ADDHIGHLIGHTWORDS)
       return L"Add words from HighLight base (marked with asterisk *)";
+    if (nStringID == STRID_HLBASECOLORS)
+      return L"Use item colors from HighLight base";
+    if (nStringID == STRID_NOSYMBOLMARK)
+      return L"No symbol mark (+*) if icon used in list";
     if (nStringID == STRID_RIGHTDELIMITERS)
       return L"Consider delimiters from right at the caret";
     if (nStringID == STRID_SYNTAXDELIMITERS)
@@ -5911,6 +6453,7 @@ void InitCommon(PLUGINDATA *pd)
     wszPluginName[i]=L'\0';
   }
   xprintfW(wszPluginTitle, GetLangStringW(wLangModule, STRID_PLUGIN), wszPluginName);
+  xstrcpynW(wszExeDir, pd->wszAkelDir, MAX_PATH);
   xprintfW(wszCoderDir, L"%s\\AkelFiles\\Plugs\\Coder", pd->wszAkelDir);
 
   //GLOBAL variable theme
@@ -5972,6 +6515,7 @@ void UninitMain()
     SaveCache(dwSaveCache);
     StackFreeSyntaxFiles(&hSyntaxFilesStack);
     StackFreeVarThemes(&hVarThemesStack);
+    StackFreeVars(&hVarThemeGlobal.hVarStack);
   }
 }
 

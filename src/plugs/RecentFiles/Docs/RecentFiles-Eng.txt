@@ -1,5 +1,5 @@
 *****************************************************************
-***              RecentFiles AkelPad plugin v3.8              ***
+***              RecentFiles AkelPad plugin v3.9              ***
 *****************************************************************
 
 2014 Shengalts Aleksander aka Instructor (Shengalts@mail.ru)

@@ -1,6 +1,6 @@
 /**
  *		Templates for AkelPad
- *		Panych Y.W. aka FeyFre (c) 2010-2013 (panych.y@gmail.com)
+ *		Panych Y.W. aka FeyFre (c) 2010-2014 (panych.y@gmail.com)
  *
  *		This piece of software is distributed under BSD license.
  *		AkelPad is property of its copyright holders.
@@ -144,7 +144,7 @@ extern void __declspec(dllexport) DllAkelPadID(PLUGINVERSION *pv)
 {
 	pv->dwAkelDllVersion=AKELDLL;
 	pv->dwExeMinVersion3x=MAKE_IDENTIFIER(-1,-1,-1,-1);
-	pv->dwExeMinVersion4x=MAKE_IDENTIFIER( 4, 7, 7, 0);
+	pv->dwExeMinVersion4x=MAKE_IDENTIFIER( 4, 8, 8, 0);
 	pv->pPluginName="Templates";
 }
 extern void __declspec(dllexport) Main(PLUGINDATA *pd)
@@ -447,9 +447,9 @@ static void CALLCONV FillTreeCtrl(HWND hTreeCtrl, LPCWSTR szPath, HTREEITEM hRoo
 					tvi.item.iSelectedImage = sfis.iIcon;
 					tvi.item.mask = TVIF_TEXT|TVIF_PARAM|TVIF_IMAGE|TVIF_SELECTEDIMAGE;
 					hNode = TreeView_InsertItem(hTreeCtrl,&tvi);
-					//! Р§С‚Рѕ-Р±С‹ РЅРµ "РѕРїС‚РёРјРёР·РёСЂРѕРІР°Р»Рѕ" РІ РІС‹Р·РѕРІ memcpy РїСЂРёС€Р»РѕСЃСЊ СѓСЃС‚Р°РЅРѕРІРёС‚СЊ РѕРїС†РёСЋ
-					//! РєРѕРјРїРёР»СЏС‚РѕСЂР° "Inline Function Expansion" РІ /Ob1
-					//! РќР° Р·РЅР°С‡РµРЅРёРµ РїРѕ-СѓРјРѕР»С‡Р°РЅРёСЋ "Default" РІ Win32 РІСЃС‘ РЅРѕСЂРјР°Р»СЊРЅРѕ, РІ x64 - РІС‹Р»Р°Р·РёС‚ memcpy
+					//! Что-бы не "оптимизировало" в вызов memcpy пришлось установить опцию
+					//! компилятора "Inline Function Expansion" в /Ob1
+					//! На значение по-умолчанию "Default" в Win32 всё нормально, в x64 - вылазит memcpy
 					xmemcpy(szChild,szPath,nPathLen*sizeof(WCHAR));
 					i = nPathLen;
 					szChild[i]=L'\\'; i++;

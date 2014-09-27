@@ -1,5 +1,5 @@
 *****************************************************************
-***              SpecialChar AkelPad plugin v6.0              ***
+***              SpecialChar AkelPad plugin v6.2              ***
 *****************************************************************
 
 2014 Shengalts Aleksander aka Instructor (Shengalts@mail.ru)
@@ -40,7 +40,7 @@ Call("SpecialChar::Settings", 1, "OLDSYMBOLS", "#RRGGBB", "#RRGGBB", BASICCOLORE
     1
       Set options for specified symbols (old method).
     "OLDSYMBOLS"
-      Symbols set separated by commas, for example: "\x20,1,\x09". Symbols are specified in hexadecimal format and can be used special characters:
+      Symbols group separated by commas, for example: "\x20,1,\x09". Symbols are specified in hexadecimal format and can be used special characters:
         1  Space
         2  Tabulation
         3  New line
@@ -55,6 +55,7 @@ Call("SpecialChar::Settings", 1, "OLDSYMBOLS", "#RRGGBB", "#RRGGBB", BASICCOLORE
     "#RRGGBB"
       Color in selection. If "0", then not changed. If 0, then default color is used.
     BASICCOLORENABLE (one of the following):
+      -3  invert text color enable flag of first symbol in group and set this value to all symbols in group.
       -2  don't change text color enable flag (default).
       -1  invert text color enable flag.
        0  turn off text color.
@@ -65,21 +66,22 @@ Call("SpecialChar::Settings", 1, "OLDSYMBOLS", "#RRGGBB", "#RRGGBB", BASICCOLORE
        0  turn off color in selection.
        1  turn on color in selection.
     "NEWSYMBOLS"
-      Symbols set, painted instead of OLDSYMBOLS, separated by commas, for example: "\xB7,\x00,\x00". Symbols are specified in hexadecimal format. Default is: "".
+      Symbols group, painted instead of OLDSYMBOLS, separated by commas, for example: "\xB7,\x00,\x00". Symbols are specified in hexadecimal format. Default is: "".
 
 Call("SpecialChar::Settings", 3, "OLDSYMBOLS", "NEWSYMBOLS", BASICCOLORENABLE, BASICFONTSTYLE, "#RRGGBB", "#RRGGBB", SELCOLORENABLE, SELFONTSTYLE, "#RRGGBB", "#RRGGBB")
   Parameters:
     3
       Set options for specified symbols (new method).
     "OLDSYMBOLS"
-      Symbols set separated by commas, for example: "\x20,-3,\x09". Symbols are specified in hexadecimal format and can be used special characters:
+      Symbols group separated by commas, for example: "\x20,-3,\x09". Symbols are specified in hexadecimal format and can be used special characters:
         -2  New line
         -3  Wrap
         -4  Indent line
         -5  End of file
     "NEWSYMBOLS"
-      Symbols set, painted instead of OLDSYMBOLS, separated by commas, for example: "\xB7,\x00,\x00". Symbols are specified in hexadecimal format. Default is: "".
+      Symbols group, painted instead of OLDSYMBOLS, separated by commas, for example: "\xB7,\x00,\x00". Symbols are specified in hexadecimal format. Default is: "".
     BASICCOLORENABLE (one of the following):
+      -3  invert text color enable flag of first symbol in group and set this value to all symbols in group.
       -2  don't change text color enable flag (default).
       -1  invert text color enable flag.
        0  turn off text color.
@@ -95,6 +97,7 @@ Call("SpecialChar::Settings", 3, "OLDSYMBOLS", "NEWSYMBOLS", BASICCOLORENABLE, B
     "#RRGGBB"
       Background color. If "0", then not changed. If 0, then default color is used.
     SELCOLORENABLE (one of the following):
+      -3  invert color in selection enable flag of first symbol in group and set this value to all symbols in group.
       -2  don't change color in selection enable flag (default).
       -1  invert color in selection enable flag.
        0  turn off color in selection.

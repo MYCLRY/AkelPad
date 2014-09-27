@@ -282,6 +282,7 @@ typedef struct {
 void CreateDock(HWND *hWndDock, DOCK **dkDock, BOOL bShow);
 void DestroyDock(HWND hWndDock, DWORD dwType);
 BOOL CALLBACK CodeFoldDockDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
+LRESULT CALLBACK NewFilterProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 BOOL CALLBACK CodeFold1SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
 BOOL CALLBACK CodeFold2SetupDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
 BOOL CALLBACK CodeFoldParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, LRESULT *lResult);
@@ -362,7 +363,7 @@ void UninitCodeFold(DWORD dwFlags);
 extern STACKFOLDWINDOW hFoldWindowsStack;
 extern FOLDWINDOW *lpCurrentFoldWindow;
 extern HWND hWndCodeFoldList;
-extern DWORD dwListTextColor;
-extern DWORD dwListBkColor;
+extern DWORD dwFoldListTextColor;
+extern DWORD dwFoldListBkColor;
 
 #endif

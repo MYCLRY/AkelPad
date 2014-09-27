@@ -242,8 +242,16 @@ static void  remove_duplicate_indexes_and_sort(INT_X* indexes, const INT size /*
 static BOOL  AutoBracketsFunc(MSGINFO* pmsgi, int nBracketType, BOOL bOverwriteMode);
 static BOOL  GetHighlightIndexes(const int nHighlightIndex, const INT_X nCharacterPosition, const CHARRANGE_X* pSelection);
 static void  GetPosFromChar(HWND hEd, const INT_X nCharacterPosition, POINTL* lpPos);
-static void  HighlightCharacter(const INT_X nCharacterPosition, const BOOL bHighlight);
+static BOOL  IsClearTypeEnabled();
 static void  CopyMemory1(void* dst, const void* src, unsigned int size);
+
+enum eHighlightFlags {
+  HF_DOHIGHLIGHT = 0x01,
+  HF_CLEARTYPE = 0x02,
+
+  HF_UNINITIALIZED = 0xFFFF
+};
+static void  HighlightCharacter(const INT_X nCharacterPosition, const unsigned int uHighlightFlags);
 
 
 /*
@@ -419,7 +427,13 @@ void OnEditCharPressed(MSGINFO* pmsgi)
   int      nBracketType;
   EDITINFO ei;
 
-  SendMessage(g_hMainWnd, AKD_GETEDITINFO, (WPARAM) NULL, (LPARAM) &ei);
+  if (SendMessage(g_hMainWnd, AKD_GETEDITINFO, (WPARAM) NULL, (LPARAM) &ei) == 0)
+  {
+    nAutoRightBracketPos = -1;
+    nAutoRightBracketType = tbtNone;
+    return;
+  }
+
   if (ei.bReadOnly)
   {
     // don't process read-only file
@@ -648,12 +662,15 @@ void OnEditGetActiveBrackets(MSGINFO* pmsgi, const BOOL bAndHighlight)
 
 void OnEditHighlightActiveBrackets(void)
 {
+  unsigned int uHighlightFlags;
   int   i, j;
   INT_X index;
   INT_X indexesToRemoveHighlight[HIGHLIGHT_INDEXES];
 
   if (bBracketsInternalRepaint)
     return;
+
+  uHighlightFlags = HF_UNINITIALIZED;
 
   for (i = 0; i < HIGHLIGHT_INDEXES; i++)
   {
@@ -675,7 +692,13 @@ void OnEditHighlightActiveBrackets(void)
     if (index >= 0)
     {
       IndexesHighlighted[i] = -1; // prevents from WM_PAINT infinite loop
-      HighlightCharacter(index, FALSE);
+      if (uHighlightFlags == HF_UNINITIALIZED)
+      {
+        uHighlightFlags = 0;
+        if (IsClearTypeEnabled())
+          uHighlightFlags |= HF_CLEARTYPE;
+      }
+      HighlightCharacter(index, uHighlightFlags);
     }
   }
 
@@ -685,7 +708,13 @@ void OnEditHighlightActiveBrackets(void)
     IndexesHighlighted[i] = index; // prevents from WM_PAINT infinite loop
     if (index >= 0)
     {
-      HighlightCharacter(index, TRUE);
+      if (uHighlightFlags == HF_UNINITIALIZED)
+      {
+        uHighlightFlags = 0;
+        if (IsClearTypeEnabled())
+          uHighlightFlags |= HF_CLEARTYPE;
+      }
+      HighlightCharacter(index, uHighlightFlags | HF_DOHIGHLIGHT);
     }
   }
 
@@ -2462,7 +2491,7 @@ static void adjustFont(const DWORD dwFontStyle, const DWORD dwFontFlags,
   }
 }
 
-static BOOL IsClearTypeEnabled()
+BOOL IsClearTypeEnabled()
 {
   BOOL bClearType;
   BOOL bFontSmoothing;
@@ -2499,7 +2528,7 @@ static BOOL IsClearTypeEnabled()
 
 #define mix_color(a, b) (BYTE)((((unsigned int)(a))*3)/8 + (((unsigned int)(b))*5)/8)
 
-/*static*/ void HighlightCharacter(const INT_X nCharacterPosition, const BOOL bHighlight)
+/*static*/ void HighlightCharacter(const INT_X nCharacterPosition, const unsigned int uHighlightFlags)
 {
   POINTL ptBegin, ptEnd;
   tCharacterHighlightData chd;
@@ -2609,7 +2638,6 @@ static BOOL IsClearTypeEnabled()
       LOGFONTW     lfW;
       //INT         sel1, sel2;
       int          nBkModePrev;
-      BOOL         bClearType;
       char         strA[2];
       wchar_t      strW[2];
 
@@ -2617,8 +2645,6 @@ static BOOL IsClearTypeEnabled()
 
       // to repaint a field under the caret
       HideCaret(hActualEditWnd);
-
-      bClearType = IsClearTypeEnabled();
 
       // at first we select a font...
       if (g_bOldWindows)
@@ -2699,7 +2725,7 @@ static BOOL IsClearTypeEnabled()
       }
       bkColor = aecc.crBk;
       textColor = aecc.crText;
-      if (bHighlight)
+      if (uHighlightFlags & HF_DOHIGHLIGHT)
       {
         //textColor = RGB(16,112,192);
         if (uBracketsHighlight & BRHLF_TEXT)
@@ -2729,11 +2755,11 @@ static BOOL IsClearTypeEnabled()
       rect.bottom = ptEnd.y;
       if (g_bOldWindows)
       {
-        if (bHighlight)
+        if (uHighlightFlags & HF_DOHIGHLIGHT)
         {
           COLORREF crOldBk = 0;
 
-          if (bClearType)
+          if (uHighlightFlags & HF_CLEARTYPE)
           {
             SetBkMode(hDC, nBkModePrev);
             crOldBk = SetBkColor(hDC, aecc.crBk);
@@ -2746,7 +2772,7 @@ static BOOL IsClearTypeEnabled()
           if (hFontOld)  SelectObject(hDC, hFontOld);
           DeleteObject(hFont);
 
-          if (bClearType)
+          if (uHighlightFlags & HF_CLEARTYPE)
           {
             SetBkColor(hDC, crOldBk);
             SetBkMode(hDC, TRANSPARENT);
@@ -2801,11 +2827,11 @@ static BOOL IsClearTypeEnabled()
       }
       else
       {
-        if (bHighlight)
+        if (uHighlightFlags & HF_DOHIGHLIGHT)
         {
           COLORREF crOldBk = 0;
 
-          if (bClearType)
+          if (uHighlightFlags & HF_CLEARTYPE)
           {
             SetBkMode(hDC, nBkModePrev);
             crOldBk = SetBkColor(hDC, aecc.crBk);
@@ -2818,7 +2844,7 @@ static BOOL IsClearTypeEnabled()
           if (hFontOld)  SelectObject(hDC, hFontOld);
           DeleteObject(hFont);
 
-          if (bClearType)
+          if (uHighlightFlags & HF_CLEARTYPE)
           {
             SetBkColor(hDC, crOldBk);
             SetBkMode(hDC, TRANSPARENT);
@@ -3185,39 +3211,40 @@ int getFileType(int* pnCurrentFileType2)
   int         nType = tftNone;
   int         nType2 = tfmNone;
 
-  SendMessage(g_hMainWnd, AKD_GETEDITINFO, (WPARAM) hActualEditWnd, (LPARAM) &ei);
-
-  if (g_bOldWindows)
+  if (SendMessage(g_hMainWnd, AKD_GETEDITINFO, (WPARAM) hActualEditWnd, (LPARAM) &ei) != 0)
   {
-    p = getFileExtA( (const char*) ei.pFile ); // file extension ptr (char *)
-    if (p)
+    if (g_bOldWindows)
     {
-      char szExtA[MAX_EXT];
-      int  len = 0;
-      while ( (len < MAX_EXT - 1) &&
-              ((szExtA[len] = ((const char*) p)[len]) != 0) )
+      p = getFileExtA( (const char*) ei.pFile ); // file extension ptr (char *)
+      if (p)
       {
-        ++len;
+        char szExtA[MAX_EXT];
+        int  len = 0;
+        while ( (len < MAX_EXT - 1) &&
+                ((szExtA[len] = ((const char*) p)[len]) != 0) )
+        {
+          ++len;
+        }
+        szExtA[len] = 0;
+        CharLowerA(szExtA); // MustDie9x does not have CharLowerW !
+        MultiByteToWideChar(CP_ACP, 0, szExtA, len, szExtW, MAX_EXT - 1);
+        szExtW[len] = 0; // file extension (wchar_t *)
       }
-      szExtA[len] = 0;
-      CharLowerA(szExtA); // MustDie9x does not have CharLowerW !
-      MultiByteToWideChar(CP_ACP, 0, szExtA, len, szExtW, MAX_EXT - 1);
-      szExtW[len] = 0; // file extension (wchar_t *)
     }
-  }
-  else
-  {
-    p = getFileExtW( (const wchar_t*) ei.pFile ); // file extension ptr (wchar_t *)
-    if (p)
+    else
     {
-      int len = 0;
-      while ( (len < MAX_EXT - 1) &&
-              ((szExtW[len] = ((const wchar_t*) p)[len]) != 0) )
+      p = getFileExtW( (const wchar_t*) ei.pFile ); // file extension ptr (wchar_t *)
+      if (p)
       {
-        ++len;
+        int len = 0;
+        while ( (len < MAX_EXT - 1) &&
+                ((szExtW[len] = ((const wchar_t*) p)[len]) != 0) )
+        {
+          ++len;
+        }
+        szExtW[len] = 0; // file extension (wchar_t *)
+        CharLowerW(szExtW);
       }
-      szExtW[len] = 0; // file extension (wchar_t *)
-      CharLowerW(szExtW);
     }
   }
 

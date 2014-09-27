@@ -1,5 +1,5 @@
 *****************************************************************
-***                 Coder AkelPad plugin v13.0                ***
+***                 Coder AkelPad plugin v14.2                ***
 *****************************************************************
 
 2014 Shengalts Aleksander aka Instructor (Shengalts@mail.ru)
@@ -109,8 +109,6 @@ Call("Coder::HighLight", 4, ID, "#RRGGBB", "#RRGGBB", DIRECTION)
     DIRECTION (one of the following):
       0 find down (default).
       1 find up.
-  Note:
-    Search is available only for non-regular expression marks.
   Example:
     Call("Coder::HighLight", 4, 0, 0, 0, 1)
 
@@ -197,7 +195,6 @@ Call("Coder::Settings", 6, "ALIAS")
     "ALIAS"
       Alias, for example: ".html". Manual theme setting will be canceled if the alias parameter is ommited.
       If alias parameter equal to "?", then the document is defined as having no theme.
-
 
 Call("Coder::Settings", 12, "ALIAS", *BOOL)
   Parameters:
@@ -331,7 +328,6 @@ Call("Coder::Settings", 20, WINDOW, *COLORTHEME, COLORTHEMELENGTH)
       return pVarTheme;
     }
 
-
 Call("Coder::Settings", 22, WINDOW, DOCUMENT, "VARNAME", *VARVALUE, *VARVALUELENGTH)
   Parameters:
     22
@@ -378,6 +374,7 @@ Call("Coder::Settings", 22, WINDOW, DOCUMENT, "VARNAME", *VARVALUE, *VARVALUELEN
 }
 "Syntax theme" Icon("%a\AkelFiles\Plugs\Coder.dll", 4)
 {
+  "1s" Call("Coder::Settings", 1, "1s")
   "Assembler" Call("Coder::Settings", 1, "asm")
   "AutoIt" Call("Coder::Settings", 1, "au3")
   "Bat" Call("Coder::Settings", 1, "bat")
@@ -423,3 +420,19 @@ Call("Coder::Settings", 22, WINDOW, DOCUMENT, "VARNAME", *VARVALUE, *VARVALUELEN
   SEPARATOR
   "Settings..." Call("Coder::Settings")
 }
+
+
+*** Structure of cache file ***
+
+[Cache]
+bat.coder=257CB20001CEE2DA:"*.bat" "*.cmd"
+cpp.coder=DCD8500001CF30A3,1:"*.cpp" "*.c"
+
+cpp.coder
+  Syntax file.
+DCD8500001CF30A3
+  Modification time of cpp.coder.
+1
+  Optional manual parameter. If 1, then do not update file types information from cpp.coder.
+"*.cpp" "*.c"
+  File types.

@@ -23,6 +23,38 @@ const ISystemFunctionVtbl MyISystemFunctionVtbl={
   SystemFunction_UnregisterCallback
 };
 
+CALLBACKBUSYNESS g_cbAsm[]={{(INT_PTR)AsmCallback1Proc,  FALSE},
+                            {(INT_PTR)AsmCallback2Proc,  FALSE},
+                            {(INT_PTR)AsmCallback3Proc,  FALSE},
+                            {(INT_PTR)AsmCallback4Proc,  FALSE},
+                            {(INT_PTR)AsmCallback5Proc,  FALSE},
+                            {(INT_PTR)AsmCallback6Proc,  FALSE},
+                            {(INT_PTR)AsmCallback7Proc,  FALSE},
+                            {(INT_PTR)AsmCallback8Proc,  FALSE},
+                            {(INT_PTR)AsmCallback9Proc,  FALSE},
+                            {(INT_PTR)AsmCallback10Proc, FALSE},
+                            {(INT_PTR)AsmCallback11Proc, FALSE},
+                            {(INT_PTR)AsmCallback12Proc, FALSE},
+                            {(INT_PTR)AsmCallback13Proc, FALSE},
+                            {(INT_PTR)AsmCallback14Proc, FALSE},
+                            {(INT_PTR)AsmCallback15Proc, FALSE},
+                            {(INT_PTR)AsmCallback16Proc, FALSE},
+                            {(INT_PTR)AsmCallback17Proc, FALSE},
+                            {(INT_PTR)AsmCallback18Proc, FALSE},
+                            {(INT_PTR)AsmCallback19Proc, FALSE},
+                            {(INT_PTR)AsmCallback20Proc, FALSE},
+                            {(INT_PTR)AsmCallback21Proc, FALSE},
+                            {(INT_PTR)AsmCallback22Proc, FALSE},
+                            {(INT_PTR)AsmCallback23Proc, FALSE},
+                            {(INT_PTR)AsmCallback24Proc, FALSE},
+                            {(INT_PTR)AsmCallback25Proc, FALSE},
+                            {(INT_PTR)AsmCallback26Proc, FALSE},
+                            {(INT_PTR)AsmCallback27Proc, FALSE},
+                            {(INT_PTR)AsmCallback28Proc, FALSE},
+                            {(INT_PTR)AsmCallback29Proc, FALSE},
+                            {(INT_PTR)AsmCallback30Proc, FALSE},
+                            {0, 0}};
+
 
 //// ISystemFunction
 
@@ -220,12 +252,12 @@ HRESULT STDMETHODCALLTYPE SystemFunction_Call(ISystemFunction *this, BSTR wpDllF
   {
     if (!hModule)
     {
-      xprintfW(wszErrorMsg, GetLangStringW(wLangModule, STRID_DEBUG_SYSCALLDLL), wszDll);
+      xprintfW(wszErrorMsg, GetLangStringW(wLangModule, STRID_DEBUG_SYSCALL), wszDll);
       return E_POINTER;
     }
     if (!lpProcedure)
     {
-      xprintfW(wszErrorMsg, GetLangStringW(wLangModule, STRID_DEBUG_SYSCALLFUNCTION), wszFunction, wszDll);
+      xprintfW(wszErrorMsg, GetLangStringW(wLangModule, STRID_DEBUG_SYSFUNCTION), wszFunction, wszDll);
       return E_POINTER;
     }
   }
@@ -239,158 +271,51 @@ HRESULT STDMETHODCALLTYPE SystemFunction_GetLastError(ISystemFunction *this, DWO
   return NOERROR;
 }
 
-HRESULT STDMETHODCALLTYPE SystemFunction_RegisterCallback(ISystemFunction *this, BSTR wpCallbackName, IDispatch *objCallback, int nArgCount, VARIANT *vtFunction)
+HRESULT STDMETHODCALLTYPE SystemFunction_RegisterCallback(ISystemFunction *this, IDispatch *objCallback, int nArgCount, VARIANT *vtFunction)
 {
   SCRIPTTHREAD *lpScriptThread=(SCRIPTTHREAD *)((IRealSystemFunction *)this)->lpScriptThread;
-  IDispatch *objScript;
-  ITypeInfo *pTypeInfo;
-  TYPEATTR *pAttr;
-  FUNCDESC *pFuncDesc;
+  wchar_t *wpLength=L"length";
+  DISPID dispidCallbackName;
   DISPPARAMS dispp;
   VARIANT vtResult;
-  DISPID dispidCallbackName;
-  int i;
   HRESULT hr=NOERROR;
 
-  if ((!objCallback || nArgCount == -1) && lpScriptThread->objActiveScript)
+  VariantInit(vtFunction);
+  if (!objCallback)
+    return hr;
+
+  if (nArgCount == -1)
   {
-    if ((hr=lpScriptThread->objActiveScript->lpVtbl->GetScriptDispatch(lpScriptThread->objActiveScript, 0, &objScript)) == S_OK)
+    //JScript only
+    if ((hr=objCallback->lpVtbl->GetIDsOfNames(objCallback, &IID_NULL, &wpLength, 1, LOCALE_USER_DEFAULT, &dispidCallbackName)) == S_OK)
     {
-      if ((hr=objScript->lpVtbl->GetIDsOfNames(objScript, &IID_NULL, &wpCallbackName, 1, LOCALE_USER_DEFAULT, &dispidCallbackName)) == S_OK)
-      {
-        //Get function IDispatch
-        if (!objCallback)
-        {
-          dispp.rgvarg=NULL;
-          dispp.rgdispidNamedArgs=NULL;
-          dispp.cArgs=0;
-          dispp.cNamedArgs=0;
+      dispp.rgvarg=NULL;
+      dispp.rgdispidNamedArgs=NULL;
+      dispp.cArgs=0;
+      dispp.cNamedArgs=0;
 
-          if ((hr=objScript->lpVtbl->Invoke(objScript, dispidCallbackName, &IID_NULL, LOCALE_USER_DEFAULT, DISPATCH_PROPERTYGET, &dispp, &vtResult, 0, 0)) == S_OK)
-            objCallback=vtResult.pdispVal;
-        }
-
-        //Get function arguments count
-        if (objCallback && nArgCount == -1)
-        {
-          if ((hr=objScript->lpVtbl->GetTypeInfo(objScript, 0, LOCALE_USER_DEFAULT, &pTypeInfo)) == S_OK)
-          {
-            if ((hr=pTypeInfo->lpVtbl->GetTypeAttr(pTypeInfo, &pAttr)) == S_OK)
-            {
-              for (i=0; i < pAttr->cFuncs; ++i)
-              {
-                if ((hr=pTypeInfo->lpVtbl->GetFuncDesc(pTypeInfo, i, &pFuncDesc)) == S_OK)
-                {
-                  if (pFuncDesc->memid == dispidCallbackName)
-                  {
-                    nArgCount=pFuncDesc->cParams;
-                    pTypeInfo->lpVtbl->ReleaseFuncDesc(pTypeInfo, pFuncDesc);
-                    break;
-                  }
-                  pTypeInfo->lpVtbl->ReleaseFuncDesc(pTypeInfo, pFuncDesc);
-                }
-                else break;
-              }
-              pTypeInfo->lpVtbl->ReleaseTypeAttr(pTypeInfo, pAttr);
-            }
-            pTypeInfo->lpVtbl->Release(pTypeInfo);
-          }
-        }
-      }
-      objScript->lpVtbl->Release(objScript);
+      if ((hr=objCallback->lpVtbl->Invoke(objCallback, dispidCallbackName, &IID_NULL, LOCALE_USER_DEFAULT, DISPATCH_PROPERTYGET, &dispp, &vtResult, 0, 0)) == S_OK)
+        nArgCount=(int)GetVariantValue(&vtResult, bOldWindows);
     }
   }
 
-  if (objCallback && nArgCount >= 0)
+  if (nArgCount >= 0)
   {
     CALLBACKITEM *lpCallback;
-    SYSCALLBACK lpCallbackProc;
-    int nIndex;
+    int nBusyIndex;
 
-    //Find unhooked element if any
-    if (lpCallback=StackGetCallbackByHandle(&g_hSysCallbackStack, NULL, NULL))
-      nIndex=lpCallback->nStaticIndex - 1;
-    else
-      nIndex=g_hSysCallbackStack.nElements;
-
-    //We support limited number of callbacks because with one callback we couldn't know who is called it
-    if (nIndex == 0)
-      lpCallbackProc=AsmCallback1Proc;
-    else if (nIndex == 1)
-      lpCallbackProc=AsmCallback2Proc;
-    else if (nIndex == 2)
-      lpCallbackProc=AsmCallback3Proc;
-    else if (nIndex == 3)
-      lpCallbackProc=AsmCallback4Proc;
-    else if (nIndex == 4)
-      lpCallbackProc=AsmCallback5Proc;
-    else if (nIndex == 5)
-      lpCallbackProc=AsmCallback6Proc;
-    else if (nIndex == 6)
-      lpCallbackProc=AsmCallback7Proc;
-    else if (nIndex == 7)
-      lpCallbackProc=AsmCallback8Proc;
-    else if (nIndex == 8)
-      lpCallbackProc=AsmCallback9Proc;
-    else if (nIndex == 9)
-      lpCallbackProc=AsmCallback10Proc;
-    else if (nIndex == 10)
-      lpCallbackProc=AsmCallback11Proc;
-    else if (nIndex == 11)
-      lpCallbackProc=AsmCallback12Proc;
-    else if (nIndex == 12)
-      lpCallbackProc=AsmCallback13Proc;
-    else if (nIndex == 13)
-      lpCallbackProc=AsmCallback14Proc;
-    else if (nIndex == 14)
-      lpCallbackProc=AsmCallback15Proc;
-    else if (nIndex == 15)
-      lpCallbackProc=AsmCallback16Proc;
-    else if (nIndex == 16)
-      lpCallbackProc=AsmCallback17Proc;
-    else if (nIndex == 17)
-      lpCallbackProc=AsmCallback18Proc;
-    else if (nIndex == 18)
-      lpCallbackProc=AsmCallback19Proc;
-    else if (nIndex == 19)
-      lpCallbackProc=AsmCallback20Proc;
-    else if (nIndex == 20)
-      lpCallbackProc=AsmCallback21Proc;
-    else if (nIndex == 21)
-      lpCallbackProc=AsmCallback22Proc;
-    else if (nIndex == 22)
-      lpCallbackProc=AsmCallback23Proc;
-    else if (nIndex == 23)
-      lpCallbackProc=AsmCallback24Proc;
-    else if (nIndex == 24)
-      lpCallbackProc=AsmCallback25Proc;
-    else if (nIndex == 25)
-      lpCallbackProc=AsmCallback26Proc;
-    else if (nIndex == 26)
-      lpCallbackProc=AsmCallback27Proc;
-    else if (nIndex == 27)
-      lpCallbackProc=AsmCallback28Proc;
-    else if (nIndex == 28)
-      lpCallbackProc=AsmCallback29Proc;
-    else if (nIndex == 29)
-      lpCallbackProc=AsmCallback30Proc;
-    else
+    if ((nBusyIndex=RetriveCallbackProc(g_cbAsm)) >= 0)
     {
-      lpCallbackProc=NULL;
-      objCallback=NULL;
-      hr=DISP_E_BADINDEX;
-    }
-
-    if (lpCallbackProc)
-    {
-      if (!lpCallback)
-        lpCallback=StackInsertCallback(&g_hSysCallbackStack);
-
-      if (lpCallback)
+      if (lpCallback=StackGetCallbackByObject(&g_hSysCallbackStack, objCallback))
       {
-        objCallback->lpVtbl->AddRef(objCallback);
-        lpCallback->hHandle=(HANDLE)(INT_PTR)lpCallbackProc;
-        lpCallback->objFunction=objCallback;
+        ++lpCallback->nRefCount;
+      }
+      else if (lpCallback=StackInsertCallback(&g_hSysCallbackStack, objCallback))
+      {
+        g_cbAsm[nBusyIndex].bBusy=TRUE;
+        lpCallback->nBusyIndex=nBusyIndex;
+        lpCallback->lpProc=g_cbAsm[nBusyIndex].lpProc;
+        lpCallback->hHandle=NULL;
         lpCallback->dwData=nArgCount;
         lpCallback->nCallbackType=CIT_SYSCALLBACK;
         lpCallback->lpScriptThread=(void *)lpScriptThread;
@@ -400,35 +325,39 @@ HRESULT STDMETHODCALLTYPE SystemFunction_RegisterCallback(ISystemFunction *this,
           lpScriptThread->hWndScriptsThreadDummy=CreateScriptsThreadDummyWindow();
         }
       }
+      else
+      {
+        objCallback=NULL;
+        hr=E_OUTOFMEMORY;
+      }
+    }
+    else
+    {
+      objCallback=NULL;
+      hr=DISP_E_BADINDEX;
     }
   }
   else if (hr == NOERROR)
   {
+    objCallback=NULL;
     hr=DISP_E_BADPARAMCOUNT;
   }
 
-  if (objCallback)
-    objCallback->lpVtbl->AddRef(objCallback);
-  VariantInit(vtFunction);
   vtFunction->vt=VT_DISPATCH;
   vtFunction->pdispVal=objCallback;
-
   return hr;
 }
 
 HRESULT STDMETHODCALLTYPE SystemFunction_UnregisterCallback(ISystemFunction *this, IDispatch *objFunction)
 {
   CALLBACKITEM *lpCallback;
+  int nBusyIndex;
 
   if (lpCallback=StackGetCallbackByObject(&g_hSysCallbackStack, objFunction))
   {
-    lpCallback->objFunction->lpVtbl->Release(lpCallback->objFunction);
-
-    //We don't use StackDeleteCallback, because stack elements is linked to static procedure addresses.
-    lpCallback->hHandle=NULL;
-    lpCallback->objFunction=NULL;
-    lpCallback->dwData=0;
-    lpCallback->lpScriptThread=NULL;
+    nBusyIndex=lpCallback->nBusyIndex;
+    if (StackDeleteCallback(lpCallback))
+      g_cbAsm[nBusyIndex].bBusy=FALSE;
   }
   return NOERROR;
 }
@@ -766,7 +695,7 @@ LRESULT AsmCallbackHelper(INT_PTR *lpnFirstArg, int nCallbackIndex, int *lpnArgS
   int nArgCount=0;
   int i;
 
-  if (lpSysCallback=StackGetCallbackByIndex(&g_hSysCallbackStack, nCallbackIndex))
+  if (lpSysCallback=StackGetCallbackByProc(&g_hSysCallbackStack, g_cbAsm[nCallbackIndex - 1].lpProc))
   {
     lpScriptThread=(SCRIPTTHREAD *)lpSysCallback->lpScriptThread;
     nArgCount=(int)lpSysCallback->dwData;

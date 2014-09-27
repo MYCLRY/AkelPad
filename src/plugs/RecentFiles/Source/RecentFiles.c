@@ -131,7 +131,7 @@ void __declspec(dllexport) DllAkelPadID(PLUGINVERSION *pv)
 {
   pv->dwAkelDllVersion=AKELDLL;
   pv->dwExeMinVersion3x=MAKE_IDENTIFIER(-1, -1, -1, -1);
-  pv->dwExeMinVersion4x=MAKE_IDENTIFIER(4, 8, 4, 0);
+  pv->dwExeMinVersion4x=MAKE_IDENTIFIER(4, 8, 8, 0);
   pv->pPluginName="RecentFiles";
 }
 
@@ -446,7 +446,8 @@ BOOL CALLBACK RecentFilesListDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM
              LOWORD(wParam) == IDOK ||
              LOWORD(wParam) == IDCANCEL)
     {
-      if (LOWORD(wParam) == IDC_ITEM_OPEN)
+      if (LOWORD(wParam) == IDC_ITEM_OPEN ||
+          (LOWORD(wParam) == IDOK && !bListChanged))
       {
         RECENTFILE *lpElement;
         OPENDOCUMENTW od;

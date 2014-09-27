@@ -7,13 +7,9 @@
 #include "StackFunc.h"
 #include "StrFunc.h"
 #include "WideFunc.h"
-
-//Include AEC functions
 #include "AkelEdit.h"
-
 #include "AkelDLL.h"
 #include "Resources\Resource.h"
-
 #include "Scripts_h.h"
 #include "IActiveScriptSite.h"
 #include "IConstants.h"
@@ -42,25 +38,30 @@
 #define STRID_JIT                   11
 #define STRID_FROMSTART             12
 #define STRID_CODE                  13
-#define STRID_DEBUG_MEMLOCATE       14
-#define STRID_DEBUG_MEMREAD         15
-#define STRID_DEBUG_MEMWRITE        16
-#define STRID_DEBUG_MEMFREE         17
-#define STRID_DEBUG_MEMLEAK         18
-#define STRID_DEBUG_SYSCALLDLL      19
-#define STRID_DEBUG_SYSCALLFUNCTION 20
-#define STRID_SCRIPT                21
-#define STRID_HOTKEY                22
-#define STRID_STATUS                23
-#define STRID_RUNNING               24
-#define STRID_WAITING               25
-#define STRID_EXEC                  26
-#define STRID_EDIT                  27
-#define STRID_ASSIGN                28
-#define STRID_PLUGIN                29
-#define STRID_OK                    30
-#define STRID_CANCEL                31
-#define STRID_CLOSE                 32
+#define STRID_CODE_MEMREAD          14
+#define STRID_CODE_MEMWRITE         15
+#define STRID_CODE_MEMFREE          16
+#define STRID_CODE_MEMLEAK          17
+#define STRID_CODE_SYSCALL          18
+#define STRID_DEBUG_MEMLOCATE       19
+#define STRID_DEBUG_MEMREAD         20
+#define STRID_DEBUG_MEMWRITE        21
+#define STRID_DEBUG_MEMFREE         22
+#define STRID_DEBUG_MEMLEAK         23
+#define STRID_DEBUG_SYSCALL         24
+#define STRID_DEBUG_SYSFUNCTION     25
+#define STRID_SCRIPT                26
+#define STRID_HOTKEY                27
+#define STRID_STATUS                28
+#define STRID_RUNNING               29
+#define STRID_WAITING               30
+#define STRID_EXEC                  31
+#define STRID_EDIT                  32
+#define STRID_ASSIGN                33
+#define STRID_PLUGIN                34
+#define STRID_OK                    35
+#define STRID_CANCEL                36
+#define STRID_CLOSE                 37
 
 #define OF_RECT        0x1
 #define OF_LASTSCRIPT  0x2
@@ -105,10 +106,13 @@ typedef struct {
 typedef struct _SCRIPTTHREAD {
   struct _SCRIPTTHREAD *next;
   struct _SCRIPTTHREAD *prev;
+  int nRefCount;
+  void *lpStack;
   HANDLE hInitMutex;
   HANDLE hExecMutex;
   BOOL bSingleCopy;
   BOOL bWaiting;
+  BOOL bQuiting;
   HANDLE hThread;
   DWORD dwThreadID;
   IActiveScript *objActiveScript;
@@ -150,6 +154,9 @@ typedef struct {
   int nElements;
 } HTHREADSTACK;
 
+#ifndef INVALID_FILE_ATTRIBUTES
+  #define INVALID_FILE_ATTRIBUTES ((DWORD)-1)
+#endif
 #ifndef LVM_SETEXTENDEDLISTVIEWSTYLE
   #define LVM_SETEXTENDEDLISTVIEWSTYLE (LVM_FIRST + 54)
 #endif
@@ -159,6 +166,10 @@ typedef struct {
 #ifndef LVS_EX_FULLROWSELECT
   #define LVS_EX_FULLROWSELECT 0x00000020
 #endif
+#ifndef SCRIPT_E_PROPAGATE
+  #define SCRIPT_E_PROPAGATE 0x80020102L
+#endif
+
 
 //Global variables
 extern char szBuffer[BUFFER_SIZE];
@@ -190,6 +201,7 @@ extern BOOL bGlobalDebugJITEnable;
 
 //Functions prototypes
 BOOL CALLBACK MainDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
+BOOL CALLBACK CodeDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
 LRESULT CALLBACK NewFilterProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 BOOL RegisterHotkey(wchar_t *wszScriptName, WORD wHotkey);
 void FillScriptList(HWND hWnd, const wchar_t *wpFilter);
@@ -204,8 +216,7 @@ SCRIPTTHREAD* StackInsertScriptThread(HTHREADSTACK *hStack);
 SCRIPTTHREAD* StackGetScriptThreadCurrent();
 SCRIPTTHREAD* StackGetScriptThreadByID(HTHREADSTACK *hStack, DWORD dwThreadID);
 SCRIPTTHREAD* StackGetScriptThreadByName(HTHREADSTACK *hStack, const wchar_t *wpScriptName);
-void StackDeleteScriptThread(HTHREADSTACK *hStack, SCRIPTTHREAD *lpScriptThread);
-void StackFreeScriptThread(HTHREADSTACK *hStack);
+BOOL StackDeleteScriptThread(SCRIPTTHREAD *lpScriptThread);
 void FreeScriptResources(SCRIPTTHREAD *lpScriptThread, BOOL bDebug);
 BOOL CloseScriptThread(SCRIPTTHREAD *lpScriptThread);
 void CloseScriptThreadAll(int *nCloseOK, int *nCloseERR);
@@ -225,7 +236,7 @@ INT_PTR ReadFileContent(wchar_t *wpFile, DWORD dwFlags, int nCodePage, BOOL bBOM
 const wchar_t* GetFileExt(const wchar_t *wpFile, int nFileLen);
 const char* GetFileNameAnsi(const char *pFile, int nFileLen);
 const wchar_t* GetFileNameWide(const wchar_t *wpFile, int nFileLen);
-int GetBaseName(const wchar_t *wpFile, wchar_t *wszBaseName, int nBaseNameMaxLen);
+int GetFileStreamOffset(const wchar_t *wpFile, int nFileLen);
 DWORD ScrollCaret(HWND hWnd);
 BOOL GetWindowPos(HWND hWnd, HWND hWndOwner, RECT *rc);
 

@@ -121,14 +121,16 @@ DataBuffer     g_TextBuf;
 BOOL           g_bSmartEndMode2    = FALSE;
 BOOL           g_bNoSelEOLMode2    = FALSE;
 BOOL           g_bSmartUpDownMode2 = FALSE;
+BOOL           g_bSmartHomeMode2   = FALSE;
 
 
-#define  MODE_NOSELEOL     0x01
-#define  MODE_SMARTEND     0x02
-#define  MODE_SMARTHOME    0x04
-#define  MODE_SMARTUPDOWN  0x08
+#define  MODE_NOSELEOL        0x01
+#define  MODE_SMARTEND        0x02
+#define  MODE_SMARTHOME       0x04
+#define  MODE_SMARTUPDOWN     0x08
+#define  MODE_SMARTBACKSPACE  0x10
 
-#define  MODE_ALL          (MODE_NOSELEOL | MODE_SMARTEND | MODE_SMARTHOME | MODE_SMARTUPDOWN)
+#define  MODE_ALL          (MODE_NOSELEOL | MODE_SMARTEND | MODE_SMARTHOME | MODE_SMARTUPDOWN | MODE_SMARTBACKSPACE)
 
 #define  MAX_TEXTBUF_SIZE  (16*1024)
 
@@ -142,10 +144,12 @@ void OnEditSelKeyDown(HWND hEdit, unsigned int uKey);
 void OnEditSelKeyUp(HWND hEdit, unsigned int uKey);
 void OnEditSelectionChanged(HWND hEdit, CHARRANGE64* cr);
 BOOL OnEditEndKeyDown(HWND hEdit, LPARAM lParam);
+BOOL OnEditBackspaceKeyDown(HWND hEdit, LPARAM lParam);
 BOOL OnEditHomeKeyDown(HWND hEdit, LPARAM lParam);
 BOOL OnEditArrowDownOrUpKeyDown(HWND hEdit, WPARAM wKey);
 BOOL SmartHomeA(HWND hEdit);
 BOOL SmartHomeW(HWND hEdit);
+BOOL GetLineSpaces(AECHARINDEX *ciFirstCharInLine, int nWrapCharInLine, int nTabStopSize, int *lpnLineSpaces);
 void CheckEditNotification(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
 
@@ -155,12 +159,12 @@ void __declspec(dllexport) DllAkelPadID(PLUGINVERSION *pv)
 {
     pv->dwAkelDllVersion  = AKELDLL;
     pv->dwExeMinVersion3x = MAKE_IDENTIFIER(-1, -1, -1, -1);
-  pv->dwExeMinVersion4x=MAKE_IDENTIFIER(4, 8, 4, 0);
+    pv->dwExeMinVersion4x = MAKE_IDENTIFIER(4, 8, 8, 0);
     pv->pPluginName = "SmartSel";
 }
 
 // Plugin extern function
-/* extern "C" */ 
+/* extern "C" */
 void __declspec(dllexport) NoSelEOL(PLUGINDATA *pd)
 {
     pd->dwSupport |= PDS_SUPPORTALL;
@@ -178,13 +182,37 @@ void __declspec(dllexport) NoSelEOL(PLUGINDATA *pd)
     {
         Initialize(pd, MODE_NOSELEOL);
     }
-  
+
     // Stay in memory, and show as active
     pd->nUnload = UD_NONUNLOAD_ACTIVE;
 }
 
 // Plugin extern function
-/* extern "C" */ 
+/* extern "C" */
+void __declspec(dllexport) SmartBackspace(PLUGINDATA *pd)
+{
+    pd->dwSupport |= PDS_SUPPORTALL;
+    if ( pd->dwSupport & PDS_GETSUPPORT )
+        return;
+
+    // Is plugin already loaded?
+    if ( g_Plugin.dwInitializedMode & MODE_SMARTBACKSPACE )
+    {
+        Uninitialize(MODE_SMARTBACKSPACE);
+        pd->nUnload = UD_NONUNLOAD_NONACTIVE;
+        return;
+    }
+    else
+    {
+        Initialize(pd, MODE_SMARTBACKSPACE);
+    }
+
+    // Stay in memory, and show as active
+    pd->nUnload = UD_NONUNLOAD_ACTIVE;
+}
+
+// Plugin extern function
+/* extern "C" */
 void __declspec(dllexport) SmartHome(PLUGINDATA *pd)
 {
     pd->dwSupport |= PDS_SUPPORTALL;
@@ -202,13 +230,13 @@ void __declspec(dllexport) SmartHome(PLUGINDATA *pd)
     {
         Initialize(pd, MODE_SMARTHOME);
     }
-  
+
     // Stay in memory, and show as active
     pd->nUnload = UD_NONUNLOAD_ACTIVE;
 }
 
 // Plugin extern function
-/* extern "C" */ 
+/* extern "C" */
 void __declspec(dllexport) SmartEnd(PLUGINDATA *pd)
 {
     pd->dwSupport |= PDS_SUPPORTALL;
@@ -226,13 +254,13 @@ void __declspec(dllexport) SmartEnd(PLUGINDATA *pd)
     {
         Initialize(pd, MODE_SMARTEND);
     }
-  
+
     // Stay in memory, and show as active
     pd->nUnload = UD_NONUNLOAD_ACTIVE;
 }
 
 // Plugin extern function
-/* extern "C" */ 
+/* extern "C" */
 void __declspec(dllexport) SmartUpDown(PLUGINDATA *pd)
 {
     pd->dwSupport |= PDS_SUPPORTALL;
@@ -250,13 +278,13 @@ void __declspec(dllexport) SmartUpDown(PLUGINDATA *pd)
     {
         Initialize(pd, MODE_SMARTUPDOWN);
     }
-  
+
     // Stay in memory, and show as active
     pd->nUnload = UD_NONUNLOAD_ACTIVE;
 }
 
 // Plugin extern function
-/* extern "C" */ 
+/* extern "C" */
 void __declspec(dllexport) altNoSelEOL(PLUGINDATA *pd)
 {
     pd->dwSupport |= PDS_SUPPORTALL;
@@ -264,12 +292,12 @@ void __declspec(dllexport) altNoSelEOL(PLUGINDATA *pd)
         return;
 
     g_bNoSelEOLMode2 = !g_bNoSelEOLMode2;
-    
+
     pd->nUnload = g_bNoSelEOLMode2 ? UD_NONUNLOAD_ACTIVE : UD_NONUNLOAD_NONACTIVE;
 }
 
 // Plugin extern function
-/* extern "C" */ 
+/* extern "C" */
 void __declspec(dllexport) altSmartEnd(PLUGINDATA *pd)
 {
     pd->dwSupport |= PDS_SUPPORTALL;
@@ -277,12 +305,12 @@ void __declspec(dllexport) altSmartEnd(PLUGINDATA *pd)
         return;
 
     g_bSmartEndMode2 = !g_bSmartEndMode2;
-    
+
     pd->nUnload = g_bSmartEndMode2 ? UD_NONUNLOAD_ACTIVE : UD_NONUNLOAD_NONACTIVE;
 }
 
 // Plugin extern function
-/* extern "C" */ 
+/* extern "C" */
 void __declspec(dllexport) altSmartUpDown(PLUGINDATA *pd)
 {
     pd->dwSupport |= PDS_SUPPORTALL;
@@ -290,12 +318,25 @@ void __declspec(dllexport) altSmartUpDown(PLUGINDATA *pd)
         return;
 
     g_bSmartUpDownMode2 = !g_bSmartUpDownMode2;
-    
+
     pd->nUnload = g_bSmartUpDownMode2 ? UD_NONUNLOAD_ACTIVE : UD_NONUNLOAD_NONACTIVE;
 }
 
+// Plugin extern function
+/* extern "C" */
+void __declspec(dllexport) altSmartHome(PLUGINDATA *pd)
+{
+    pd->dwSupport |= PDS_SUPPORTALL;
+    if ( pd->dwSupport & PDS_GETSUPPORT )
+        return;
+
+    g_bSmartHomeMode2 = !g_bSmartHomeMode2;
+
+    pd->nUnload = g_bSmartHomeMode2 ? UD_NONUNLOAD_ACTIVE : UD_NONUNLOAD_NONACTIVE;
+}
+
 // Entry point
-/* extern "C" */ 
+/* extern "C" */
 BOOL WINAPI DllMain(HINSTANCE hInstDLL, DWORD dwReason, LPVOID lpReserved)
 {
     switch ( dwReason )
@@ -328,11 +369,11 @@ void Initialize(PLUGINDATA* pd, DWORD dwMode)
 
     // dwMode mask (depends on possible mode flags)
     dwMode &= (MODE_ALL);
-    
+
     if ( dwMode & MODE_NOSELEOL )
     {
-        // this SubClassing is required 
-        // only for MODE_NOSELEOL 
+        // this SubClassing is required
+        // only for MODE_NOSELEOL
         if ( (g_Plugin.dwInitializedMode & MODE_NOSELEOL) == 0 )
         {
             clearSelectionState(&g_SelState);
@@ -351,10 +392,10 @@ void Initialize(PLUGINDATA* pd, DWORD dwMode)
             }
         }
     }
-  
+
     if ( dwMode )
     {
-        // this SubClassing is required 
+        // this SubClassing is required
         // for all MODE_NOSELEOL, MODE_SMARTEND, MODE_SMARTHOME and MODE_SMARTUPDOWN
         if ( !g_Plugin.dwInitializedMode )
         {
@@ -378,14 +419,14 @@ void Uninitialize(DWORD dwMode)
 
     if ( dwMode & MODE_NOSELEOL )
     {
-        // these functions were subclassed 
+        // these functions were subclassed
         // only for MODE_NOSELEOL
         if ( g_Plugin.dwInitializedMode & MODE_NOSELEOL )
         {
             if ( g_Plugin.pMainProcData )
             {
                 // Remove subclass (main window)
-                SendMessage( g_Plugin.hMainWnd, AKD_SETMAINPROC, 
+                SendMessage( g_Plugin.hMainWnd, AKD_SETMAINPROC,
                     (WPARAM) NULL, (LPARAM) &g_Plugin.pMainProcData );
                 g_Plugin.pMainProcData = NULL;
             }
@@ -401,7 +442,7 @@ void Uninitialize(DWORD dwMode)
 
     if ( dwMode )
     {
-        // this function was subclassed 
+        // this function was subclassed
         // for all MODE_NOSELEOL, MODE_SMARTEND, MODE_SMARTHOME and MODE_SMARTUPDOWN
         if ( g_Plugin.dwInitializedMode == dwMode ) // dwMode is already masked
         {
@@ -417,8 +458,9 @@ void Uninitialize(DWORD dwMode)
 
     g_Plugin.dwInitializedMode -= dwMode;
 
-    if ( !(g_Plugin.dwInitializedMode & MODE_SMARTEND) && 
-         !(g_Plugin.dwInitializedMode & MODE_SMARTHOME) )
+    if ( !(g_Plugin.dwInitializedMode & MODE_SMARTEND) &&
+         !(g_Plugin.dwInitializedMode & MODE_SMARTHOME) && 
+         !(g_Plugin.dwInitializedMode & MODE_SMARTBACKSPACE) )
     {
         bufFree(&g_TextBuf);
     }
@@ -432,6 +474,19 @@ LRESULT CALLBACK NewEditProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         case WM_KEYDOWN:
         case WM_SYSKEYDOWN:
         {
+            if ( g_Plugin.dwInitializedMode & MODE_SMARTBACKSPACE )
+            {
+                if ( wParam == VK_BACK )
+                {
+                    if ( ((GetKeyState(VK_CONTROL) & 0x80) == 0) &&
+                         ((GetKeyState(VK_MENU) & 0x80) == 0) )
+                    {
+                        if ( OnEditBackspaceKeyDown(hWnd, lParam) )
+                            return TRUE;
+                    }
+                }
+            }
+
             if ( g_Plugin.dwInitializedMode & MODE_SMARTHOME )
             {
                 if ( wParam == VK_HOME )
@@ -558,7 +613,7 @@ LRESULT CALLBACK NewEditProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             break;
         }
     }
-    
+
     if ( g_Plugin.pEditProcData && g_Plugin.pEditProcData->NextProc )
         return g_Plugin.pEditProcData->NextProc(hWnd, uMsg, wParam, lParam);
     else
@@ -579,12 +634,12 @@ LRESULT CALLBACK NewFrameProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam
                 {
                     EDITINFO ei;
 
-                    SendMessage( g_Plugin.hMainWnd, 
+                    SendMessage( g_Plugin.hMainWnd,
                         AKD_GETEDITINFO, (WPARAM) NULL, (LPARAM) &ei );
 
                     if ( ei.hWndEdit == pnmh->hwndFrom )
                     {
-                        
+
                     }
                 }
             }
@@ -604,9 +659,9 @@ LRESULT CALLBACK NewFrameProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam
             break;
         }
     }
-    
+
     CheckEditNotification(hWnd, uMsg, wParam, lParam);
-    
+
     if ( g_Plugin.pFrameProcData && g_Plugin.pFrameProcData->NextProc )
         return g_Plugin.pFrameProcData->NextProc(hWnd, uMsg, wParam, lParam);
     else
@@ -627,12 +682,12 @@ LRESULT CALLBACK NewMainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 {
                     EDITINFO ei;
 
-                    SendMessage( g_Plugin.hMainWnd, 
+                    SendMessage( g_Plugin.hMainWnd,
                         AKD_GETEDITINFO, (WPARAM) NULL, (LPARAM) &ei );
 
                     if ( ei.hWndEdit == pnmh->hwndFrom )
                     {
-                        
+
                     }
                 }
             }
@@ -656,9 +711,9 @@ LRESULT CALLBACK NewMainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             break;
         }
     }
-    
+
     CheckEditNotification(hWnd, uMsg, wParam, lParam);
-    
+
     if ( g_Plugin.pMainProcData && g_Plugin.pMainProcData->NextProc )
         return g_Plugin.pMainProcData->NextProc(hWnd, uMsg, wParam, lParam);
     else
@@ -686,12 +741,12 @@ void OnEditSelKeyUp(HWND hEdit, unsigned int uKey)
     SendMessage( hEdit, EM_EXGETSEL64, 0, (LPARAM) &SelKeyUpRange );
     if ( SelKeyUpRange.cpMin != SelKeyUpRange.cpMax )
     {
-        if ( (SelKeyUpRange.cpMax != g_SelState.SelKeyDownRange.cpMax) || 
+        if ( (SelKeyUpRange.cpMax != g_SelState.SelKeyDownRange.cpMax) ||
              (SelKeyUpRange.cpMin > g_SelState.SelKeyDownRange.cpMin) ||
              (g_SelState.bSpecialAction && (SelKeyUpRange.cpMin == g_SelState.SelKeyDownRange.cpMin)) )
         {
             // selection from right to left is not processed here
-            // (the condition for cpMin works as "==" in case of 
+            // (the condition for cpMin works as "==" in case of
             //  mouse-triple-click and left-margin-mouse-click)
             OnEditSelectionChanged(hEdit, &SelKeyUpRange);
         }
@@ -787,6 +842,7 @@ void OnEditSelectionChanged(HWND hEdit, CHARRANGE64* cr)
                     AESELECTION aes;
 
                     aes.dwFlags = AESELT_LOCKSCROLL;
+                    aes.dwType = 0;
                     SendMessage( hEdit, AEM_RICHOFFSETTOINDEX, cr->cpMin, (LPARAM) &aes.crSel.ciMin );
                     SendMessage( hEdit, AEM_RICHOFFSETTOINDEX, cr->cpMax, (LPARAM) &aes.crSel.ciMax );
                     SendMessage( hEdit, AEM_SETSEL, 0, (LPARAM) &aes );
@@ -831,6 +887,7 @@ void OnEditSelectionChanged(HWND hEdit, CHARRANGE64* cr)
                     AESELECTION aes;
 
                     aes.dwFlags = AESELT_LOCKSCROLL;
+                    aes.dwType = 0;
                     SendMessageW( hEdit, AEM_RICHOFFSETTOINDEX, cr->cpMin, (LPARAM) &aes.crSel.ciMin );
                     SendMessageW( hEdit, AEM_RICHOFFSETTOINDEX, cr->cpMax, (LPARAM) &aes.crSel.ciMax );
                     SendMessageW( hEdit, AEM_SETSEL, 0, (LPARAM) &aes );
@@ -868,7 +925,7 @@ BOOL OnEditEndKeyDown(HWND hEdit, LPARAM lParam)
     if ( nLineIndex == cr.cpMax ) // line beginning or WordWrap'ed line end
     {
         CHARRANGE64 cr2 = { 0, 0 };
-        
+
         HideCaret(hEdit);                                  // hide caret
         SendMessage(hEdit, WM_SETREDRAW, FALSE, 0);        // forbid redraw
         g_bProcessEndKey = FALSE;
@@ -889,7 +946,7 @@ BOOL OnEditEndKeyDown(HWND hEdit, LPARAM lParam)
         }
     }
     */
-     
+
     if ( g_Plugin.dwInitializedMode & MODE_SMARTEND )
     {
         int  nSize;
@@ -899,7 +956,7 @@ BOOL OnEditEndKeyDown(HWND hEdit, LPARAM lParam)
             nSize = (nLineLen + 1)*sizeof(char);
         else
             nSize = (nLineLen + 1)*sizeof(wchar_t);
-     
+
         if ( bufReserve(&g_TextBuf, nSize) )
         {
             INT_PTR i;
@@ -939,9 +996,9 @@ BOOL OnEditEndKeyDown(HWND hEdit, LPARAM lParam)
 
             bufFreeIfSizeExceeds(&g_TextBuf, MAX_TEXTBUF_SIZE);
             // lpText is no more valid
-        
+
             ++i;
-            
+
             if ( cr.cpMax == nLineIndex + nLineLen )
             {
                 // selection ends at the end of line
@@ -958,10 +1015,10 @@ BOOL OnEditEndKeyDown(HWND hEdit, LPARAM lParam)
                     return FALSE;
                 }
             }
-            
-            if ( g_bSmartEndMode2 ? 
-                  (cr.cpMax == nLineIndex + nLineLen) : 
-                   (cr.cpMax != nLineIndex + i) 
+
+            if ( g_bSmartEndMode2 ?
+                  (cr.cpMax == nLineIndex + nLineLen) :
+                   (cr.cpMax != nLineIndex + i)
                )
             {
                 if ( bShiftPressed && (cr.cpMin == nLineIndex + i) )
@@ -988,7 +1045,7 @@ BOOL OnEditEndKeyDown(HWND hEdit, LPARAM lParam)
                 if ( nLine < (int) SendMessage(hEdit, EM_EXLINEFROMCHAR, 0, cr.cpMax) )
                     return FALSE;
             }
-            
+
             SendMessage( hEdit, EM_EXSETSEL64, 0, (LPARAM) &cr );
         }
     }
@@ -999,6 +1056,84 @@ BOOL OnEditEndKeyDown(HWND hEdit, LPARAM lParam)
     }
 
     return TRUE;
+}
+
+BOOL OnEditBackspaceKeyDown(HWND hEdit, LPARAM lParam)
+{
+  if (g_Plugin.bAkelEdit)
+  {
+    // AkelEdit
+    AESELECTION aes;
+    AECHARINDEX ciCaret;
+
+    if (!SendMessage(hEdit, AEM_GETSEL, (WPARAM)&ciCaret, (LPARAM)&aes))
+    {
+      AECHARINDEX ciCaretLineBegin;
+      AECHARINDEX ciPrevLineBegin;
+      AECHARINDEX ciMinSel;
+      wchar_t *wszIndent=NULL;
+      int nLineSpaces=0;
+      int nPrevLineSpaces=0;
+      int nTabStopSize;
+      int nCaretWrapCharInLine;
+
+      nTabStopSize=(int)SendMessage(hEdit, AEM_GETTABSTOP, 0, 0);
+      nCaretWrapCharInLine=AEC_WrapLineBeginEx(&ciCaret, &ciCaretLineBegin);
+
+      if (ciCaretLineBegin.lpLine->prev)
+      {
+        if (GetLineSpaces(&ciCaretLineBegin, nCaretWrapCharInLine, nTabStopSize, &nLineSpaces))
+        {
+          ciPrevLineBegin=ciCaretLineBegin;
+
+          while (AEC_PrevLine(&ciPrevLineBegin))
+          {
+            AEC_WrapLineBeginEx(&ciPrevLineBegin, &ciPrevLineBegin);
+            if (!GetLineSpaces(&ciPrevLineBegin, 0x7FFFFFFF, nTabStopSize, &nPrevLineSpaces))
+            {
+              if (ciPrevLineBegin.lpLine->nLineLen && nPrevLineSpaces < nLineSpaces)
+              {
+                ciMinSel.nLine=ciCaretLineBegin.nLine;
+                ciMinSel.lpLine=ciCaretLineBegin.lpLine;
+                ciMinSel.nCharInLine=nPrevLineSpaces;
+                SendMessage(hEdit, AEM_COLUMNTOINDEX, MAKELONG(nTabStopSize, AECTI_WRAPLINEBEGIN|AECTI_FIT), (LPARAM)&ciMinSel);
+                nLineSpaces=(int)SendMessage(hEdit, AEM_INDEXTOCOLUMN, MAKELONG(nTabStopSize, AECTI_WRAPLINEBEGIN), (LPARAM)&ciMinSel);
+
+                if (nPrevLineSpaces > nLineSpaces)
+                {
+                  //In:
+                  //---->---->·123
+                  //---->---->---->---->|456
+                  //Out:
+                  //---->---->·123
+                  //---->---->·|456
+                  if ( bufReserve(&g_TextBuf, (nPrevLineSpaces - nLineSpaces + 1) * sizeof(wchar_t)) )
+                  {
+                    wchar_t *wpIndentMax;
+                    wchar_t *wpCount;
+
+                    wszIndent = (wchar_t *) g_TextBuf.pData;
+                    wpIndentMax=wszIndent + (nPrevLineSpaces - nLineSpaces);
+                    wpCount=wszIndent;
+
+                    for (; wpCount < wpIndentMax; ++wpCount)
+                      *wpCount=L' ';
+                    *wpCount=0; // trailing NULL
+                  }
+                }
+                SendMessage(hEdit, AEM_EXSETSEL, (WPARAM)&ciMinSel, (LPARAM)&ciCaret);
+                SendMessage(g_Plugin.hMainWnd, AKD_REPLACESELW, (WPARAM)hEdit, (LPARAM)(wszIndent ? wszIndent : L""));
+                if (wszIndent != NULL)
+                  bufFreeIfSizeExceeds(&g_TextBuf, MAX_TEXTBUF_SIZE);
+                return TRUE;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  return FALSE;
 }
 
 BOOL OnEditHomeKeyDown(HWND hEdit, LPARAM lParam)
@@ -1016,7 +1151,7 @@ BOOL OnEditHomeKeyDown(HWND hEdit, LPARAM lParam)
 
         if ( i )
         {
-            if ( ciCaret.nCharInLine > i || ciCaret.nCharInLine == 0 )
+            if ( ciCaret.nCharInLine == 0 || ( g_bSmartHomeMode2 ? 0 : ciCaret.nCharInLine > i ) )
             {
                 if ( !AEC_IndexCompare(&ciCaret, &aes.crSel.ciMin) )
                 {
@@ -1034,7 +1169,7 @@ BOOL OnEditHomeKeyDown(HWND hEdit, LPARAM lParam)
                     aes.crSel.ciMin = ciCaret;
                     aes.crSel.ciMax = ciCaret;
                 }
-                
+
                 SendMessage( hEdit, AEM_SETSEL, (WPARAM) &ciCaret, (LPARAM) &aes );
 
                 return TRUE;
@@ -1065,7 +1200,7 @@ BOOL OnEditArrowDownOrUpKeyDown(HWND hEdit, WPARAM wKey)
     int         nMaxLine;
     CHARRANGE64 crOld;
     CHARRANGE64 cr;
-                        
+
     cr.cpMin = 0;
     cr.cpMax = 0;
     SendMessage(hEdit, EM_EXGETSEL64, 0, (LPARAM) &cr);
@@ -1226,6 +1361,31 @@ BOOL SmartHomeW(HWND hEdit)
     return bResult;
 }
 
+BOOL GetLineSpaces(AECHARINDEX *ciFirstCharInLine, int nWrapCharInLine, int nTabStopSize, int *lpnLineSpaces)
+{
+  AECHARINDEX ciCount=*ciFirstCharInLine;
+  int nLineSpaces=0;
+  int nCountCharInLine=0;
+
+  while (nCountCharInLine < nWrapCharInLine)
+  {
+    if (ciCount.lpLine->wpLine[ciCount.nCharInLine] == L' ')
+      ++nLineSpaces;
+    else if (ciCount.lpLine->wpLine[ciCount.nCharInLine] == L'\t')
+      nLineSpaces+=nTabStopSize - nLineSpaces % nTabStopSize;
+    else
+    {
+      *lpnLineSpaces=nLineSpaces;
+      return FALSE;
+    }
+    if (!AEC_NextCharInLine(&ciCount))
+      break;
+    ++nCountCharInLine;
+  }
+  *lpnLineSpaces=nLineSpaces;
+  return TRUE;
+}
+
 void CheckEditNotification(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     if ( g_Plugin.bAkelEdit && (g_Plugin.dwInitializedMode & MODE_NOSELEOL) )
@@ -1235,8 +1395,8 @@ void CheckEditNotification(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             if ( ((NMHDR *)lParam)->code == AEN_SELCHANGING )
             {
                 AENSELCHANGE* psc = (AENSELCHANGE *) lParam;
-                
-                if ( psc->aes.dwFlags & AESELT_COLUMNON )
+
+                if ( psc->bColumnSel )
                     g_SelState.bColumnSelection = TRUE;
                 else
                     g_SelState.bColumnSelection = FALSE;

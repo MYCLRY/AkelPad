@@ -1,5 +1,5 @@
 *****************************************************************
-***               LineBoard AkelPad plugin v11.6              ***
+***               LineBoard AkelPad plugin v11.9              ***
 *****************************************************************
 
 2014 Shengalts Aleksander aka Instructor (Shengalts@mail.ru)
@@ -31,12 +31,14 @@ Call("LineBoard::Main", 1)
     1
       Wait for plugin initialized.
 
-Call("LineBoard::Main", 2, *HEIGHT)
+Call("LineBoard::Main", 2, *HEIGHT, *ENABLE)
   Parameters:
     2
       Get ruler height.
     *HEIGHT
       Pointer to a memory, that receives ruler height.
+    *ENABLE
+      Optional parameter. Pointer to a memory, that receives ruler visibility.
   Example:
     WScript.Echo(GetRulerHeight());
 
@@ -59,7 +61,9 @@ Call("LineBoard::Main", 3, HEIGHT)
     3
       Set ruler height.
     HEIGHT
-      Ruler height. If the new ruler height is equal to the current one, then ruler is hiding (height set to 0).
+      Ruler height.
+        If the new ruler height is equal to the current one, then ruler is hiding (height set to 0).
+        If -1, then invert ruler visibility.
 
 Call("LineBoard::Main", 4, *BOOL)
   Parameters:

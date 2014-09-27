@@ -80,16 +80,16 @@ void __declspec(dllexport) HighLight(PLUGINDATA *pd)
         if (pd->dwSupport & PDS_STRANSI)
         {
           if (pColorText && *(char *)pColorText == '#')
-            dwColorText=GetColorValueFromStrA((char *)pColorText + 1);
+            dwColorText=GetColorFromStrAnsi((char *)pColorText + 1);
           if (pColorBk && *(char *)pColorBk == '#')
-            dwColorBk=GetColorValueFromStrA((char *)pColorBk + 1);
+            dwColorBk=GetColorFromStrAnsi((char *)pColorBk + 1);
         }
         else
         {
           if (pColorText && *(wchar_t *)pColorText == L'#')
-            dwColorText=GetColorValueFromStrW((wchar_t *)pColorText + 1);
+            dwColorText=GetColorFromStr((wchar_t *)pColorText + 1);
           if (pColorBk && *(wchar_t *)pColorBk == L'#')
-            dwColorBk=GetColorValueFromStrW((wchar_t *)pColorBk + 1);
+            dwColorBk=GetColorFromStr((wchar_t *)pColorBk + 1);
         }
 
         if (dwColorText != (DWORD)-1 || dwColorBk != (DWORD)-1)
@@ -160,16 +160,16 @@ void __declspec(dllexport) HighLight(PLUGINDATA *pd)
         if (pd->dwSupport & PDS_STRANSI)
         {
           if (pColorText && *(char *)pColorText == '#')
-            dwColorText=GetColorValueFromStrA((char *)pColorText + 1);
+            dwColorText=GetColorFromStrAnsi((char *)pColorText + 1);
           if (pColorBk && *(char *)pColorBk == '#')
-            dwColorBk=GetColorValueFromStrA((char *)pColorBk + 1);
+            dwColorBk=GetColorFromStrAnsi((char *)pColorBk + 1);
         }
         else
         {
           if (pColorText && *(wchar_t *)pColorText == L'#')
-            dwColorText=GetColorValueFromStrW((wchar_t *)pColorText + 1);
+            dwColorText=GetColorFromStr((wchar_t *)pColorText + 1);
           if (pColorBk && *(wchar_t *)pColorBk == L'#')
-            dwColorBk=GetColorValueFromStrW((wchar_t *)pColorBk + 1);
+            dwColorBk=GetColorFromStr((wchar_t *)pColorBk + 1);
         }
 
         if (SendMessage(hMainWnd, AKD_GETEDITINFO, (WPARAM)pd->hWndEdit, (LPARAM)&ei))
@@ -231,16 +231,16 @@ void __declspec(dllexport) HighLight(PLUGINDATA *pd)
         if (pd->dwSupport & PDS_STRANSI)
         {
           if (pColorText && *(char *)pColorText == '#')
-            dwColorText=GetColorValueFromStrA((char *)pColorText + 1);
+            dwColorText=GetColorFromStrAnsi((char *)pColorText + 1);
           if (pColorBk && *(char *)pColorBk == '#')
-            dwColorBk=GetColorValueFromStrA((char *)pColorBk + 1);
+            dwColorBk=GetColorFromStrAnsi((char *)pColorBk + 1);
         }
         else
         {
           if (pColorText && *(wchar_t *)pColorText == L'#')
-            dwColorText=GetColorValueFromStrW((wchar_t *)pColorText + 1);
+            dwColorText=GetColorFromStr((wchar_t *)pColorText + 1);
           if (pColorBk && *(wchar_t *)pColorBk == L'#')
-            dwColorBk=GetColorValueFromStrW((wchar_t *)pColorBk + 1);
+            dwColorBk=GetColorFromStr((wchar_t *)pColorBk + 1);
         }
 
         if (SendMessage(hMainWnd, AKD_GETEDITINFO, (WPARAM)pd->hWndEdit, (LPARAM)&ei))
@@ -274,16 +274,16 @@ void __declspec(dllexport) HighLight(PLUGINDATA *pd)
         if (pd->dwSupport & PDS_STRANSI)
         {
           if (pColorText && *(char *)pColorText == '#')
-            dwColorText=GetColorValueFromStrA((char *)pColorText + 1);
+            dwColorText=GetColorFromStrAnsi((char *)pColorText + 1);
           if (pColorBk && *(char *)pColorBk == '#')
-            dwColorBk=GetColorValueFromStrA((char *)pColorBk + 1);
+            dwColorBk=GetColorFromStrAnsi((char *)pColorBk + 1);
         }
         else
         {
           if (pColorText && *(wchar_t *)pColorText == L'#')
-            dwColorText=GetColorValueFromStrW((wchar_t *)pColorText + 1);
+            dwColorText=GetColorFromStr((wchar_t *)pColorText + 1);
           if (pColorBk && *(wchar_t *)pColorBk == L'#')
-            dwColorBk=GetColorValueFromStrW((wchar_t *)pColorBk + 1);
+            dwColorBk=GetColorFromStr((wchar_t *)pColorBk + 1);
         }
 
         if (SendMessage(hMainWnd, AKD_GETEDITINFO, (WPARAM)pd->hWndEdit, (LPARAM)&ei))
@@ -739,10 +739,10 @@ BOOL CALLBACK HighLightParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
               if (!bFindingMark && cr.cpMax > cr.cpMin && cr.cpMax - cr.cpMin < MARKMAX_WORD &&
                    (nAutoMarkType == MARKAUTO_SYMBOLS ||
                      (nAutoMarkType == MARKAUTO_WORDS &&
-                     SendMessage(ei.hWndEdit, AEM_ISDELIMITER, AEDLM_WORD | AEDLM_PREVCHAR, (LPARAM)&aensc->aes.crSel.ciMin) &&
-                     !SendMessage(ei.hWndEdit, AEM_ISDELIMITER, AEDLM_WORD, (LPARAM)&aensc->aes.crSel.ciMin) &&
-                     SendMessage(ei.hWndEdit, AEM_ISDELIMITER, AEDLM_WORD, (LPARAM)&aensc->aes.crSel.ciMax) &&
-                     !SendMessage(ei.hWndEdit, AEM_ISDELIMITER, AEDLM_WORD | AEDLM_PREVCHAR, (LPARAM)&aensc->aes.crSel.ciMax))))
+                      SendMessage(ei.hWndEdit, AEM_ISDELIMITER, AEDLM_WORD|AEDLM_PREVCHAR, (LPARAM)&aensc->crSel.ciMin) &&
+                      !SendMessage(ei.hWndEdit, AEM_ISDELIMITER, AEDLM_WORD, (LPARAM)&aensc->crSel.ciMin) &&
+                      SendMessage(ei.hWndEdit, AEM_ISDELIMITER, AEDLM_WORD, (LPARAM)&aensc->crSel.ciMax) &&
+                      !SendMessage(ei.hWndEdit, AEM_ISDELIMITER, AEDLM_WORD|AEDLM_PREVCHAR, (LPARAM)&aensc->crSel.ciMax))))
               {
                 wchar_t *wpMarkText;
                 INT_PTR nMarkTextLen=0;
@@ -1476,10 +1476,11 @@ void GetPosFromChar(HWND hWnd, int nCharIndex, POINT *pt, TEXTMETRICA *tm)
 }
 */
 
-WORDINFO* StackInsertWord(STACKWORD *hStack, int nWordLen)
+WORDINFO* StackInsertWord(STACKWORD *hStack, STACKWORDORDER *hOrderStack, int nWordLen)
 {
   WORDINFO *lpElement1;
   WORDINFO *lpElement2=NULL;
+  WORDORDER *lpWordOrder=NULL;
 
   if ((DWORD)nWordLen < sizeof(hStack->lpWordLens) / sizeof(INT_PTR))
   {
@@ -1502,7 +1503,13 @@ WORDINFO* StackInsertWord(STACKWORD *hStack, int nWordLen)
     StackInsertBefore((stack **)&hStack->first, (stack **)&hStack->last, (stack *)lpElement1, (stack **)&lpElement2, sizeof(WORDINFO));
 
     if (lpElement2)
+    {
       hStack->lpWordLens[nWordLen]=(INT_PTR)lpElement2;
+
+      //Remember initial order
+      if (!StackInsertIndex((stack **)&hOrderStack->first, (stack **)&hOrderStack->last, (stack **)&lpWordOrder, -1, sizeof(WORDORDER)))
+        lpWordOrder->lpWordInfo=lpElement2;
+    }
   }
   return lpElement2;
 }
@@ -1535,7 +1542,7 @@ WORDINFO* StackGetWord(STACKWORD *hStack, wchar_t *wpWord, int nWordLen)
   return NULL;
 }
 
-void StackFreeWord(STACKWORD *hStack)
+void StackFreeWord(STACKWORD *hStack, STACKWORDORDER *hOrderStack)
 {
   WORDINFO *lpElement=(WORDINFO *)hStack->first;
 
@@ -1547,6 +1554,8 @@ void StackFreeWord(STACKWORD *hStack)
   }
   StackClear((stack **)&hStack->first, (stack **)&hStack->last);
   xmemset(hStack->lpWordLens, 0, sizeof(hStack->lpWordLens));
+
+  StackClear((stack **)&hOrderStack->first, (stack **)&hOrderStack->last);
 }
 
 QUOTEINFO* StackInsertQuote(STACKQUOTE *hStack, int nQuoteStartLen)
@@ -1672,7 +1681,7 @@ MARKTEXT* StackGetMarkByColorID(HIGHLIGHTWINDOW *lpHighlightWindow, DWORD dwMark
   {
     for (lpMarkText=lpHighlightWindow->hMarkTextsStack.first; lpMarkText; lpMarkText=lpMarkText->next)
     {
-      if (lpMarkText->dwMarkID >= MARKID_AUTOMIN)
+      if (lpMarkText->dwMarkID >= MARKID_AUTOMIN && lpMarkText->dwMarkID <= MARKID_AUTOMAX)
       {
         lpMarkItem=(AEMARKTEXTITEMW *)lpMarkText->hMarkTextHandle;
 
@@ -1727,8 +1736,7 @@ DWORD StackAssignMarkID(HIGHLIGHTWINDOW *lpHighlightWindow)
 
   for (lpMarkText=lpHighlightWindow->hMarkTextsStack.first; lpMarkText; lpMarkText=lpMarkText->next)
   {
-    //Reserve 10 internal IDs
-    if (lpMarkText->dwMarkID < (DWORD)-10)
+    if (lpMarkText->dwMarkID < MARKID_AUTOMAX)
     {
       if (lpMarkText->dwMarkID >= dwMarkID)
         dwMarkID=lpMarkText->dwMarkID + 1;
@@ -1822,8 +1830,9 @@ BOOL FindMark(HIGHLIGHTWINDOW *lpHighlightWindow, DWORD dwMarkID, DWORD dwColorT
   MARKTEXT *lpSingleMarkText=NULL;
   MARKTEXT *lpMarkText;
   MARKTEXT *lpNextMarkText;
-  AEMARKTEXTITEMW *lpMarkItem;
+  AEMARKTEXTITEMW *lpMarkItem=NULL;
   AECHARINDEX ciCount;
+  BOOL bMatched;
 
   if (!lpHighlightWindow->hMarkTextsStack.first)
     return FALSE;
@@ -1845,10 +1854,18 @@ BOOL FindMark(HIGHLIGHTWINDOW *lpHighlightWindow, DWORD dwMarkID, DWORD dwColorT
 
       if (lpMarkText->dwMarkID != MARKID_SELECTION)
       {
-        ft.dwFlags=(lpMarkItem->dwFlags & AEHLF_MATCHCASE)?AEFR_MATCHCASE:0;
-        ft.pText=lpMarkItem->pMarkText;
-        ft.dwTextLen=lpMarkItem->nMarkTextLen;
-        if (IsMatch(&ft, &crSel.ciMin) && !AEC_IndexCompare(&ft.crFound.ciMax, &crSel.ciMax))
+        if (lpMarkItem->dwFlags & AEHLF_REGEXP)
+        {
+          bMatched=IsMatchRE(lpMarkItem->lpREGroupStack, &ft.crFound, &crSel.ciMin);
+        }
+        else
+        {
+          ft.dwFlags=(lpMarkItem->dwFlags & AEHLF_MATCHCASE)?FIF_MATCHCASE:0;
+          ft.pText=lpMarkItem->pMarkText;
+          ft.dwTextLen=lpMarkItem->nMarkTextLen;
+          bMatched=IsMatch(&ft, &crSel.ciMin);
+        }
+        if (bMatched && !AEC_IndexCompare(&ft.crFound.ciMax, &crSel.ciMax))
         {
           dwColorText=lpMarkItem->crText;
           dwColorBk=lpMarkItem->crBk;
@@ -1858,12 +1875,12 @@ BOOL FindMark(HIGHLIGHTWINDOW *lpHighlightWindow, DWORD dwMarkID, DWORD dwColorT
     }
     if (dwMarkID) return FALSE;
   }
-  if (dwMarkID > 0 && dwMarkID < MARKID_AUTOMIN)
+  if (dwMarkID != 0 && dwMarkID != MARKID_AUTOASSIGN)
   {
     if (lpSingleMarkText=StackGetMarkByColorID(lpHighlightWindow, dwMarkID, dwColorText, dwColorBk))
     {
       lpMarkItem=(AEMARKTEXTITEMW *)lpSingleMarkText->hMarkTextHandle;
-      ft.dwFlags=(lpMarkItem->dwFlags & AEHLF_MATCHCASE)?AEFR_MATCHCASE:0;
+      ft.dwFlags=(lpMarkItem->dwFlags & AEHLF_MATCHCASE)?FIF_MATCHCASE:0;
       ft.pText=lpMarkItem->pMarkText;
       ft.dwTextLen=lpMarkItem->nMarkTextLen;
     }
@@ -1874,8 +1891,16 @@ BOOL FindMark(HIGHLIGHTWINDOW *lpHighlightWindow, DWORD dwMarkID, DWORD dwColorT
   {
     if (lpSingleMarkText)
     {
-      if (IsMatch(&ft, &ciCount))
-        goto Find;
+      if (lpMarkItem->dwFlags & AEHLF_REGEXP)
+      {
+        if (IsMatchRE(lpMarkItem->lpREGroupStack, &ft.crFound, &ciCount))
+          goto Find;
+      }
+      else
+      {
+        if (IsMatch(&ft, &ciCount))
+          goto Find;
+      }
     }
     else
     {
@@ -1886,15 +1911,23 @@ BOOL FindMark(HIGHLIGHTWINDOW *lpHighlightWindow, DWORD dwMarkID, DWORD dwColorT
 
         if (lpMarkText->dwMarkID != MARKID_SELECTION)
         {
-          if ((dwMarkID == 0 || (dwMarkID == MARKID_AUTOASSIGN && lpMarkText->dwMarkID >= MARKID_AUTOMIN)) &&
-              ((dwColorText == (DWORD)-1 || lpMarkItem->crText == dwColorText) &&
-               (dwColorBk == (DWORD)-1 || lpMarkItem->crBk == dwColorBk)))
+          if ((dwMarkID == 0 || (dwMarkID == MARKID_AUTOASSIGN && lpMarkText->dwMarkID >= MARKID_AUTOMIN && lpMarkText->dwMarkID <= MARKID_AUTOMAX)) &&
+              (dwColorText == (DWORD)-1 || lpMarkItem->crText == dwColorText) &&
+              (dwColorBk == (DWORD)-1 || lpMarkItem->crBk == dwColorBk))
           {
-            ft.dwFlags=(lpMarkItem->dwFlags & AEHLF_MATCHCASE)?AEFR_MATCHCASE:0;
-            ft.pText=lpMarkItem->pMarkText;
-            ft.dwTextLen=lpMarkItem->nMarkTextLen;
-            if (IsMatch(&ft, &ciCount))
-              goto Find;
+            if (lpMarkItem->dwFlags & AEHLF_REGEXP)
+            {
+              if (IsMatchRE(lpMarkItem->lpREGroupStack, &ft.crFound, &ciCount))
+                goto Find;
+            }
+            else
+            {
+              ft.dwFlags=(lpMarkItem->dwFlags & AEHLF_MATCHCASE)?FIF_MATCHCASE:0;
+              ft.pText=lpMarkItem->pMarkText;
+              ft.dwTextLen=lpMarkItem->nMarkTextLen;
+              if (IsMatch(&ft, &ciCount))
+                goto Find;
+            }
           }
         }
       }
@@ -1983,8 +2016,15 @@ void CreateEditTheme(SYNTAXFILE *lpSyntaxFile, HWND hWnd)
           qi.dwFlags|=AEHLF_QUOTEINCLUDE;
         if (qi.nQuoteExcludeLen)
           qi.dwFlags|=AEHLF_QUOTEEXCLUDE;
-        SendMessage(hWnd, AEM_HLADDQUOTEW, (WPARAM)lpSyntaxFile->hThemeHighLight, (LPARAM)&qi);
-
+        if (!SendMessage(hWnd, AEM_HLADDQUOTEW, (WPARAM)lpSyntaxFile->hThemeHighLight, (LPARAM)&qi))
+        {
+          if (qi.dwFlags & AEHLF_REGEXP)
+          {
+            xprintfW(wszMessage, GetLangStringW(wLangModule, STRID_REGEXP_COMPILEERROR), lpSyntaxFile->wszSyntaxFileName, qi.nQuoteStartLen, qi.pQuoteStart);
+            if (MessageBoxW(hMainWnd, wszMessage, wszPluginTitle, MB_OKCANCEL|MB_ICONEXCLAMATION) == IDCANCEL)
+              break;
+          }
+        }
         lpElement=lpElement->next;
       }
     }
@@ -2186,34 +2226,27 @@ void UnassignTheme(HWND hWnd)
   }
 }
 
-COLORREF GetColorValueFromStrA(char *pColor)
+COLORREF GetColorFromStrAnsi(char *pColor)
 {
   COLORREF crColor;
 
-  crColor=(COLORREF)hex2decA(pColor, -1);
-  crColor=RGB(GetBValue(crColor), GetGValue(crColor), GetRValue(crColor));
+  if ((crColor=(COLORREF)hex2decA(pColor, 6)) != (COLORREF)-1)
+    crColor=RGB(GetBValue(crColor), GetGValue(crColor), GetRValue(crColor));
   return crColor;
 }
 
-COLORREF GetColorValueFromStrW(wchar_t *wpColor)
+COLORREF GetColorFromStr(wchar_t *wpColor)
 {
   COLORREF crColor;
 
-  crColor=(COLORREF)hex2decW(wpColor, -1);
-  crColor=RGB(GetBValue(crColor), GetGValue(crColor), GetRValue(crColor));
+  if ((crColor=(COLORREF)hex2decW(wpColor, 6)) != (COLORREF)-1)
+    crColor=RGB(GetBValue(crColor), GetGValue(crColor), GetRValue(crColor));
   return crColor;
 }
 
-char* GetColorStrFromValueA(COLORREF crColor, char *szColor)
+int GetStrFromColor(COLORREF crColor, wchar_t *wszColor)
 {
-  wsprintfA(szColor, "%02X%02X%02X", GetRValue(crColor), GetGValue(crColor), GetBValue(crColor));
-  return szColor;
-}
-
-wchar_t* GetColorStrFromValueW(COLORREF crColor, wchar_t *wszColor)
-{
-  xprintfW(wszColor, L"%02X%02X%02X", GetRValue(crColor), GetGValue(crColor), GetBValue(crColor));
-  return wszColor;
+  return (int)xprintfW(wszColor, L"%02X%02X%02X", GetRValue(crColor), GetGValue(crColor), GetBValue(crColor));
 }
 
 BOOL SetFrameInfo(FRAMEDATA *lpFrame, int nType, UINT_PTR dwData)

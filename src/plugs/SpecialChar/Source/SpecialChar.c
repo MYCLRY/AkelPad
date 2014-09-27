@@ -204,6 +204,7 @@ LRESULT CALLBACK NewMainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 LRESULT CALLBACK NewFrameProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 LRESULT CALLBACK NewEditProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 LRESULT CALLBACK EditParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+COLORREF GetIndentColor(BOOL bCharInSel, SPECIALCHAR *pscIndentDraw, AECOLORS *aec);
 void GetCoderColors(HWND hWnd);
 VARINFO* StackGetVarByName(STACKVAR *hStackGlobal, STACKVAR *hStackActive, const wchar_t *wpVarName, int nVarNameLen);
 void CreateSpecialCharStack(STACKSPECIALCHAR *hStack, const wchar_t *wpText);
@@ -215,10 +216,8 @@ void SkipWhitespace(const wchar_t **wpText);
 int NextString(const wchar_t *wpText, wchar_t *wszStr, int nStrLen, const wchar_t **wppText, int *nMinus);
 BOOL GetLineSpaces(AECHARINDEX *ciMinDraw, int nTabStopSize, INT_PTR *lpnLineSpaces);
 BOOL GetCharColor(HWND hWndEdit, INT_PTR nCharOffset, AECHARCOLORS *aecc);
-COLORREF GetColorValueFromStrA(char *pColor);
-COLORREF GetColorValueFromStrW(wchar_t *wpColor);
-char* GetColorStrFromValueA(COLORREF crColor, char *szColor);
-wchar_t* GetColorStrFromValueW(COLORREF crColor, wchar_t *wszColor);
+COLORREF GetColorFromStrAnsi(char *pColor);
+COLORREF GetColorFromStr(wchar_t *wpColor);
 int GetNewLineString(int nNewLine, const wchar_t **wpNewLine);
 BOOL GetClearType();
 void UpdateEdit(HWND hWnd, DWORD dwFlags);
@@ -279,7 +278,7 @@ void __declspec(dllexport) DllAkelPadID(PLUGINVERSION *pv)
 {
   pv->dwAkelDllVersion=AKELDLL;
   pv->dwExeMinVersion3x=MAKE_IDENTIFIER(-1, -1, -1, -1);
-  pv->dwExeMinVersion4x=MAKE_IDENTIFIER(4, 8, 4, 0);
+  pv->dwExeMinVersion4x=MAKE_IDENTIFIER(4, 8, 8, 0);
   pv->pPluginName="SpecialChar";
 }
 
@@ -463,12 +462,20 @@ void __declspec(dllexport) Settings(PLUGINDATA *pd)
             //Basic
             if (bBasicEnable != -2)
             {
-              if (bBasicEnable == -1)
+              if (bBasicEnable < 0)
               {
                 if (pscChar->dwFlags & SCF_BASICENABLE)
+                {
                   pscChar->dwFlags&=~SCF_BASICENABLE;
+                  if (bBasicEnable == -3 && pscFirst == pscChar)
+                    bBasicEnable=FALSE;
+                }
                 else
+                {
                   pscChar->dwFlags|=SCF_BASICENABLE;
+                  if (bBasicEnable == -3 && pscFirst == pscChar)
+                    bBasicEnable=TRUE;
+                }
               }
               else
               {
@@ -484,12 +491,12 @@ void __declspec(dllexport) Settings(PLUGINDATA *pd)
             {
               if (pBasicTextColor && *(char *)pBasicTextColor == '#')
               {
-                pscChar->dwBasicTextColor=GetColorValueFromStrA((char *)pBasicTextColor + 1);
+                pscChar->dwBasicTextColor=GetColorFromStrAnsi((char *)pBasicTextColor + 1);
                 pscChar->dwFlags|=SCF_BASICTEXTCOLOR;
               }
               if (pBasicBkColor && *(char *)pBasicBkColor == '#')
               {
-                pscChar->dwBasicBkColor=GetColorValueFromStrA((char *)pBasicBkColor + 1);
+                pscChar->dwBasicBkColor=GetColorFromStrAnsi((char *)pBasicBkColor + 1);
                 pscChar->dwFlags|=SCF_BASICBKCOLOR;
               }
             }
@@ -497,12 +504,12 @@ void __declspec(dllexport) Settings(PLUGINDATA *pd)
             {
               if (pBasicTextColor && *(wchar_t *)pBasicTextColor == L'#')
               {
-                pscChar->dwBasicTextColor=GetColorValueFromStrW((wchar_t *)pBasicTextColor + 1);
+                pscChar->dwBasicTextColor=GetColorFromStr((wchar_t *)pBasicTextColor + 1);
                 pscChar->dwFlags|=SCF_BASICTEXTCOLOR;
               }
               if (pBasicBkColor && *(wchar_t *)pBasicBkColor == L'#')
               {
-                pscChar->dwBasicBkColor=GetColorValueFromStrW((wchar_t *)pBasicBkColor + 1);
+                pscChar->dwBasicBkColor=GetColorFromStr((wchar_t *)pBasicBkColor + 1);
                 pscChar->dwFlags|=SCF_BASICBKCOLOR;
               }
             }
@@ -514,12 +521,20 @@ void __declspec(dllexport) Settings(PLUGINDATA *pd)
             //Selection
             if (bSelEnable != -2)
             {
-              if (bSelEnable == -1)
+              if (bSelEnable < 0)
               {
                 if (pscChar->dwFlags & SCF_SELENABLE)
+                {
                   pscChar->dwFlags&=~SCF_SELENABLE;
+                  if (bSelEnable == -3 && pscFirst == pscChar)
+                    bSelEnable=FALSE;
+                }
                 else
+                {
                   pscChar->dwFlags|=SCF_SELENABLE;
+                  if (bSelEnable == -3 && pscFirst == pscChar)
+                    bSelEnable=TRUE;
+                }
               }
               else
               {
@@ -535,12 +550,12 @@ void __declspec(dllexport) Settings(PLUGINDATA *pd)
             {
               if (pSelTextColor && *(char *)pSelTextColor == '#')
               {
-                pscChar->dwSelTextColor=GetColorValueFromStrA((char *)pSelTextColor + 1);
+                pscChar->dwSelTextColor=GetColorFromStrAnsi((char *)pSelTextColor + 1);
                 pscChar->dwFlags|=SCF_SELTEXTCOLOR;
               }
               if (pSelBkColor && *(char *)pSelBkColor == '#')
               {
-                pscChar->dwSelBkColor=GetColorValueFromStrA((char *)pSelBkColor + 1);
+                pscChar->dwSelBkColor=GetColorFromStrAnsi((char *)pSelBkColor + 1);
                 pscChar->dwFlags|=SCF_SELBKCOLOR;
               }
             }
@@ -548,12 +563,12 @@ void __declspec(dllexport) Settings(PLUGINDATA *pd)
             {
               if (pSelTextColor && *(wchar_t *)pSelTextColor == L'#')
               {
-                pscChar->dwSelTextColor=GetColorValueFromStrW((wchar_t *)pSelTextColor + 1);
+                pscChar->dwSelTextColor=GetColorFromStr((wchar_t *)pSelTextColor + 1);
                 pscChar->dwFlags|=SCF_SELTEXTCOLOR;
               }
               if (pSelBkColor && *(wchar_t *)pSelBkColor == L'#')
               {
-                pscChar->dwSelBkColor=GetColorValueFromStrW((wchar_t *)pSelBkColor + 1);
+                pscChar->dwSelBkColor=GetColorFromStr((wchar_t *)pSelBkColor + 1);
                 pscChar->dwFlags|=SCF_SELBKCOLOR;
               }
             }
@@ -595,6 +610,9 @@ void __declspec(dllexport) Settings(PLUGINDATA *pd)
       const wchar_t *wpNextOldChar=wszOldChars;
       SPECIALCHAR *pscChar;
       int nOldChar;
+      BOOL bCheckAll=FALSE;
+      BOOL bBasicEnable=TRUE;
+      BOOL bSelEnable=TRUE;
 
       if (nAction == DLLA_SPECIALCHAR_OLDGET)
       {
@@ -639,6 +657,8 @@ void __declspec(dllexport) Settings(PLUGINDATA *pd)
         MultiByteToWideChar(CP_ACP, 0, (char *)pOldChars, -1, wszOldChars, MAX_PATH);
       else
         xstrcpynW(wszOldChars, (wchar_t *)pOldChars, MAX_PATH);
+      if ((lpbBasicEnable || lpbSelEnable) && !pNewChar && !lpcrBasicTextColor && !lpcrBasicBkColor && !lpcrSelTextColor && !lpcrSelBkColor)
+        bCheckAll=TRUE;
 
       for (;;)
       {
@@ -692,7 +712,10 @@ void __declspec(dllexport) Settings(PLUGINDATA *pd)
               if (pscChar->dwFlags & SCF_BASICENABLE)
                 *lpbBasicEnable=TRUE;
               else
+              {
                 *lpbBasicEnable=FALSE;
+                bBasicEnable=FALSE;
+              }
             }
             if (lpcrBasicTextColor)
               *lpcrBasicTextColor=pscChar->dwBasicTextColor;
@@ -704,21 +727,41 @@ void __declspec(dllexport) Settings(PLUGINDATA *pd)
               if (pscChar->dwFlags & SCF_SELENABLE)
                 *lpbSelEnable=TRUE;
               else
+              {
                 *lpbSelEnable=FALSE;
+                bSelEnable=FALSE;
+              }
             }
             if (lpcrSelTextColor)
               *lpcrSelTextColor=pscChar->dwSelTextColor;
             if (lpcrSelBkColor)
               *lpcrSelBkColor=pscChar->dwSelBkColor;
           }
+          else
+          {
+            bBasicEnable=FALSE;
+            bSelEnable=FALSE;
+          }
 
-          //Check only first special char
-          break;
+          //Check only first special char?
+          if (!bCheckAll) break;
+          if (!bBasicEnable && !bSelEnable) break;
         }
+        else
+        {
+          bBasicEnable=FALSE;
+          bSelEnable=FALSE;
+        }
+
         if (*wpNextOldChar == L',')
           ++wpNextOldChar;
         else
           break;
+      }
+      if (bCheckAll)
+      {
+        if (lpbBasicEnable) *lpbBasicEnable=bBasicEnable;
+        if (lpbSelEnable) *lpbSelEnable=bSelEnable;
       }
     }
 
@@ -1396,6 +1439,7 @@ LRESULT CALLBACK EditParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
       if (((NMHDR *)lParam)->code == AEN_PAINT)
       {
         AENPAINT *pnt=(AENPAINT *)lParam;
+        RECT rcDraw;
         static AECOLORS aec;
         static AESELECTION aes;
         static HBRUSH hbrSelBk;
@@ -1405,11 +1449,13 @@ LRESULT CALLBACK EditParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
         static int nInitTopEndLine;
         static int nPrevLine;
         static int nNextLine;
+        static int nLinesInPage;
         static int nCharHeight;
         static int nCharHeightNoGap;
         static int nAveCharWidth;
         static int nSpaceWidth;
         static int nTabStopSize;
+        static int nIndentSpaces;
         static BOOL bIntCall;
         static BOOL bClearType;
 
@@ -1426,10 +1472,16 @@ LRESULT CALLBACK EditParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
           nCharHeightNoGap=nCharHeight - (int)SendMessage(pnt->hdr.hwndFrom, AEM_GETLINEGAP, 0, 0);
           nAveCharWidth=(int)SendMessage(pnt->hdr.hwndFrom, AEM_GETCHARSIZE, AECS_AVEWIDTH, 0);
           nSpaceWidth=(int)SendMessage(pnt->hdr.hwndFrom, AEM_GETCHARSIZE, AECS_SPACEWIDTH, 0);
+          nTabStopSize=(int)SendMessage(pnt->hdr.hwndFrom, AEM_GETTABSTOP, 0, 0);
           if (!nIndentLineSize)
-            nTabStopSize=(int)SendMessage(pnt->hdr.hwndFrom, AEM_GETTABSTOP, 0, 0);
+            nIndentSpaces=nTabStopSize;
           else
-            nTabStopSize=nIndentLineSize;
+            nIndentSpaces=nIndentLineSize;
+          if (pscIndentLine)
+          {
+            SendMessage(pnt->hdr.hwndFrom, AEM_GETRECT, 0, (LPARAM)&rcDraw);
+            nLinesInPage=(rcDraw.bottom - rcDraw.top) / nCharHeight;
+          }
           nPrevLineSpaces=-1;
           nNextLineSpaces=-1;
           nInitTopStartLine=-1;
@@ -1447,6 +1499,7 @@ LRESULT CALLBACK EditParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
           COLORREF crTextColorPrev=0;
           COLORREF crBkColor;
           COLORREF crIndentColor;
+          COLORREF crIndentColorPrev;
           POINT pt;
           INT_PTR nOffset=pnt->nMinDrawOffset;
           INT_PTR nLineSpaces=0;
@@ -1472,7 +1525,7 @@ LRESULT CALLBACK EditParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
                 ciCount=pnt->ciMinDraw;
                 nMaxLineSpaces=0;
 
-                while (AEC_PrevLine(&ciCount) && pnt->ciMinDraw.nLine - ciCount.nLine <= 50)
+                while (AEC_PrevLine(&ciCount) && pnt->ciMinDraw.nLine - ciCount.nLine <= nLinesInPage)
                 {
                   ciCount.nCharInLine=ciCount.lpLine->nLineLen;
                   if (!GetLineSpaces(&ciCount, nTabStopSize, &nPrevLineSpaces))
@@ -1487,7 +1540,7 @@ LRESULT CALLBACK EditParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
                 ciCount=pnt->ciMinDraw;
                 nMaxLineSpaces=0;
 
-                while (AEC_NextLine(&ciCount) && ciCount.nLine - pnt->ciMinDraw.nLine <= 50)
+                while (AEC_NextLine(&ciCount) && ciCount.nLine - pnt->ciMinDraw.nLine <= nLinesInPage)
                 {
                   ciCount.nCharInLine=ciCount.lpLine->nLineLen;
                   if (!GetLineSpaces(&ciCount, nTabStopSize, &nNextLineSpaces))
@@ -1540,8 +1593,8 @@ LRESULT CALLBACK EditParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
 
                 if (bIndentFound && ciCount.nCharInLine &&
                     (nTabStopSize == 1 ||
-                     (nChar == L' ' && (nLineSpaces % nTabStopSize) == 1) ||
-                     (nChar == L'\t' && (nLineSpaces % nTabStopSize) == 0)))
+                     (nChar == L' ' && (nLineSpaces % nIndentSpaces) == 1) ||
+                     (nChar == L'\t' && (nLineSpaces % nIndentSpaces) == 0)))
                   pscIndentDraw=pscIndentLine;
 
                 if (nChar == L'\t')
@@ -1588,18 +1641,6 @@ LRESULT CALLBACK EditParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
                       crBkColor=pscChar->dwSelBkColor;
                   }
                 }
-                if (pscIndentDraw && (pscIndentDraw->dwFlags & SCF_SELENABLE))
-                {
-                  if (scCoder.dwSelTextColor != (DWORD)-1)
-                    crIndentColor=scCoder.dwSelTextColor;
-                  else
-                  {
-                    if (pscIndentDraw->dwFlags & SCF_SELTEXTCOLOR)
-                      crIndentColor=pscIndentDraw->dwSelTextColor;
-                    else
-                      crIndentColor=aec.crSelText;
-                  }
-                }
                 bCharInSel=TRUE;
               }
               else
@@ -1629,22 +1670,11 @@ LRESULT CALLBACK EditParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
                       crBkColor=pscChar->dwBasicBkColor;
                   }
                 }
-                if (pscIndentDraw && (pscIndentDraw->dwFlags & SCF_BASICENABLE))
-                {
-                  if (scCoder.dwBasicTextColor != (DWORD)-1)
-                    crIndentColor=scCoder.dwBasicTextColor;
-                  else
-                  {
-                    if (pscIndentDraw->dwFlags & SCF_BASICTEXTCOLOR)
-                      crIndentColor=pscIndentDraw->dwBasicTextColor;
-                    else
-                      crIndentColor=aec.crBasicText;
-                  }
-                }
                 bCharInSel=FALSE;
               }
+              crIndentColor=GetIndentColor(bCharInSel, pscIndentDraw, &aec);
 
-              if (crTextColor != (DWORD)-1 || crBkColor != (DWORD)-1 || crIndentColor != (DWORD)-1)
+              if ((pscChar && (crTextColor != (DWORD)-1 || crBkColor != (DWORD)-1)) || pscIndentDraw)
               {
                 SendMessage(pnt->hdr.hwndFrom, AEM_POSFROMCHAR, (WPARAM)&pt, (LPARAM)&ciCount);
 
@@ -1838,19 +1868,22 @@ LRESULT CALLBACK EditParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
                     }
                   }
                 }
-                if (pscIndentDraw && crIndentColor != (DWORD)-1)
+                if (pscIndentDraw)
                 {
                   //Draw indent line
-                  HPEN hPen;
-                  HPEN hPenOld;
+                  HPEN hPen=NULL;
+                  HPEN hPenOld=NULL;
                   POINT64 ptGlobal;
                   int nTop;
                   int nBottom;
                   int nLeft;
                   int i;
 
-                  hPen=CreatePen(PS_SOLID, 0, crIndentColor);
-                  hPenOld=(HPEN)SelectObject(pnt->hDC, hPen);
+                  if (crIndentColor != (DWORD)-1)
+                  {
+                    hPen=CreatePen(PS_SOLID, 0, crIndentColor);
+                    hPenOld=(HPEN)SelectObject(pnt->hDC, hPen);
+                  }
 
                   if (!bIndentLineSolid)
                   {
@@ -1867,32 +1900,35 @@ LRESULT CALLBACK EditParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
                   if (nChar >= 0)
                   {
                     //Inside line
-                    nLeft=pt.x;
-
-                    if (!bIndentLineSolid)
+                    if (crIndentColor != (DWORD)-1)
                     {
-                      for (i=nTop; i < nBottom; i+=2)
+                      nLeft=pt.x;
+  
+                      if (!bIndentLineSolid)
                       {
-                        //Draw dot
-                        MoveToEx(pnt->hDC, nLeft, i, NULL);
-                        LineTo(pnt->hDC, nLeft + 1, i + 1);
+                        for (i=nTop; i < nBottom; i+=2)
+                        {
+                          //Draw dot
+                          MoveToEx(pnt->hDC, nLeft, i, NULL);
+                          LineTo(pnt->hDC, nLeft + 1, i + 1);
+                        }
                       }
-                    }
-                    else
-                    {
-                      MoveToEx(pnt->hDC, nLeft, nTop, NULL);
-                      LineTo(pnt->hDC, nLeft, nBottom);
+                      else
+                      {
+                        MoveToEx(pnt->hDC, nLeft, nTop, NULL);
+                        LineTo(pnt->hDC, nLeft, nBottom);
+                      }
                     }
                   }
                   else
                   {
                     //Outside line
-                    if (nLineSpaces % nTabStopSize)
-                      nLineSpaces+=nTabStopSize - nLineSpaces % nTabStopSize;
+                    if (nLineSpaces % nIndentSpaces)
+                      nLineSpaces+=nIndentSpaces - nLineSpaces % nIndentSpaces;
 
                     while (nLineSpaces < nMaxLineSpaces)
                     {
-                      if (nLineSpaces)
+                      if (crIndentColor != (DWORD)-1 && nLineSpaces)
                       {
                         nLeft=(int)((pt.x - ciCount.lpLine->nLineWidth) + nLineSpaces * nSpaceWidth);
 
@@ -1911,7 +1947,33 @@ LRESULT CALLBACK EditParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
                           LineTo(pnt->hDC, nLeft, nBottom);
                         }
                       }
-                      nLineSpaces+=nTabStopSize;
+                      nLineSpaces+=nIndentSpaces;
+
+                      //Next indent line in selection?
+                      if (ciCount.lpLine->nSelStart <= ciCount.nCharInLine + nLineSpaces && ciCount.nCharInLine + nLineSpaces < ciCount.lpLine->nSelEnd)
+                        bCharInSel=TRUE;
+                      else
+                        bCharInSel=FALSE;
+                      crIndentColorPrev=crIndentColor;
+                      crIndentColor=GetIndentColor(bCharInSel, pscIndentDraw, &aec);
+                      if (crIndentColorPrev != crIndentColor)
+                      {
+                        if (hPenOld)
+                        {
+                          SelectObject(pnt->hDC, hPenOld);
+                          hPenOld=NULL;
+                        }
+                        if (hPen)
+                        {
+                          DeleteObject(hPen);
+                          hPen=NULL;
+                        }
+                        if (crIndentColor != (DWORD)-1)
+                        {
+                          hPen=CreatePen(PS_SOLID, 0, crIndentColor);
+                          hPenOld=(HPEN)SelectObject(pnt->hDC, hPen);
+                        }
+                      }
                     }
                   }
                   if (hPenOld) SelectObject(pnt->hDC, hPenOld);
@@ -1961,6 +2023,43 @@ LRESULT CALLBACK EditParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
   return 0;
 }
 
+COLORREF GetIndentColor(BOOL bCharInSel, SPECIALCHAR *pscIndentDraw, AECOLORS *aec)
+{
+  COLORREF crIndentColor=(DWORD)-1;
+
+  if (bCharInSel)
+  {
+    if (pscIndentDraw && (pscIndentDraw->dwFlags & SCF_SELENABLE))
+    {
+      if (scCoder.dwSelTextColor != (DWORD)-1)
+        crIndentColor=scCoder.dwSelTextColor;
+      else
+      {
+        if (pscIndentDraw->dwFlags & SCF_SELTEXTCOLOR)
+          crIndentColor=pscIndentDraw->dwSelTextColor;
+        else
+          crIndentColor=aec->crSelText;
+      }
+    }
+  }
+  else
+  {
+    if (pscIndentDraw && (pscIndentDraw->dwFlags & SCF_BASICENABLE))
+    {
+      if (scCoder.dwBasicTextColor != (DWORD)-1)
+        crIndentColor=scCoder.dwBasicTextColor;
+      else
+      {
+        if (pscIndentDraw->dwFlags & SCF_BASICTEXTCOLOR)
+          crIndentColor=pscIndentDraw->dwBasicTextColor;
+        else
+          crIndentColor=aec->crBasicText;
+      }
+    }
+  }
+  return crIndentColor;
+}
+
 void GetCoderColors(HWND hWnd)
 {
   scCoder.dwBasicFontStyle=(DWORD)-1;
@@ -2007,7 +2106,7 @@ void GetCoderColors(HWND hWnd)
           if (lpVarInfo=StackGetVarByName(hStackGlobal, hStackActive, cti[i].wpVar, -1))
           {
             if (*lpVarInfo->wpVarValue == L'#')
-              *cti[i].lpcrValue=GetColorValueFromStrW(lpVarInfo->wpVarValue + 1);
+              *cti[i].lpcrValue=GetColorFromStr(lpVarInfo->wpVarValue + 1);
             lpVarInfoFastCheck=lpVarInfo->next;
           }
           else break;
@@ -2241,34 +2340,22 @@ BOOL GetCharColor(HWND hWndEdit, INT_PTR nCharOffset, AECHARCOLORS *aecc)
   return (BOOL)SendMessage(hWndEdit, AEM_GETCHARCOLORS, (WPARAM)&ciCharIndex, (LPARAM)aecc);
 }
 
-COLORREF GetColorValueFromStrA(char *pColor)
+COLORREF GetColorFromStrAnsi(char *pColor)
 {
   COLORREF crColor;
 
-  crColor=(COLORREF)hex2decA(pColor, -1);
-  crColor=RGB(GetBValue(crColor), GetGValue(crColor), GetRValue(crColor));
+  if ((crColor=(COLORREF)hex2decA(pColor, 6)) != (COLORREF)-1)
+    crColor=RGB(GetBValue(crColor), GetGValue(crColor), GetRValue(crColor));
   return crColor;
 }
 
-COLORREF GetColorValueFromStrW(wchar_t *wpColor)
+COLORREF GetColorFromStr(wchar_t *wpColor)
 {
   COLORREF crColor;
 
-  crColor=(COLORREF)hex2decW(wpColor, -1);
-  crColor=RGB(GetBValue(crColor), GetGValue(crColor), GetRValue(crColor));
+  if ((crColor=(COLORREF)hex2decW(wpColor, 6)) != (COLORREF)-1)
+    crColor=RGB(GetBValue(crColor), GetGValue(crColor), GetRValue(crColor));
   return crColor;
-}
-
-char* GetColorStrFromValueA(COLORREF crColor, char *szColor)
-{
-  wsprintfA(szColor, "%02X%02X%02X", GetRValue(crColor), GetGValue(crColor), GetBValue(crColor));
-  return szColor;
-}
-
-wchar_t* GetColorStrFromValueW(COLORREF crColor, wchar_t *wszColor)
-{
-  xprintfW(wszColor, L"%02X%02X%02X", GetRValue(crColor), GetGValue(crColor), GetBValue(crColor));
-  return wszColor;
 }
 
 int GetNewLineString(int nNewLine, const wchar_t **wpNewLine)

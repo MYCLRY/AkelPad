@@ -1,6 +1,6 @@
 /**                                                             
  *		Speech for AkelPad                                      
- *		Panych Y.W. aka FeyFre (c) 2010-2013 (panych.y@gmail.com)    
+ *		Panych Y.W. aka FeyFre (c) 2010-2014 (panych.y@gmail.com)    
  *                                                              
  *		This piece of software is distributed under BSD license.
  *		AkelPad is property of its copyright holders.           
@@ -181,7 +181,7 @@ extern /*"C"*/ void __declspec(dllexport) DllAkelPadID(PLUGINVERSION *pv)
 {
 	pv->dwAkelDllVersion=AKELDLL;
 	pv->dwExeMinVersion3x=MAKE_IDENTIFIER(-1,-1,-1,-1);
-	pv->dwExeMinVersion4x=MAKE_IDENTIFIER( 4, 7, 7, 0);
+	pv->dwExeMinVersion4x=MAKE_IDENTIFIER( 4, 8, 8, 0);
 	pv->pPluginName="Speech";
 }
 extern /*"C"*/ void __declspec(dllexport) Main(PLUGINDATA *pd)

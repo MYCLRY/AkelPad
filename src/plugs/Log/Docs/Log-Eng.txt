@@ -1,5 +1,5 @@
 *****************************************************************
-***                  Log AkelPad plugin v3.8                  ***
+***                  Log AkelPad plugin v4.2                  ***
 *****************************************************************
 
 2014 Shengalts Aleksander aka Instructor (Shengalts@mail.ru)
@@ -36,11 +36,11 @@ Call("Log::Output", 1, "PROGRAM", "WORKDIR", "REPATTERN", "RETAGS", INPUTCODEPAG
       Regular expression pattern. Applied to each output line to jump to the text from the panel.
     "RETAGS"
       Pattern matches map.
-        /FILE=$1         file to jump.
-        /GOTOLINE=$2:$3  line and column to jump.
-        /GOTOBYTE=$2     byte offset to jump.
-        /GOTOCHAR=$2     character offset to jump.
-        /FRAME=$1        frame data handle to jump.
+        /FILE=\1         file to jump.
+        /GOTOLINE=\2:\3  line and column to jump.
+        /GOTOBYTE=\2     byte offset to jump.
+        /GOTOCHAR=\2     character offset to jump.
+        /FRAME=\1        frame data handle to jump.
     INPUTCODEPAGE
       Codepage of the input text for executed file.
       If -1, codepage will be autodetected.
@@ -50,12 +50,14 @@ Call("Log::Output", 1, "PROGRAM", "WORKDIR", "REPATTERN", "RETAGS", INPUTCODEPAG
       If -1, codepage will be autodetected.
       If -2 or not specified, codepage from plugin settings will be used.
     FLAGS (sum of the following):
-         1  Don't show output panel.
+         1  Don't create output panel.
          2  Hide input line.
          4  Save all documents before execution.
          8  Append text to the end.
         16  No scroll to the end.
         32  Wrap lines.
+        64  Create, but don't show output panel. Requires closing through Call("Log::Output", 6).
+       128  Close output panel, if application exit code equal to zero.
 
       4096  Source input - selection or all document if selection is empty.
       8192  Source input - all document.
@@ -75,7 +77,7 @@ Call("Log::Output", 1, "PROGRAM", "WORKDIR", "REPATTERN", "RETAGS", INPUTCODEPAG
   Example (output to selection without output panel):
     Call("Log::Output", 1, `ipconfig`, "", "", "", -1, -1, 1048577)
   Example (batch file execution for compilation):
-    Call("Log::Output", 1, `"%d\Build.cmd" /S`, "%d", "^(([^\(:]+(:[\\/])?)+)[\(:](\d+)([,:](\d+))?[\):]", "/FILE=$1 /GOTOLINE=$4:$6")
+    Call("Log::Output", 1, `"%d\Build.cmd" /S`, "%d", "^\s*(.*)[(:](\d+)([,:](\d+))?[):]", "/FILE=\1 /GOTOLINE=\2:\4", -2, -2, 4)
 
 Call("Log::Output", 2, *WINDOW)
   Parameters:
@@ -152,6 +154,38 @@ Call("Log::Output", 4, "TEXT", TEXTLEN, APPEND, CODEPAGE, "ALIAS")
 
 Call("Log::Output", 5, "TEXT", TEXTLEN, APPEND)
   Same as 4. Left for compatibility.
+
+Call("Log::Output", 6)
+  Parameters:
+    6
+      Close output panel.
+  Example (uses functions GetOutputWindow and GetExecState):
+    WScript.Echo(GetStdOut("ipconfig"));
+
+    function GetStdOut(pCmd)
+    {
+      var hWndOutput=GetOutputWindow();
+      var pStdOut="";
+      var bClose=true;
+
+      AkelPad.Call("Log::Output", 1, pCmd, "", "", "", -1, -1, 64);
+      while (GetExecState())
+        WScript.Sleep(100);
+
+      if (hWndOutput)
+        bClose=false;
+      else
+        hWndOutput=GetOutputWindow();
+
+      if (hWndOutput)
+      {
+        AkelPad.SetEditWnd(hWndOutput);
+        pStdOut=AkelPad.GetTextRange(0, -1);
+        AkelPad.SetEditWnd(0);
+        if (bClose) AkelPad.Call("Log::Output", 6);
+      }
+      return pStdOut;
+    }
 
 
 *** External call Log::Settings ***

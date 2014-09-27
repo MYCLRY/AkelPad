@@ -34,6 +34,10 @@
 #define LANGID_PRIMARY     1
 #define LANGID_SUB         2
 
+//Document_WriteFile flags
+#define WFF_WRITEREADONLY  0x1
+#define WFF_APPENDFILE     0x2
+
 //Document_WindowSubClass window handle
 #define WSC_MAINPROC     1
 #define WSC_EDITPROC     2
@@ -59,6 +63,7 @@
 #define SH_GETLOCKMULTICOPY      14
 #define SH_GETLOCKSCRIPTSQUEUE   15
 #define SH_GETLOCKPROGRAMTHREAD  16
+#define SH_GETSERVICEWINDOW      17
 #define SH_GETNAME               21
 #define SH_GETFILE               22
 #define SH_GETNCLUDE             23
@@ -119,6 +124,11 @@ typedef struct {
   int nElements;
 } POINTERSTACK;
 
+typedef struct {
+  INT_PTR lpProc;
+  BOOL bBusy;
+} CALLBACKBUSYNESS;
+
 typedef struct _MSGINT {
   struct _MSGINT *next;
   struct _MSGINT *prev;
@@ -134,7 +144,11 @@ typedef struct {
 typedef struct _CALLBACKITEM {
   struct _CALLBACKITEM *next;
   struct _CALLBACKITEM *prev;
-  HANDLE hHandle;         //HWND, HHOOK or SYSCALLBACK.
+  int nRefCount;
+  void *lpStack;
+  int nBusyIndex;
+  INT_PTR lpProc;         //SYSCALLBACK, HOOKPROC.
+  HANDLE hHandle;         //HWND, HHOOK.
   IDispatch *objFunction; //Script function.
   UINT_PTR dwData;        //WNDPROC, nArgCount or nRetAddr.
   int nCallbackType;      //See CIT_* defines.
@@ -142,7 +156,6 @@ typedef struct _CALLBACKITEM {
   MSGINTSTACK hMsgIntStack;
   BOOL bNoNextProc;
   BOOL bShow;
-  int nStaticIndex;
 } CALLBACKITEM;
 
 typedef struct {
@@ -211,7 +224,7 @@ HRESULT STDMETHODCALLTYPE Document_InputBox(IDocument *this, HWND hWnd, BSTR wpC
 BOOL CALLBACK InputBoxProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
 HRESULT STDMETHODCALLTYPE Document_GetSelStart(IDocument *this, INT_PTR *nSelStart);
 HRESULT STDMETHODCALLTYPE Document_GetSelEnd(IDocument *this, INT_PTR *nSelEnd);
-HRESULT STDMETHODCALLTYPE Document_SetSel(IDocument *this, INT_PTR nSelStart, INT_PTR nSelEnd, DWORD dwFlags);
+HRESULT STDMETHODCALLTYPE Document_SetSel(IDocument *this, INT_PTR nSelStart, INT_PTR nSelEnd, DWORD dwFlags, DWORD dwType);
 HRESULT STDMETHODCALLTYPE Document_GetSelText(IDocument *this, int nNewLine, BSTR *wpText);
 HRESULT STDMETHODCALLTYPE Document_GetTextRange(IDocument *this, INT_PTR nRangeStart, INT_PTR nRangeEnd, int nNewLine, BSTR *wpText);
 HRESULT GetTextRange(HWND hWnd, INT_PTR nRangeStart, INT_PTR nRangeEnd, int nNewLine, BOOL bColumnSel, BSTR *wpText);
@@ -236,6 +249,7 @@ HRESULT STDMETHODCALLTYPE Document_Include(IDocument *this, BSTR wpFileName, BOO
 HRESULT STDMETHODCALLTYPE Document_IsInclude(IDocument *this, BSTR *wpFileName);
 HRESULT STDMETHODCALLTYPE Document_OpenFile(IDocument *this, BSTR wpFile, DWORD dwFlags, int nCodePage, BOOL bBOM, int *nResult);
 HRESULT STDMETHODCALLTYPE Document_ReadFile(IDocument *this, BSTR wpFile, DWORD dwFlags, int nCodePage, BOOL bBOM, INT_PTR nBytesMax, BSTR *wpText);
+HRESULT STDMETHODCALLTYPE Document_WriteFile(IDocument *this, VARIANT vtFile, BSTR wpContent, INT_PTR nContentLen, int nCodePage, BOOL bBOM, DWORD dwFlags, int *nResult);
 HRESULT STDMETHODCALLTYPE Document_SaveFile(IDocument *this, HWND hWnd, BSTR wpFile, int nCodePage, BOOL bBOM, DWORD dwFlags, int *nResult);
 HRESULT STDMETHODCALLTYPE Document_ScriptSettings(IDocument *this, IDispatch **objSet);
 HRESULT STDMETHODCALLTYPE Document_SystemFunction(IDocument *this, IDispatch **objSys);
@@ -259,7 +273,7 @@ HRESULT STDMETHODCALLTYPE Document_WindowNextProc(IDocument *this, INT_PTR *lpCa
 HRESULT STDMETHODCALLTYPE Document_WindowNoNextProc(IDocument *this, INT_PTR *lpCallbackItem);
 HRESULT STDMETHODCALLTYPE Document_WindowUnsubClass(IDocument *this, HWND hWnd);
 HRESULT WindowUnsubClass(void *lpScriptThread, HWND hWnd);
-HRESULT STDMETHODCALLTYPE Document_ThreadHook(IDocument *this, int idHook, IDispatch *objFunction, DWORD dwThreadId, HHOOK *hHook);
+HRESULT STDMETHODCALLTYPE Document_ThreadHook(IDocument *this, int idHook, IDispatch *objCallback, DWORD dwThreadId, HHOOK *hHook);
 HRESULT STDMETHODCALLTYPE Document_ThreadUnhook(IDocument *this, HHOOK hHook, BOOL *bResult);
 HRESULT STDMETHODCALLTYPE Document_ScriptNoMutex(IDocument *this, DWORD dwUnlockType, DWORD *dwResult);
 HRESULT STDMETHODCALLTYPE Document_ScriptHandle(IDocument *this, VARIANT vtData, int nOperation, VARIANT *vtResult);
@@ -277,12 +291,13 @@ MSGINT* StackGetMessage(MSGINTSTACK *hStack, UINT uMsg);
 void StackDeleteMessage(MSGINTSTACK *hStack, MSGINT *lpMessage);
 void StackFreeMessages(MSGINTSTACK *hStack);
 void StackFillMessages(MSGINTSTACK *hStack, SAFEARRAY *psa);
-CALLBACKITEM* StackInsertCallback(CALLBACKSTACK *hStack);
+int RetriveCallbackProc(CALLBACKBUSYNESS *cb);
+CALLBACKITEM* StackInsertCallback(CALLBACKSTACK *hStack, IDispatch *objCallback);
 int StackGetCallbackCount(CALLBACKSTACK *hStack, int nCallbackType);
 CALLBACKITEM* StackGetCallbackByHandle(CALLBACKSTACK *hStack, HANDLE hHandle, void *lpScriptThread);
+CALLBACKITEM* StackGetCallbackByProc(CALLBACKSTACK *hStack, INT_PTR lpProc);
 CALLBACKITEM* StackGetCallbackByObject(CALLBACKSTACK *hStack, IDispatch *objFunction);
-CALLBACKITEM* StackGetCallbackByIndex(CALLBACKSTACK *hStack, int nIndex);
-void StackDeleteCallback(CALLBACKSTACK *hStack, CALLBACKITEM *lpElement);
+BOOL StackDeleteCallback(CALLBACKITEM *lpElement);
 void StackFreeCallbacks(CALLBACKSTACK *hStack);
 LRESULT CALLBACK DialogCallbackProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 LRESULT CALLBACK SubclassCallbackProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
